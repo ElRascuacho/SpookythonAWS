@@ -1,8 +1,9 @@
-# Nestjs specific
+# Build & dependencies
 /dist
 /node_modules
 /build
 /tmp
+*.tsbuildinfo
 
 # Logs
 logs
@@ -22,3 +23,8 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+
+# Local agent / workspace metadata
+.atl/
+AGENTS.md
+hackathon_track_b.md
