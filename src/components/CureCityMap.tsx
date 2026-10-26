@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Crosshair, Minus, Plus } from "lucide-react";
+import { Crosshair, Globe, Layers, Map as MapIcon, Minus, Plus } from "lucide-react";
 import { MANTA_EDGES, MANTA_NODES } from "../domain/mantaGraph";
 import type { DailyCitySnapshot } from "../domain/types";
 import type { Order } from "../domain/cureGame";
@@ -54,6 +54,7 @@ interface Props {
   selectedNode: string;
   onSelect: (nodeId: string) => void;
   orders: Order[];
+  onSwitchTo3D?: (mode: "satellite" | "tactical3d") => void;
 }
 
 export function CureCityMap({
@@ -61,6 +62,7 @@ export function CureCityMap({
   selectedNode,
   onSelect,
   orders,
+  onSwitchTo3D,
 }: Props) {
   const [layer, setLayer] = useState<"infection" | "protection">("infection");
   const [zoom, setZoom] = useState(1);
@@ -70,24 +72,48 @@ export function CureCityMap({
   return (
     <section className="city-map" aria-label="Mapa interactivo de Manta">
       <div className="map-heading">
-        <span className="eyebrow">TEATRO DE OPERACIONES</span>
+        <span className="eyebrow">TEATRO DE OPERACIONES · 2D</span>
         <h2>
           Manta, Ecuador <span>01° S / 80° O</span>
         </h2>
       </div>
-      <div className="map-layers" aria-label="Capas del mapa">
-        <button
-          className={layer === "infection" ? "active" : ""}
-          onClick={() => setLayer("infection")}
-        >
-          Contagios
-        </button>
-        <button
-          className={layer === "protection" ? "active" : ""}
-          onClick={() => setLayer("protection")}
-        >
-          Protección
-        </button>
+      <div className="earth-top-controls">
+        {onSwitchTo3D && (
+          <div className="map-layers" aria-label="Modo de visualización del mapa">
+            <button
+              onClick={() => onSwitchTo3D("satellite")}
+              title="Cambiar a vista 3D Satélite tipo Google Earth"
+            >
+              <Globe size={11} />
+              3D Satélite
+            </button>
+            <button
+              onClick={() => onSwitchTo3D("tactical3d")}
+              title="Cambiar a Ciudad 3D vectorial"
+            >
+              <Layers size={11} />
+              3D Ciudad
+            </button>
+            <button className="active">
+              <MapIcon size={11} />
+              2D Táctico
+            </button>
+          </div>
+        )}
+        <div className="map-layers" aria-label="Capas del mapa">
+          <button
+            className={layer === "infection" ? "active" : ""}
+            onClick={() => setLayer("infection")}
+          >
+            Contagios
+          </button>
+          <button
+            className={layer === "protection" ? "active" : ""}
+            onClick={() => setLayer("protection")}
+          >
+            Protección
+          </button>
+        </div>
       </div>
       <svg
         viewBox="0 0 960 670"

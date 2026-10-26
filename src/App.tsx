@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
@@ -10,6 +10,7 @@ import {
   Dna,
   FlaskConical,
   HeartPulse,
+  LogOut,
   MapPin,
   Microscope,
   Plus,
@@ -27,6 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CureCityMap } from "./components/CureCityMap";
+import { CureEarth3DMap, type MapStyleMode } from "./components/CureEarth3DMap";
 import { ComparisonChart } from "./components/ComparisonChart";
 import {
   advanceDay,
@@ -64,7 +66,7 @@ const ICONS: Record<Intervention, LucideIcon> = {
   fumigate: SprayCan,
   cordon: ShieldCheck,
 };
-type Modal = "help" | "settings" | "analysis" | "result" | null;
+type Modal = "help" | "settings" | "analysis" | "result" | "logout" | null;
 interface Evaluation {
   comparison: MonteCarloComparisonResult;
   playerMean: number;
@@ -158,7 +160,13 @@ function Dialog({
   );
 }
 
-export default function App() {
+export default function App({
+  onLogout,
+  loggingOut = false,
+}: {
+  onLogout?: () => void;
+  loggingOut?: boolean;
+} = {}) {
   const [game, setGame] = useState(() => createGame(DEFAULT_CONFIG));
   const [selectedNode, setSelectedNode] = useState("N01");
   const [orders, setOrders] = useState<Order[]>([]);
@@ -171,6 +179,8 @@ export default function App() {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [analysisDay, setAnalysisDay] = useState(0);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [mapView, setMapView] = useState<"3d" | "2d">("3d");
+  const [styleMode, setStyleMode] = useState<MapStyleMode>("satellite");
   const closeModal = () => setModal(null);
   const snapshot = game.timeline[game.day];
   const node = NODE_MAP[selectedNode];
@@ -291,6 +301,12 @@ export default function App() {
             <Settings2 size={16} />
             <span>Nueva misión</span>
           </button>
+          {onLogout && (
+            <button aria-label="Cerrar sesión" title="Cerrar sesión" onClick={() => setModal("logout")} disabled={loggingOut}>
+              <LogOut size={16} />
+              <span>{loggingOut ? "Saliendo…" : "Salir"}</span>
+            </button>
+          )}
         </nav>
       </header>
       <main className="command-layout">
@@ -434,15 +450,35 @@ export default function App() {
               <MapPin size={12} /> MANABÍ, ECUADOR
             </span>
           </div>
-          <CureCityMap
-            snapshot={snapshot}
-            selectedNode={selectedNode}
-            onSelect={(id) => {
-              setSelectedNode(id);
-              setTab("field");
-            }}
-            orders={orders}
-          />
+          {mapView === "3d" ? (
+            <CureEarth3DMap
+              snapshot={snapshot}
+              selectedNode={selectedNode}
+              onSelect={(id) => {
+                setSelectedNode(id);
+                setTab("field");
+              }}
+              orders={orders}
+              patientZeroId={game.config.patientZeroId}
+              styleMode={styleMode}
+              onChangeStyleMode={setStyleMode}
+              onSwitchTo2D={() => setMapView("2d")}
+            />
+          ) : (
+            <CureCityMap
+              snapshot={snapshot}
+              selectedNode={selectedNode}
+              onSelect={(id) => {
+                setSelectedNode(id);
+                setTab("field");
+              }}
+              orders={orders}
+              onSwitchTo3D={(mode) => {
+                setStyleMode(mode);
+                setMapView("3d");
+              }}
+            />
+          )}
           {showTip && (
             <div className="map-tip">
               <span className="tip-number">01</span>
@@ -776,6 +812,15 @@ export default function App() {
         {notice}
       </div>
 
+      {modal === "logout" && (
+        <Dialog title="¿Cerrar sesión?" onClose={closeModal}>
+          <p className="dialog-intro">La partida actual no se guarda. Podrás volver a entrar con el mismo código de invitación.</p>
+          <button className="primary-button" onClick={onLogout} disabled={loggingOut}>
+            {loggingOut ? "Cerrando sesión…" : "Salir de la operación"}<LogOut size={16} />
+          </button>
+          <button className="secondary-button" onClick={closeModal} disabled={loggingOut}>Seguir jugando</button>
+        </Dialog>
+      )}
       {modal === "help" && (
         <Dialog title="La misión es encontrar la cura." onClose={closeModal}>
           <p className="dialog-intro">

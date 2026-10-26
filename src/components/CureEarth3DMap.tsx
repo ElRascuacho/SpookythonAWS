@@ -1,0 +1,1437 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import {
+  Compass,
+  Crosshair,
+  Globe,
+  Layers,
+  Map as MapIcon,
+  Minus,
+  Orbit,
+  Plus,
+  ShieldCheck,
+  ShieldPlus,
+  SprayCan,
+} from "lucide-react";
+import { MANTA_EDGES, MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
+import type { CityNode, DailyCitySnapshot } from "../domain/types";
+import type { Order } from "../domain/cureGame";
+
+export type MapStyleMode = "satellite" | "tactical3d";
+
+interface Props {
+  snapshot: DailyCitySnapshot;
+  selectedNode: string;
+  onSelect: (nodeId: string) => void;
+  orders: Order[];
+  patientZeroId: string;
+  styleMode: MapStyleMode;
+  onChangeStyleMode: (mode: MapStyleMode) => void;
+  onSwitchTo2D: () => void;
+}
+
+const MANTA_CENTER: [number, number] = [-80.7225, -0.9555];
+const ORBIT_START: [number, number] = [-80.7225, -0.9555];
+
+const SHORT_NAMES: Record<string, string> = {
+  N01: "TARQUI",
+  N02: "PLAYITA MÍA",
+  N03: "ULEAM",
+  N04: "HOSP. ZAMBRANO",
+  N05: "TERMINAL",
+  N06: "EL MURCIÉLAGO",
+  N07: "CENTRO",
+  N08: "ELOY ALFARO",
+  N09: "LOS ESTEROS",
+  N10: "SAN MATEO",
+  N11: "BARBASQUILLO",
+  N12: "COLEGIO MANTA",
+  N13: "Z. INDUSTRIAL",
+  N14: "UMIÑA",
+  N15: "PUERTO MANTA",
+  N16: "URBIRRÍOS",
+};
+
+/**
+ * Converts meters offset (dx east, dy north) into [lng, lat] around a reference coordinate.
+ */
+function offsetLngLat(
+  lng: number,
+  lat: number,
+  dxMeters: number,
+  dyMeters: number,
+): [number, number] {
+  const latRad = (lat * Math.PI) / 180;
+  const metersPerDegLat = 111320;
+  const metersPerDegLng = 111320 * Math.cos(latRad);
+  return [lng + dxMeters / metersPerDegLng, lat + dyMeters / metersPerDegLat];
+}
+
+/**
+ * Generates a regular polygon footprint in [lng, lat] around a center point.
+ */
+function createPolygonRing(
+  lng: number,
+  lat: number,
+  radiusMeters: number,
+  sides = 12,
+  rotationRad = 0,
+): number[][] {
+  const coords: number[][] = [];
+  for (let i = 0; i <= sides; i++) {
+    const angle = rotationRad + (i * 2 * Math.PI) / sides;
+    coords.push(
+      offsetLngLat(
+        lng,
+        lat,
+        radiusMeters * Math.cos(angle),
+        radiusMeters * Math.sin(angle),
+      ),
+    );
+  }
+  return coords;
+}
+
+/**
+ * Generates a rectangular building footprint rotated by angleRad.
+ */
+function createBoxFootprint(
+  lng: number,
+  lat: number,
+  halfWidthM: number,
+  halfDepthM: number,
+  angleRad = 0,
+): number[][] {
+  const corners = [
+    [-halfWidthM, -halfDepthM],
+    [halfWidthM, -halfDepthM],
+    [halfWidthM, halfDepthM],
+    [-halfWidthM, halfDepthM],
+    [-halfWidthM, -halfDepthM],
+  ];
+  const cos = Math.cos(angleRad);
+  const sin = Math.sin(angleRad);
+  return corners.map(([x, y]) =>
+    offsetLngLat(lng, lat, x * cos - y * sin, x * sin + y * cos),
+  );
+}
+
+/**
+ * Generates a 3D architectural compound (multiple extruded volumes) tailored to each Manta zone.
+ */
+function buildNode3DCompound(
+  node: CityNode,
+  coreHeight: number,
+  coreColor: string,
+  accentColor: string,
+  isSelected: boolean,
+  hasCordon: boolean,
+  hasVaccine: boolean,
+  hasFumigate: boolean,
+) {
+  const features: Array<{
+    type: "Feature";
+    properties: Record<string, string | number>;
+    geometry: { type: "Polygon"; coordinates: number[][][] };
+  }> = [];
+
+  const baseRadius = isSelected ? 175 : 140;
+
+  // 1. Tactical hex pedestal base
+  features.push({
+    type: "Feature",
+    properties: {
+      id: node.id,
+      part: "pedestal",
+      color: isSelected ? "#234752" : "#132830",
+      base: 0,
+      height: 16,
+    },
+    geometry: {
+      type: "Polygon",
+      coordinates: [createPolygonRing(node.lng, node.lat, baseRadius, 6, Math.PI / 6)],
+    },
+  });
+
+  // 2. Specialized 3D architectural compound based on node role
+  if (node.id === "N04") {
+    // Hospital Rodríguez Zambrano: Medical Cross 3D Complex + Central Heliport Tower
+    const wingH = Math.max(55, Math.round(coreHeight * 0.62));
+    features.push(
+      {
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: "hospital-ns",
+          color: coreColor,
+          base: 16,
+          height: wingH,
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createBoxFootprint(node.lng, node.lat, 34, 98, 0.15)],
+        },
+      },
+      {
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: "hospital-ew",
+          color: coreColor,
+          base: 16,
+          height: wingH,
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createBoxFootprint(node.lng, node.lat, 98, 34, 0.15)],
+        },
+      },
+      {
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: "hospital-core",
+          color: accentColor,
+          base: wingH,
+          height: Math.round(coreHeight * 1.08),
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createPolygonRing(node.lng, node.lat, 42, 8)],
+        },
+      },
+    );
+  } else if (node.id === "N15" || node.id === "N02") {
+    // Puerto de Manta / Playita Mía: Port Terminal Warehouses + Control Spire
+    const [p1Lng, p1Lat] = offsetLngLat(node.lng, node.lat, -65, 30);
+    const [p2Lng, p2Lat] = offsetLngLat(node.lng, node.lat, 65, -25);
+    features.push(
+      {
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: "port-pier-1",
+          color: "#22444f",
+          base: 16,
+          height: Math.max(42, Math.round(coreHeight * 0.45)),
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createBoxFootprint(p1Lng, p1Lat, 26, 78, -0.45)],
+        },
+      },
+      {
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: "port-pier-2",
+          color: "#22444f",
+          base: 16,
+          height: Math.max(48, Math.round(coreHeight * 0.52)),
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createBoxFootprint(p2Lng, p2Lat, 26, 78, -0.45)],
+        },
+      },
+      {
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: "port-tower",
+          color: coreColor,
+          base: 16,
+          height: Math.round(coreHeight),
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createPolygonRing(node.lng, node.lat, 52, 8)],
+        },
+      },
+    );
+  } else {
+    // Standard District: Stepped 3D Core Tower + 3 Satellite Urban Blocks
+    const tier1H = Math.max(44, Math.round(coreHeight * 0.58));
+    features.push(
+      {
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: "core-lower",
+          color: coreColor,
+          base: 16,
+          height: tier1H,
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createPolygonRing(node.lng, node.lat, 68, 8, Math.PI / 8)],
+        },
+      },
+      {
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: "core-spire",
+          color: accentColor,
+          base: tier1H,
+          height: Math.round(coreHeight),
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createPolygonRing(node.lng, node.lat, 38, 8, Math.PI / 8)],
+        },
+      },
+    );
+
+    const offsets = [
+      [78, 52, 0.3],
+      [-76, 48, -0.2],
+      [0, -82, 0.1],
+    ];
+    offsets.forEach(([dx, dy, rot], idx) => {
+      const [bLng, bLat] = offsetLngLat(node.lng, node.lat, dx, dy);
+      features.push({
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: `sat-${idx}`,
+          color: idx === 0 ? coreColor : "#1f3c46",
+          base: 16,
+          height: Math.max(32, Math.round(coreHeight * (0.32 + idx * 0.08))),
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createBoxFootprint(bLng, bLat, 24, 20, rot)],
+        },
+      });
+    });
+  }
+
+  // 3. 3D Sanitary Cordon Barricade Walls (12 extruded barrier segments around the zone)
+  if (hasCordon) {
+    const wallSegments = 12;
+    const cordonRadius = 215;
+    for (let i = 0; i < wallSegments; i++) {
+      const angle = (i * 2 * Math.PI) / wallSegments;
+      const [wLng, wLat] = offsetLngLat(
+        node.lng,
+        node.lat,
+        cordonRadius * Math.cos(angle),
+        cordonRadius * Math.sin(angle),
+      );
+      features.push({
+        type: "Feature",
+        properties: {
+          id: node.id,
+          part: `cordon-wall-${i}`,
+          color: "#80e0bc",
+          base: 0,
+          height: 115,
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            createBoxFootprint(wLng, wLat, 10, 28, angle),
+          ],
+        },
+      });
+    }
+  }
+
+  // 4. Floating 3D Crown if Vaccinated or Fumigated
+  if (hasVaccine || hasFumigate) {
+    features.push({
+      type: "Feature",
+      properties: {
+        id: node.id,
+        part: "intervention-crown",
+        color: hasVaccine ? "#b1dfc8" : "#d3bc80",
+        base: Math.round(coreHeight + 18),
+        height: Math.round(coreHeight + 42),
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [createPolygonRing(node.lng, node.lat, 46, 6)],
+      },
+    });
+  }
+
+  return features;
+}
+
+/**
+ * Generates an OpenFreeMap-compatible style specification that combines:
+ * - AWS Open Data Terrain DEM tiles (3D topography of Manta & Montecristi)
+ * - Esri World Imagery Satellite tiles (Google Earth look)
+ * - OpenFreeMap vector streets & 3D buildings
+ */
+const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  projection: {
+    type: "globe",
+  },
+  sources: {
+    "aws-terrain-dem": {
+      type: "raster-dem",
+      tiles: [
+        "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+      ],
+      encoding: "terrarium",
+      tileSize: 256,
+      maxzoom: 14,
+    },
+    "esri-world-satellite": {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      maxzoom: 18,
+      attribution: "Esri, Maxar, Earthstar Geographics · AWS Terrain",
+    },
+    "carto-dark-matter": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png",
+      ],
+      tileSize: 256,
+      maxzoom: 18,
+    },
+    openmaptiles: {
+      type: "vector",
+      url: "https://tiles.openfreemap.org/planet",
+    },
+  },
+  terrain: {
+    source: "aws-terrain-dem",
+    exaggeration: 1.75,
+  },
+  layers: [
+    {
+      id: "background-void",
+      type: "background",
+      paint: {
+        "background-color": "#08141a",
+      },
+    },
+    {
+      id: "tactical-dark-raster",
+      type: "raster",
+      source: "carto-dark-matter",
+      paint: {
+        "raster-opacity": 0.95,
+        "raster-contrast": 0.15,
+        "raster-brightness-max": 0.82,
+      },
+    },
+    {
+      id: "satellite-earth-raster",
+      type: "raster",
+      source: "esri-world-satellite",
+      paint: {
+        "raster-opacity": 0.88,
+        "raster-brightness-max": 0.78,
+        "raster-brightness-min": 0.04,
+        "raster-contrast": 0.26,
+        "raster-saturation": -0.28,
+      },
+    },
+    {
+      id: "terrain-hillshade",
+      type: "hillshade",
+      source: "aws-terrain-dem",
+      paint: {
+        "hillshade-exaggeration": 0.45,
+        "hillshade-shadow-color": "#050d12",
+        "hillshade-highlight-color": "#7fb8a4",
+        "hillshade-accent-color": "#132a34",
+      },
+    },
+    {
+      id: "manta-roads-glow",
+      type: "line",
+      source: "openmaptiles",
+      "source-layer": "transportation",
+      minzoom: 11,
+      paint: {
+        "line-color": "#2f5764",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.6, 15, 3],
+        "line-opacity": 0.42,
+      },
+    },
+    {
+      id: "manta-real-3d-buildings",
+      type: "fill-extrusion",
+      source: "openmaptiles",
+      "source-layer": "building",
+      minzoom: 12.2,
+      paint: {
+        "fill-extrusion-color": "#162c35",
+        "fill-extrusion-height": [
+          "coalesce",
+          ["get", "render_height"],
+          ["get", "height"],
+          12,
+        ],
+        "fill-extrusion-base": [
+          "coalesce",
+          ["get", "render_min_height"],
+          0,
+        ],
+        "fill-extrusion-opacity": 0.68,
+      },
+    },
+  ],
+};
+
+export function CureEarth3DMap({
+  snapshot,
+  selectedNode,
+  onSelect,
+  orders,
+  patientZeroId,
+  styleMode,
+  onChangeStyleMode,
+  onSwitchTo2D,
+}: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<
+    Record<string, { marker: maplibregl.Marker; el: HTMLButtonElement }>
+  >({});
+
+  const [layer, setLayer] = useState<"infection" | "protection">("infection");
+  const [mapReady, setMapReady] = useState(false);
+  const [isOrbiting, setIsOrbiting] = useState(false);
+  const [isPitched, setIsPitched] = useState(true);
+
+  // Refs for the 60fps tactical holographic overlay canvas
+  const snapshotRef = useRef(snapshot);
+  snapshotRef.current = snapshot;
+  const ordersRef = useRef(orders);
+  ordersRef.current = orders;
+  const selectedNodeRef = useRef(selectedNode);
+  selectedNodeRef.current = selectedNode;
+  const layerRef = useRef(layer);
+  layerRef.current = layer;
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+
+  const affected = MANTA_NODES.filter(
+    (node) => snapshot.nodes[node.id].I > 0,
+  ).length;
+
+  // Build 3D GeoJSON for compounds, ground bio-halos, and corridor lines
+  const { buildingsGeoJson, halosGeoJson, edgesGeoJson } = useMemo(() => {
+    const cordonedEdgesSet = new Set(snapshot.action.cordonedEdges);
+    const cordonedNodesSet = new Set(snapshot.action.cordonedNodes);
+
+    const compoundFeatures: ReturnType<typeof buildNode3DCompound> = [];
+    const haloFeatures: Array<{
+      type: "Feature";
+      properties: Record<string, string | number>;
+      geometry: { type: "Polygon"; coordinates: number[][][] };
+    }> = [];
+
+    for (const node of MANTA_NODES) {
+      const state = snapshot.nodes[node.id];
+      const isSelected = node.id === selectedNode;
+      const queuedOrders = orders.filter((o) => o.nodeId === node.id);
+      const hasVaccine =
+        queuedOrders.some((o) => o.kind === "vaccine") ||
+        state.vaccinatedToday > 0;
+      const hasFumigate =
+        queuedOrders.some((o) => o.kind === "fumigate") ||
+        state.fumigatedToday;
+      const hasCordon =
+        queuedOrders.some((o) => o.kind === "cordon") ||
+        state.cordonedToday ||
+        cordonedNodesSet.has(node.id);
+
+      const coreColor =
+        layer === "protection"
+          ? state.R > 0
+            ? "#6fd4af"
+            : "#355863"
+          : state.I > 250
+            ? "#ff5d47"
+            : state.I > 0
+              ? "#f58a72"
+              : "#4c727d";
+
+      const accentColor =
+        layer === "protection"
+          ? "#b1dfc8"
+          : state.I > 0
+            ? "#ffb19e"
+            : "#87adb7";
+
+      const coreHeight =
+        layer === "protection"
+          ? Math.min(560, 75 + (state.R / Math.max(1, node.population)) * 480)
+          : Math.min(620, 72 + state.I * 0.28 + state.E * 0.18);
+
+      compoundFeatures.push(
+        ...buildNode3DCompound(
+          node,
+          coreHeight,
+          coreColor,
+          accentColor,
+          isSelected,
+          hasCordon,
+          hasVaccine,
+          hasFumigate,
+        ),
+      );
+
+      // Ground Halo (Infection aura or Protection shield)
+      const haloRadius =
+        state.I > 0
+          ? 240 + Math.min(240, state.I * 0.14)
+          : 195 + state.vectorIndex * 90;
+      const haloColor = hasCordon
+        ? "#80e0bc"
+        : state.I > 0
+          ? "#f58a72"
+          : hasFumigate
+            ? "#d3bc80"
+            : "#3d6975";
+      const haloOpacity = hasCordon
+        ? 0.28
+        : state.I > 0
+          ? Math.min(0.38, 0.16 + state.I / 2500)
+          : 0.1;
+
+      haloFeatures.push({
+        type: "Feature",
+        properties: {
+          id: node.id,
+          color: haloColor,
+          opacity: haloOpacity,
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [createPolygonRing(node.lng, node.lat, haloRadius, 24)],
+        },
+      });
+    }
+
+    const edgeFeatures = MANTA_EDGES.map((edge) => {
+      const src = NODE_MAP[edge.source];
+      const tgt = NODE_MAP[edge.target];
+      const closed =
+        cordonedEdgesSet.has(edge.id) ||
+        orders.some(
+          (o) =>
+            o.kind === "cordon" &&
+            (o.nodeId === edge.source || o.nodeId === edge.target),
+        );
+      const infected =
+        snapshot.nodes[edge.source].I > 0 || snapshot.nodes[edge.target].I > 0;
+
+      const color = closed ? "#a7ddc4" : infected ? "#f58a72" : "#567d87";
+      const width = closed ? 3 : infected ? 2.6 + edge.weight * 4 : 1.6;
+
+      return {
+        type: "Feature" as const,
+        properties: {
+          id: edge.id,
+          color,
+          width,
+          closed: closed ? 1 : 0,
+        },
+        geometry: {
+          type: "LineString" as const,
+          coordinates: [
+            [src.lng, src.lat],
+            [tgt.lng, tgt.lat],
+          ],
+        },
+      };
+    });
+
+    return {
+      buildingsGeoJson: {
+        type: "FeatureCollection" as const,
+        features: compoundFeatures,
+      },
+      halosGeoJson: {
+        type: "FeatureCollection" as const,
+        features: haloFeatures,
+      },
+      edgesGeoJson: {
+        type: "FeatureCollection" as const,
+        features: edgeFeatures,
+      },
+    };
+  }, [snapshot, selectedNode, orders, layer]);
+
+  // Initialize MapLibre 3D Globe & Terrain
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: EARTH_3D_STYLE,
+      center: prefersReducedMotion ? MANTA_CENTER : ORBIT_START,
+      zoom: prefersReducedMotion ? 13.25 : 4.2,
+      pitch: prefersReducedMotion ? 60 : 15,
+      bearing: prefersReducedMotion ? -20 : 0,
+      maxPitch: 78,
+      attributionControl: false,
+    });
+
+    map.on("load", () => {
+      try {
+        map.setSky({
+          "sky-color": "#071319",
+          "sky-horizon-blend": 0.45,
+          "horizon-color": "#183945",
+          "horizon-fog-blend": 0.65,
+          "fog-color": "#0b1b23",
+          "fog-ground-blend": 0.35,
+        });
+      } catch {
+        // Ignore if sky spec is unsupported by the GPU driver
+      }
+
+      // 1. Ground Bio-Halos
+      map.addSource("cure-halos", {
+        type: "geojson",
+        data: halosGeoJson,
+      });
+      map.addLayer({
+        id: "cure-halos-fill",
+        type: "fill",
+        source: "cure-halos",
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": ["get", "opacity"],
+        },
+      });
+
+      // 2. Ground Mobility Corridors
+      map.addSource("cure-edges", {
+        type: "geojson",
+        data: edgesGeoJson,
+      });
+      map.addLayer({
+        id: "cure-edges-glow",
+        type: "line",
+        source: "cure-edges",
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": ["*", ["get", "width"], 2.8],
+          "line-opacity": 0.22,
+          "line-blur": 3,
+        },
+      });
+      map.addLayer({
+        id: "cure-edges-line",
+        type: "line",
+        source: "cure-edges",
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": ["get", "width"],
+          "line-opacity": 0.78,
+          "line-dasharray": [2, 2],
+        },
+      });
+
+      // 3. 3D Node Architectural Compounds & Cordon Barricades
+      map.addSource("cure-compounds-3d", {
+        type: "geojson",
+        data: buildingsGeoJson,
+      });
+      map.addLayer({
+        id: "cure-compounds-extrusion",
+        type: "fill-extrusion",
+        source: "cure-compounds-3d",
+        paint: {
+          "fill-extrusion-color": ["get", "color"],
+          "fill-extrusion-height": ["get", "height"],
+          "fill-extrusion-base": ["get", "base"],
+          "fill-extrusion-opacity": 0.92,
+        },
+      });
+
+      map.on("click", "cure-compounds-extrusion", (e) => {
+        const clickedId = e.features?.[0]?.properties?.id;
+        if (clickedId) {
+          onSelectRef.current(String(clickedId));
+        }
+      });
+
+      map.on("mouseenter", "cure-compounds-extrusion", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "cure-compounds-extrusion", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
+      setMapReady(true);
+
+      // Google Earth style orbital dive into Manta on initial load
+      if (!prefersReducedMotion) {
+        window.setTimeout(() => {
+          map.flyTo({
+            center: MANTA_CENTER,
+            zoom: 13.3,
+            pitch: 63,
+            bearing: -22,
+            duration: 2600,
+            essential: true,
+          });
+        }, 180);
+      }
+    });
+
+    // Interactive accessible HTML markers anchored to each 3D zone
+    for (const node of MANTA_NODES) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "earth-node-pin";
+      btn.setAttribute("aria-label", `Seleccionar zona ${node.name}`);
+      btn.onclick = (ev) => {
+        ev.stopPropagation();
+        onSelectRef.current(node.id);
+      };
+
+      const marker = new maplibregl.Marker({
+        element: btn,
+        anchor: "bottom",
+        offset: [0, -18],
+      })
+        .setLngLat([node.lng, node.lat])
+        .addTo(map);
+
+      markersRef.current[node.id] = { marker, el: btn };
+    }
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Synchronize Satellite vs Tactical 3D City style layers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const isSat = styleMode === "satellite";
+    if (map.getLayer("satellite-earth-raster")) {
+      map.setPaintProperty(
+        "satellite-earth-raster",
+        "raster-opacity",
+        isSat ? 0.88 : 0,
+      );
+    }
+    if (map.getLayer("manta-real-3d-buildings")) {
+      map.setPaintProperty(
+        "manta-real-3d-buildings",
+        "fill-extrusion-opacity",
+        isSat ? 0.52 : 0.82,
+      );
+      map.setPaintProperty(
+        "manta-real-3d-buildings",
+        "fill-extrusion-color",
+        isSat ? "#19333d" : "#152932",
+      );
+    }
+  }, [styleMode, mapReady]);
+
+  // Update 3D GeoJSON sources when game state or orders change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const compoundsSrc = map.getSource("cure-compounds-3d") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    compoundsSrc?.setData(buildingsGeoJson);
+
+    const halosSrc = map.getSource("cure-halos") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    halosSrc?.setData(halosGeoJson);
+
+    const edgesSrc = map.getSource("cure-edges") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    edgesSrc?.setData(edgesGeoJson);
+  }, [buildingsGeoJson, halosGeoJson, edgesGeoJson, mapReady]);
+
+  // Update DOM HUD pins on all 16 Manta zones
+  useEffect(() => {
+    for (const node of MANTA_NODES) {
+      const entry = markersRef.current[node.id];
+      if (!entry) continue;
+
+      const state = snapshot.nodes[node.id];
+      const isSelected = node.id === selectedNode;
+      const nodeOrders = orders.filter((o) => o.nodeId === node.id);
+      const isOrigin = node.id === patientZeroId && snapshot.day <= 2;
+
+      const hasVax =
+        nodeOrders.some((o) => o.kind === "vaccine") ||
+        state.vaccinatedToday > 0;
+      const hasFum =
+        nodeOrders.some((o) => o.kind === "fumigate") || state.fumigatedToday;
+      const hasCord =
+        nodeOrders.some((o) => o.kind === "cordon") || state.cordonedToday;
+
+      entry.el.className = [
+        "earth-node-pin",
+        isSelected ? "selected" : "",
+        state.I > 0 ? "infected" : "healthy",
+        nodeOrders.length > 0 ? "queued" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      entry.el.setAttribute("aria-pressed", String(isSelected));
+      entry.el.setAttribute(
+        "aria-label",
+        `${node.name}: ${state.I} infecciosos, ${state.R} inmunes`,
+      );
+
+      const tagsHtml = [
+        isOrigin ? '<i class="pin-tag origin" title="Origen del brote">0</i>' : "",
+        hasVax ? '<i class="pin-tag vax" title="Vacunación">V</i>' : "",
+        hasFum ? '<i class="pin-tag fum" title="Fumigación">F</i>' : "",
+        hasCord ? '<i class="pin-tag cord" title="Cordón sanitario">C</i>' : "",
+      ]
+        .filter(Boolean)
+        .join("");
+
+      const metricText =
+        layer === "protection"
+          ? `${state.R.toLocaleString("es-EC")} INM`
+          : state.I > 0
+            ? `${state.I.toLocaleString("es-EC")} INF`
+            : "CONTROLADO";
+
+      entry.el.innerHTML = `
+        <span class="pin-header">
+          <b class="pin-id">${node.id === "N04" ? "✚" : node.id}</b>
+          <span class="pin-name">${SHORT_NAMES[node.id]}</span>
+          ${tagsHtml ? `<span class="pin-tags">${tagsHtml}</span>` : ""}
+        </span>
+        <span class="pin-metric">${metricText}</span>
+        <span class="pin-stem"></span>
+      `;
+    }
+  }, [snapshot, selectedNode, orders, layer, patientZeroId]);
+
+  // Smooth camera focus when selectedNode changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const target = NODE_MAP[selectedNode];
+    if (!target) return;
+
+    map.easeTo({
+      center: [target.lng, target.lat],
+      duration: 850,
+      essential: true,
+    });
+  }, [selectedNode, mapReady]);
+
+  // Optional 360° Tactical Camera Orbit
+  useEffect(() => {
+    if (!isOrbiting || !mapReady) return;
+    let rafId = 0;
+    const rotate = () => {
+      const map = mapRef.current;
+      if (map) {
+        map.rotateTo((map.getBearing() + 0.18) % 360, { duration: 0 });
+      }
+      rafId = requestAnimationFrame(rotate);
+    };
+    rafId = requestAnimationFrame(rotate);
+    return () => cancelAnimationFrame(rafId);
+  }, [isOrbiting, mapReady]);
+
+  // 60fps Holographic 3D Overlay: Parabolic Contagion Arcs, Quarantine Domes & Bio-Pulses
+  useEffect(() => {
+    const canvas = overlayCanvasRef.current;
+    const map = mapRef.current;
+    if (!canvas || !map || !mapReady) return;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    let rafId = 0;
+    let startTime = performance.now();
+
+    const renderOverlay = (now: number) => {
+      const elapsed = (now - startTime) * 0.001;
+      const rect = canvas.parentElement?.getBoundingClientRect();
+      if (rect) {
+        const dpr = window.devicePixelRatio || 1;
+        const targetW = Math.round(rect.width * dpr);
+        const targetH = Math.round(rect.height * dpr);
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+        }
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.save();
+          ctx.scale(dpr, dpr);
+          ctx.clearRect(0, 0, rect.width, rect.height);
+
+          const snap = snapshotRef.current;
+          const activeOrders = ordersRef.current;
+          const selId = selectedNodeRef.current;
+          const pitchFactor = Math.max(0.25, map.getPitch() / 65);
+          const zoomScale = Math.pow(2, Math.max(0, map.getZoom() - 12.5));
+
+          // 1. Draw 3D Parabolic Arcs & Contagion Particles between Manta Zones
+          for (let i = 0; i < MANTA_EDGES.length; i++) {
+            const edge = MANTA_EDGES[i];
+            const srcNode = NODE_MAP[edge.source];
+            const tgtNode = NODE_MAP[edge.target];
+            const p1 = map.project([srcNode.lng, srcNode.lat]);
+            const p2 = map.project([tgtNode.lng, tgtNode.lat]);
+
+            const isClosed =
+              snap.action.cordonedEdges.includes(edge.id) ||
+              activeOrders.some(
+                (o) =>
+                  o.kind === "cordon" &&
+                  (o.nodeId === edge.source || o.nodeId === edge.target),
+              );
+
+            const srcI = snap.nodes[edge.source]?.I ?? 0;
+            const tgtI = snap.nodes[edge.target]?.I ?? 0;
+            const infectedFlow = srcI + tgtI;
+
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 12 || dist > 1600) continue;
+
+            // Control point lifted upward in screen Y to create a 3D parabolic arch
+            const arcLift = Math.min(110, dist * 0.28) * pitchFactor;
+            const cx = (p1.x + p2.x) * 0.5;
+            const cy = (p1.y + p2.y) * 0.5 - arcLift;
+
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.quadraticCurveTo(cx, cy, p2.x, p2.y);
+
+            if (isClosed) {
+              ctx.strokeStyle = "rgba(177, 223, 200, 0.72)";
+              ctx.lineWidth = 1.8;
+              ctx.setLineDash([4, 5]);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            } else if (infectedFlow > 0) {
+              ctx.strokeStyle = "rgba(245, 138, 114, 0.42)";
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              // Animated pathogen pulses traveling along the 3D arc
+              if (!prefersReducedMotion) {
+                const dir = srcI >= tgtI ? 1 : -1;
+                const speed = 0.28 + edge.weight * 0.55;
+                const tRaw = (elapsed * speed + i * 0.17) % 1;
+                const t = dir === 1 ? tRaw : 1 - tRaw;
+                const invT = 1 - t;
+                const px =
+                  invT * invT * p1.x + 2 * invT * t * cx + t * t * p2.x;
+                const py =
+                  invT * invT * p1.y + 2 * invT * t * cy + t * t * p2.y;
+
+                ctx.beginPath();
+                ctx.arc(px, py, 3.2, 0, Math.PI * 2);
+                ctx.fillStyle = "#ff967d";
+                ctx.shadowColor = "#f58a72";
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+              }
+            }
+          }
+
+          // 2. Draw 3D Holographic Domes, Shields & Target Reticles over Nodes
+          for (const node of MANTA_NODES) {
+            const pt = map.project([node.lng, node.lat]);
+            if (
+              pt.x < -100 ||
+              pt.x > rect.width + 100 ||
+              pt.y < -100 ||
+              pt.y > rect.height + 100
+            ) {
+              continue;
+            }
+
+            const nState = snap.nodes[node.id];
+            const nodeOrders = activeOrders.filter((o) => o.nodeId === node.id);
+            const hasCordon =
+              nodeOrders.some((o) => o.kind === "cordon") ||
+              nState.cordonedToday;
+            const hasFumigate =
+              nodeOrders.some((o) => o.kind === "fumigate") ||
+              nState.fumigatedToday;
+            const hasVaccine =
+              nodeOrders.some((o) => o.kind === "vaccine") ||
+              nState.vaccinatedToday > 0;
+            const isSel = node.id === selId;
+
+            const baseR = Math.min(72, Math.max(22, 26 * zoomScale));
+            const squashY = Math.max(0.42, 1 - pitchFactor * 0.48);
+
+            // Selected Node 3D Ground Radar & Vertical Orbital Laser
+            if (isSel) {
+              const beamGrad = ctx.createLinearGradient(
+                pt.x,
+                pt.y,
+                pt.x,
+                pt.y - 130 * pitchFactor,
+              );
+              beamGrad.addColorStop(0, "rgba(177, 223, 200, 0.38)");
+              beamGrad.addColorStop(1, "rgba(177, 223, 200, 0)");
+              ctx.strokeStyle = beamGrad;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(pt.x, pt.y);
+              ctx.lineTo(pt.x, pt.y - 130 * pitchFactor);
+              ctx.stroke();
+
+              ctx.save();
+              ctx.translate(pt.x, pt.y);
+              ctx.scale(1, squashY);
+              ctx.rotate(prefersReducedMotion ? 0 : elapsed * 0.65);
+              ctx.strokeStyle = "rgba(226, 241, 232, 0.78)";
+              ctx.lineWidth = 1.4;
+              ctx.setLineDash([6, 5]);
+              ctx.beginPath();
+              ctx.arc(0, 0, baseR * 1.18, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            // 3D Geodesic Quarantine Dome for Sanitary Cordon
+            if (hasCordon) {
+              const domeR = baseR * 1.25;
+              const domeH = domeR * (0.75 + pitchFactor * 0.35);
+
+              ctx.save();
+              ctx.strokeStyle = "rgba(128, 224, 188, 0.68)";
+              ctx.fillStyle = "rgba(128, 224, 188, 0.09)";
+              ctx.lineWidth = 1.4;
+
+              // Dome outer arch
+              ctx.beginPath();
+              ctx.ellipse(
+                pt.x,
+                pt.y,
+                domeR,
+                domeR * squashY,
+                0,
+                0,
+                Math.PI * 2,
+              );
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.moveTo(pt.x - domeR, pt.y);
+              ctx.quadraticCurveTo(
+                pt.x,
+                pt.y - domeH * 1.45,
+                pt.x + domeR,
+                pt.y,
+              );
+              ctx.fill();
+              ctx.stroke();
+
+              // Inner geodesic ribs
+              ctx.strokeStyle = "rgba(177, 223, 200, 0.35)";
+              ctx.lineWidth = 0.9;
+              for (const ribOffset of [-0.5, 0, 0.5]) {
+                ctx.beginPath();
+                ctx.moveTo(pt.x + domeR * ribOffset, pt.y + domeR * squashY * 0.4);
+                ctx.quadraticCurveTo(
+                  pt.x + domeR * ribOffset * 0.35,
+                  pt.y - domeH * 1.25,
+                  pt.x,
+                  pt.y - domeH * 0.72,
+                );
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+
+            // 3D Bio-Mist Dispersion Ring for Fumigation
+            if (hasFumigate) {
+              const pulse = prefersReducedMotion ? 0.5 : (elapsed * 0.7) % 1;
+              const ringR = baseR * (0.7 + pulse * 0.65);
+              ctx.save();
+              ctx.translate(pt.x, pt.y - 16 * pitchFactor);
+              ctx.scale(1, squashY);
+              ctx.strokeStyle = `rgba(211, 188, 128, ${0.75 * (1 - pulse)})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(0, 0, ringR, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            // 3D Rising Immunization Shield Ring for Vaccination
+            if (hasVaccine) {
+              const pulse = prefersReducedMotion
+                ? 0.4
+                : (elapsed * 0.85 + 0.3) % 1;
+              const lift = pulse * 55 * pitchFactor;
+              ctx.save();
+              ctx.translate(pt.x, pt.y - lift);
+              ctx.scale(1, squashY);
+              ctx.strokeStyle = `rgba(177, 223, 200, ${0.85 * (1 - pulse)})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(0, 0, baseR * 0.72, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+
+          ctx.restore();
+        }
+      }
+
+      if (!prefersReducedMotion) {
+        rafId = requestAnimationFrame(renderOverlay);
+      }
+    };
+
+    rafId = requestAnimationFrame(renderOverlay);
+    const onMapMove = () => {
+      if (prefersReducedMotion) {
+        renderOverlay(performance.now());
+      }
+    };
+    map.on("move", onMapMove);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      map.off("move", onMapMove);
+    };
+  }, [mapReady]);
+
+  const handleOrbitalDive = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    setIsOrbiting(false);
+    map.flyTo({
+      center: MANTA_CENTER,
+      zoom: 3.4,
+      pitch: 10,
+      bearing: 0,
+      duration: 1100,
+      essential: true,
+    });
+    window.setTimeout(() => {
+      map.flyTo({
+        center: MANTA_CENTER,
+        zoom: 13.35,
+        pitch: 64,
+        bearing: -22,
+        duration: 2400,
+        essential: true,
+      });
+      setIsPitched(true);
+    }, 1150);
+  };
+
+  const handleResetView = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    setIsOrbiting(false);
+    map.flyTo({
+      center: MANTA_CENTER,
+      zoom: 13.3,
+      pitch: 62,
+      bearing: -22,
+      duration: 950,
+      essential: true,
+    });
+    setIsPitched(true);
+  };
+
+  const handleTogglePitch = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const nextPitch = isPitched ? 0 : 63;
+    setIsPitched(!isPitched);
+    map.easeTo({
+      pitch: nextPitch,
+      bearing: isPitched ? 0 : -22,
+      duration: 700,
+    });
+  };
+
+  return (
+    <section
+      className="city-map earth-3d-map"
+      aria-label="Mapa 3D satelital e interactivo de Manta"
+    >
+      {/* MapLibre 3D WebGL Surface */}
+      <div ref={containerRef} className="earth-webgl-viewport" />
+
+      {/* Synchronized 60fps 3D Holographic Overlay (Arcs, Quarantine Domes, Pulses) */}
+      <canvas
+        ref={overlayCanvasRef}
+        className="earth-hologram-canvas"
+        aria-hidden="true"
+      />
+
+      {/* Top-Left Theater Heading */}
+      <div className="map-heading">
+        <span className="eyebrow">
+          GEODATA 3D · {styleMode === "satellite" ? "SATÉLITE REAL" : "VECTORIAL 3D"}
+        </span>
+        <h2>
+          Manta, Ecuador <span>00°57&apos;S / 80°43&apos;O · RELIEVE 3D</span>
+        </h2>
+      </div>
+
+      {/* Top-Right Layer & 3D Mode Switcher */}
+      <div className="earth-top-controls">
+        <div className="map-layers" aria-label="Modo de visualización del mapa">
+          <button
+            className={styleMode === "satellite" ? "active" : ""}
+            onClick={() => onChangeStyleMode("satellite")}
+            title="Imagen satelital tipo Google Earth con edificios y relieve 3D"
+          >
+            <Globe size={11} />
+            3D Satélite
+          </button>
+          <button
+            className={styleMode === "tactical3d" ? "active" : ""}
+            onClick={() => onChangeStyleMode("tactical3d")}
+            title="Ciudad 3D vectorial nocturna"
+          >
+            <Layers size={11} />
+            3D Ciudad
+          </button>
+          <button
+            onClick={onSwitchTo2D}
+            title="Cambiar al mapa esquemático 2D SVG"
+          >
+            <MapIcon size={11} />
+            2D Táctico
+          </button>
+        </div>
+
+        <div className="map-layers" aria-label="Capas epidemiológicas">
+          <button
+            className={layer === "infection" ? "active" : ""}
+            onClick={() => setLayer("infection")}
+          >
+            Contagios
+          </button>
+          <button
+            className={layer === "protection" ? "active" : ""}
+            onClick={() => setLayer("protection")}
+          >
+            Protección
+          </button>
+        </div>
+      </div>
+
+      {/* Right Camera & 3D Orbit Controls */}
+      <div className="map-zoom earth-camera-controls">
+        <button
+          aria-label="Acercar cámara 3D"
+          title="Acercar"
+          onClick={() => mapRef.current?.zoomIn({ duration: 300 })}
+        >
+          <Plus size={15} />
+        </button>
+        <button
+          aria-label="Alejar cámara 3D"
+          title="Alejar"
+          onClick={() => mapRef.current?.zoomOut({ duration: 300 })}
+        >
+          <Minus size={15} />
+        </button>
+        <button
+          aria-label="Restablecer vista 3D de Manta"
+          title="Centrar en Manta 3D"
+          onClick={handleResetView}
+        >
+          <Crosshair size={15} />
+        </button>
+        <button
+          aria-label="Alternar inclinación 3D"
+          title={isPitched ? "Cambiar a vista cenital" : "Inclinación 3D (63°)"}
+          className={isPitched ? "active-cam" : ""}
+          onClick={handleTogglePitch}
+        >
+          <Compass size={15} />
+        </button>
+        <button
+          aria-label="Orbitar cámara 360 grados"
+          title="Rotación orbital 360° automática"
+          className={isOrbiting ? "active-cam" : ""}
+          onClick={() => setIsOrbiting((o) => !o)}
+        >
+          <Orbit size={15} />
+        </button>
+        <button
+          aria-label="Vuelo orbital desde el espacio hacia Manta"
+          title="Inmersión desde el Globo Terráqueo (Google Earth)"
+          onClick={handleOrbitalDive}
+        >
+          <Globe size={15} />
+        </button>
+      </div>
+
+      {/* Active Orders 3D HUD Pill */}
+      {orders.length > 0 && (
+        <div className="earth-orders-hud" aria-live="polite">
+          <span>DESPLIEGUE 3D EN COLA:</span>
+          {orders.map((o) => (
+            <b key={`${o.nodeId}-${o.kind}`} className={`hud-tag ${o.kind}`}>
+              {o.kind === "vaccine" && <ShieldPlus size={11} />}
+              {o.kind === "fumigate" && <SprayCan size={11} />}
+              {o.kind === "cordon" && <ShieldCheck size={11} />}
+              {SHORT_NAMES[o.nodeId]}
+            </b>
+          ))}
+        </div>
+      )}
+
+      <div className="map-scale">
+        <span />2 km
+        <small>Relieve AWS DEM · Ortofoto Satelital · Modelos 3D</small>
+      </div>
+
+      <div className="map-legend">
+        <span>
+          <i className="dot coral" />
+          Torre 3D / Brote activo
+        </span>
+        <span>
+          <i className="dot mint" />
+          Domo Cordón / Brigada 3D
+        </span>
+        <span className="map-count">
+          {affected} / 16 zonas afectadas · Arrastra con clic derecho para rotar 3D
+        </span>
+      </div>
+    </section>
+  );
+}

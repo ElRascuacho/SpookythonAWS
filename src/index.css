@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   color-scheme: dark;
@@ -2211,6 +2211,208 @@ svg {
     font-size: 8px;
   }
   .map-legend .map-count {
+    display: none;
+  }
+}
+
+/* =========================================================================
+   3D Earth / Satellite & Tactical Volumetric Viewport (CureEarth3DMap)
+   ========================================================================= */
+.earth-3d-map {
+  background: radial-gradient(circle at 50% 42%, #132d38, #081319 78%);
+}
+.earth-webgl-viewport {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+.earth-webgl-viewport .maplibregl-canvas {
+  outline: none;
+}
+.earth-hologram-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.earth-top-controls {
+  position: absolute;
+  top: 24px;
+  right: 19px;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.earth-top-controls .map-layers {
+  position: static;
+}
+.earth-top-controls .map-layers button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.earth-camera-controls {
+  top: 78px;
+  z-index: 4;
+}
+.earth-camera-controls button.active-cam {
+  color: var(--mint);
+  background: #1d363e;
+}
+.earth-node-pin {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 7px;
+  background: #0d1e25e8;
+  border: 1px solid #35545e;
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--mono);
+  cursor: pointer;
+  box-shadow: 0 6px 18px #050f14b3;
+  transition:
+    border-color 0.16s,
+    background 0.16s,
+    transform 0.16s;
+}
+.earth-node-pin:hover {
+  border-color: #9ec8bb;
+  background: #142b34f5;
+}
+.earth-node-pin.infected {
+  border-color: #9e5446;
+  background: #191f24eb;
+}
+.earth-node-pin.selected {
+  border-color: var(--mint);
+  background: #152f36;
+  box-shadow:
+    0 0 0 1px var(--mint),
+    0 10px 24px #040d11cc;
+  z-index: 10;
+}
+.earth-node-pin.queued {
+  border-color: #79b89c;
+}
+.earth-node-pin .pin-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 8px;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+.earth-node-pin .pin-id {
+  color: var(--mint);
+  font-weight: 600;
+}
+.earth-node-pin.infected .pin-id {
+  color: var(--coral);
+}
+.earth-node-pin .pin-name {
+  color: #d6e2df;
+}
+.earth-node-pin .pin-tags {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 2px;
+}
+.earth-node-pin .pin-tag {
+  font-style: normal;
+  font-size: 7px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 2px;
+  font-weight: 700;
+}
+.earth-node-pin .pin-tag.origin {
+  background: #f58a7233;
+  color: var(--coral);
+  border: 1px solid #f58a7280;
+}
+.earth-node-pin .pin-tag.vax {
+  background: #b1dfc82b;
+  color: var(--mint);
+}
+.earth-node-pin .pin-tag.fum {
+  background: #d3bc802e;
+  color: #e4cf97;
+}
+.earth-node-pin .pin-tag.cord {
+  background: #80e0bc2e;
+  color: #95ebd0;
+}
+.earth-node-pin .pin-metric {
+  font-size: 7px;
+  letter-spacing: 0.5px;
+  color: #88a4ad;
+  margin-top: 2px;
+}
+.earth-node-pin.infected .pin-metric {
+  color: #fa957f;
+}
+.earth-node-pin .pin-stem {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  width: 1px;
+  height: 13px;
+  background: linear-gradient(to bottom, #88b8ac, transparent);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.earth-orders-hud {
+  position: absolute;
+  left: 25px;
+  top: 86px;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #0e2028db;
+  border: 1px solid #35525a;
+  border-radius: 4px;
+  font: 8px var(--mono);
+  letter-spacing: 0.8px;
+  color: #89a6af;
+  pointer-events: none;
+}
+.earth-orders-hud .hud-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 2px;
+  font-weight: 500;
+  color: var(--mint);
+  background: #b1dfc812;
+  border: 1px solid #557d6e;
+}
+.earth-orders-hud .hud-tag.fumigate {
+  color: #e3cd96;
+  border-color: #7c6f4b;
+  background: #d3bc8014;
+}
+@media (max-width: 680px) {
+  .earth-top-controls {
+    top: 14px;
+    right: 12px;
+    gap: 5px;
+  }
+  .earth-camera-controls {
+    top: 88px;
+  }
+  .earth-orders-hud {
     display: none;
   }
 }
