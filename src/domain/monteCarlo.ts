@@ -15,7 +15,7 @@ const STRATEGY_LABELS: Record<StrategyType, string> = {
   SMART_CORTAFUEGOS: 'Nuestra Estrategia: Smart Graph Cortafuegos',
 };
 
-function computePercentile(sortedValues: number[], percentile: number): number {
+export function computePercentile(sortedValues: number[], percentile: number): number {
   if (sortedValues.length === 0) return 0;
   if (sortedValues.length === 1) return sortedValues[0];
   const idx = (percentile / 100) * (sortedValues.length - 1);

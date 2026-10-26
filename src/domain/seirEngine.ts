@@ -4,6 +4,7 @@ import { decideDailyAction } from './strategies';
 import {
   CompartmentState,
   DailyCitySnapshot,
+  DailyAction,
   DailyNodeSnapshot,
   SimulationParams,
   SingleSimulationRunResult,
@@ -22,6 +23,7 @@ export function runSingleSeirSimulation(
   params: SimulationParams,
   strategy: StrategyType,
   runIndex: number,
+  manualActions?: Record<number, DailyAction>,
 ): SingleSimulationRunResult {
   const rng: RngFunction = createSeededRng(params.seed, strategy, runIndex);
   const strategyRng: RngFunction = createSeededRng(
@@ -64,7 +66,12 @@ export function runSingleSeirSimulation(
 
   for (let day = 0; day <= params.days; day++) {
     // 1. Decide Phase A interventions for today
-    const action = decideDailyAction(day, state, params, strategy, strategyRng);
+    const action = manualActions || day === 0
+      ? manualActions?.[day] ?? {
+          day, vaccinatedNodes: {}, fumigatedNodes: [], cordonedNodes: [],
+          cordonedEdges: [], budgetSpent: 0, summaryText: 'Sin intervención.',
+        }
+      : decideDailyAction(day, state, params, strategy, strategyRng);
     totalBudgetSpent += action.budgetSpent;
 
     const cordonedNodeSet = new Set(action.cordonedNodes);

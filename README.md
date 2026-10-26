@@ -1,51 +1,59 @@
-# 🧟‍♂️ Operación Manta Cero — Spookython AWS (Track B: El Brote)
+﻿# Manta Cero — Encuentra la cura
 
-**Simulación Epidemiológica 3D Estocástica SEIR-V sobre el Grafo Urbano de Manta (`G = (V, E)`) con Motor Monte Carlo Reproducible y Estrategia *Smart Graph Cortafuegos (SGC)*.**
+Demo jugable para navegador de **Operación Manta Cero**, Track B: La Plaga Zombie. Eres el comité de respuesta de Manta: distribuye recursos entre contención e investigación para encontrar la cura antes de que el brote desborde la ciudad.
 
----
-
-## 🚀 Inicio Rápido (100% con `bun`)
+## Ejecutar
 
 ```bash
-# 1. Instalar dependencias
 bun install
-
-# 2. Ejecutar suite de pruebas unitarias (Reproducibilidad, Regla de Oro S-only y Superioridad SGC)
-bun test
-
-# 3. Levantar el Centro de Mando 3D en desarrollo
 bun run dev
-
-# 4. Compilar para producción (S3 + CloudFront / Amplify)
+# http://localhost:5173
+bun test
 bun run build
+bun run preview
 ```
 
----
+## Cómo jugar
 
-## 🏛️ Estructura del Proyecto
+1. Selecciona una de las 16 zonas del mapa.
+2. Asigna vacunación ($200), fumigación ($250) o cordón sanitario ($300). Las brigadas se pueden retirar antes de ejecutar y se reasignan cada día.
+3. Financia investigación: $250 suma 3 puntos porcentuales diarios; $500 suma 5; $0 pausa. La misma bolsa diaria financia investigación y brigadas.
+4. Pulsa **Avanzar un día**. El presupuesto se renueva sin acumular sobrantes.
+5. Ganas al completar el 100% de investigación. Pierdes si los contagios acumulados alcanzan el 35% de la población, o al terminar el día 40 sin cura. El umbral de contagios tiene prioridad si coincide con la validación de la cura.
 
-- [`src/domain/types.ts`](./src/domain/types.ts): Contratos de datos del grafo, compartimentos `S-E-I-R-V`, parámetros del Brote Sorpresa y resultados Monte Carlo (`P10`, `Media`, `P90`).
-- [`src/domain/prng.ts`](./src/domain/prng.ts): Generador pseudoaleatorio determinista `Mulberry32` + muestreador Binomial reproducible por `(seed, strategy, runIndex)`.
-- [`src/domain/mantaGraph.ts`](./src/domain/mantaGraph.ts): Topología real de **16 Nodos Estratégicos de Manta** (`N01` Mercado Central de Tarqui hasta `N16` Urbirríos, `270,000` habitantes) y **22 Aristas de Corredores Urbanos FETUM**.
-- [`src/domain/seirEngine.ts`](./src/domain/seirEngine.ts): Motor de transición diaria SEIR-V con foco vectorial ambiental (*Necro-Dengue*), umbral de saturación del **Hospital Rodríguez Zambrano** y cumplimiento matemático de **0 dosis desperdiciadas en `E/I/R`**.
-- [`src/domain/strategies.ts`](./src/domain/strategies.ts): Implementación de las 3 estrategias exigidas por la rúbrica:
-  1. **🔴 Línea Base 1 (`NO_INTERVENTION`):** Sin intervención municipal.
-  2. **🟡 Línea Base 2 (`RANDOM`):** Asignación aleatoria del mismo presupuesto diario.
-  3. **🟢 Nuestra Estrategia (`SMART_CORTAFUEGOS`):** Optimización por **Ratio de Contención por Dólar (RCD)** ponderado por *Betweenness Centrality*, presión infecciosa a 2 saltos y cerco temprano al Paciente Cero.
-- [`src/components/MantaCity3DMap.tsx`](./src/components/MantaCity3DMap.tsx): Escena 3D interactiva en `MapLibre GL JS` con extrusión de edificios de Manta, torres 3D dinámicas por nodo, halos de foco vectorial y selector de Paciente Cero con un clic.
-- [`src/components/SurpriseOutbreakPanel.tsx`](./src/components/SurpriseOutbreakPanel.tsx): Panel **"🎃 Modo Brote Sorpresa (Jurado)"** con presets de 1 clic y controles en vivo.
-- [`src/components/ComparisonChart.tsx`](./src/components/ComparisonChart.tsx): Gráfica interactiva con bandas de confianza `[P10, P90]` y línea de colapso hospitalario.
-- [`src/components/MayorReportModal.tsx`](./src/components/MayorReportModal.tsx): Boletín ejecutivo en lenguaje claro para el Alcalde de Manta.
-- [`backend/handler.ts`](./backend/handler.ts) & [`infra/template.yaml`](./infra/template.yaml): Función AWS Lambda (`arm64` en `us-east-1`), HTTP API Gateway y tabla DynamoDB On-Demand dentro del AWS Free Tier (`$0.00 USD`).
+**Una estrategia ganadora verificada:** escenario estándar, semilla `20261030`, $1.000/día; invierte $500 en investigación y envía cada día un cordón y una brigada de vacunación al nodo con más infecciosos (no vacunes si ya no quedan susceptibles). Completa la cura el día 20. No se garantiza victoria en todas las semillas/escenarios.
 
----
+**Nueva misión** permite cambiar semilla, origen, presupuesto ($500/$1.000/$1.500) y escenario: estándar, doble contagio humano o escape de vacuna. Reiniciar o recargar descarta la partida: esta demo no guarda progreso.
 
-## 📚 Documentación Técnica y Pitch
+## Evaluación reproducible
 
-1. [`docs/00-especificacion-reto.md`](./docs/00-especificacion-reto.md)
-2. [`docs/01-vision-y-concepto.md`](./docs/01-vision-y-concepto.md)
-3. [`docs/02-ciudad-3d-y-grafo-manta.md`](./docs/02-ciudad-3d-y-grafo-manta.md)
-4. [`docs/03-modelo-matematico-y-estrategia.md`](./docs/03-modelo-matematico-y-estrategia.md)
-5. [`docs/04-arquitectura-aws-y-costos.md`](./docs/04-arquitectura-aws-y-costos.md)
-6. [`docs/05-prueba-de-fuego-y-plan-equipo.md`](./docs/05-prueba-de-fuego-y-plan-equipo.md)
-7. [`docs/costos.md`](./docs/costos.md)
+**Evaluar** ejecuta localmente 20 corridas por estrategia hasta el día actual: tu calendario de brigadas, no intervenir, intervención al azar y SGC automática. Reporta promedios y percentiles P10–P90, sin declarar de antemano un ganador. Las líneas base disponen del mismo presupuesto diario; tu plan dedica parte a investigación y ellas solo a contención. Todas empiezan sin intervenciones en el día cero.
+
+La evaluación de tu plan repite el calendario ya elegido; no representa una política adaptativa que tome nuevas decisiones en cada réplica. La gráfica contiene las tres estrategias automáticas, mientras tu plan se muestra en su tarjeta. Los percentiles son dispersión entre corridas, **no intervalos de confianza**. Contagios evitados **no son muertes evitadas**.
+
+## Modelo, parámetros y supuestos
+
+- Modelo ficticio educativo SEIR: susceptible, expuesto, infeccioso y recuperado/inmune; la vacuna solo se aplica a susceptibles. `R` incluye tanto recuperación como inmunización. No hay mortalidad modelada.
+- Grafo manual de 16 zonas y 22 conexiones inspirado en Manta. Poblaciones, pesos, centralidades y riesgos son aproximaciones de escenario, **no datos epidemiológicos calibrados ni rutas oficiales verificadas**. El mapa SVG es esquemático; los edificios son decoración generada, no cartografía real.
+- Juego estándar: `betaHuman=0.30`, `betaVector=0.045`, `sigma=0.33`, `gamma=0.10`, eficacia vacuna `0.85`, capacidad hospitalaria `2500`, lote `850`, $1.000/día, origen `N01`, 35 infecciosos y 50 expuestos iniciales, semilla `20261030`.
+- Doble contagio: `betaHuman=0.60`; escape inmune: eficacia `0.45`. Las demás condiciones permanecen iguales.
+- Fumigación reduce el vector ambiental 80% (luego puede recuperarse); cordón reduce transporte 92% y contacto local 55% durante ese turno.
+- Investigación lineal, costos, plazo de 40 días y umbral de 35% son **reglas de diseño del juego**, no predicciones científicas. Al validar la cura termina la misión; no se simula su distribución posterior.
+- PRNG Mulberry32 y transiciones binomiales (aproximación normal para grupos grandes). Misma configuración, semilla y decisiones producen la misma partida.
+- Fuente de los requisitos: [`Hackathon Track B - Guia Oficial y Requisitos.pdf`](./Hackathon%20Track%20B%20-%20Guia%20Oficial%20y%20Requisitos.pdf), documento local de tres páginas. No respalda una fecha límite de entrega ni una región AWS concreta.
+
+## Estructura
+
+- `src/App.tsx` — interfaz, presupuesto, decisiones, tutorial, escenarios y comparación.
+- `src/components/CureCityMap.tsx` — mapa SVG interactivo, capas y zoom; no requiere servicios de mapas externos.
+- `src/domain/cureGame.ts` — reglas y validación del juego; reutiliza el motor SEIR.
+- `src/domain/seirEngine.ts` — simulación compartida y calendario opcional de acciones manuales.
+- `src/domain/monteCarlo.ts` — baselines y agregación; la demo calcula solo al pedir evaluación.
+- `src/domain/__tests__/` — reproducibilidad, recursos, conservación de población, victoria/derrota y contratos existentes.
+- `backend/handler.ts`, `infra/template.yaml` — prototipo previo del backend, no utilizado por el juego local.
+
+## Estado de entrega AWS
+
+Esta entrega es **frontend local**, sin autenticación, persistencia, llamadas a Bedrock ni evidencia de despliegue AWS. `bun run build` genera el sitio estático en `dist/`, listo para una siguiente fase de publicación. No publica automáticamente ni genera el artefacto Lambda esperado por la plantilla SAM.
+
+Pendientes para la entrega del reto: hosting público AWS, Budget con alerta y captura, diagrama exportado y fuente actualizados, costos reales verificados y pitch. [Arquitectura Pro propuesta](docs/04-arquitectura-aws-y-costos.md) y [costos históricos del borrador](docs/costos.md) son documentación de trabajo, no evidencia de servicios operativos ni facturación validada.

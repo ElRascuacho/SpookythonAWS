@@ -1,410 +1,1056 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { DEFAULT_SIMULATION_PARAMS, TOTAL_MANTA_POPULATION } from './domain/mantaGraph';
-import { runMonteCarloComparison } from './domain/monteCarlo';
-import { SimulationParams, StrategyType } from './domain/types';
-import { MantaCity3DMap } from './components/MantaCity3DMap';
-import { SurpriseOutbreakPanel } from './components/SurpriseOutbreakPanel';
-import { ComparisonChart } from './components/ComparisonChart';
-import { MayorReportModal } from './components/MayorReportModal';
+﻿import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
-  Award,
-  Calendar,
-  FileText,
+  ArrowRight,
+  ArrowUpRight,
+  AudioLines,
+  Check,
+  CircleHelp,
+  Clock3,
+  Dna,
+  FlaskConical,
   HeartPulse,
-  Pause,
-  Play,
+  MapPin,
+  Microscope,
+  Plus,
+  Radio,
   RotateCcw,
-  Shield,
-  Skull,
-  Sparkles,
-} from 'lucide-react';
+  Settings2,
+  ShieldCheck,
+  ShieldPlus,
+  SprayCan,
+  Target,
+  Trash2,
+  TrendingDown,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import { CureCityMap } from "./components/CureCityMap";
+import { ComparisonChart } from "./components/ComparisonChart";
+import {
+  advanceDay,
+  createGame,
+  getPlanCost,
+  INTERVENTIONS,
+  LOSS_THRESHOLD,
+  MAX_DAYS,
+  type GameConfig,
+  type Intervention,
+  type Order,
+  type ResearchFunding,
+} from "./domain/cureGame";
+import {
+  MANTA_NODES,
+  NODE_MAP,
+  TOTAL_MANTA_POPULATION,
+} from "./domain/mantaGraph";
+import {
+  computePercentile,
+  runMonteCarloComparison,
+} from "./domain/monteCarlo";
+import { runSingleSeirSimulation } from "./domain/seirEngine";
+import type { MonteCarloComparisonResult } from "./domain/types";
 
-export function App() {
-  const [params, setParams] = useState<SimulationParams>(() => ({
-    ...DEFAULT_SIMULATION_PARAMS,
-  }));
-  const [activeStrategy, setActiveStrategy] = useState<StrategyType>('SMART_CORTAFUEGOS');
-  const [currentDay, setCurrentDay] = useState<number>(12);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [selectedNodeId, setSelectedNodeId] = useState<string>('N01');
-  const [isMayorModalOpen, setIsMayorModalOpen] = useState<boolean>(false);
-  const [recalcTrigger, setRecalcTrigger] = useState<number>(0);
+const DEFAULT_CONFIG: GameConfig = {
+  seed: 20261030,
+  scenario: "standard",
+  patientZeroId: "N01",
+  dailyBudget: 1000,
+};
+const format = (value: number) => value.toLocaleString("es-EC");
+const ICONS: Record<Intervention, LucideIcon> = {
+  vaccine: ShieldPlus,
+  fumigate: SprayCan,
+  cordon: ShieldCheck,
+};
+type Modal = "help" | "settings" | "analysis" | "result" | null;
+interface Evaluation {
+  comparison: MonteCarloComparisonResult;
+  playerMean: number;
+  playerP10: number;
+  playerP90: number;
+}
 
-  // Compute Monte Carlo comparison across all 3 strategies
-  const mcResult = useMemo(() => {
-    return runMonteCarloComparison(params);
-  }, [params, recalcTrigger]);
-
-  const activeSummary = mcResult.strategies[activeStrategy];
-  const smartSummary = mcResult.strategies.SMART_CORTAFUEGOS;
-  const randomSummary = mcResult.strategies.RANDOM;
-  const noIntSummary = mcResult.strategies.NO_INTERVENTION;
-
-  const clampedDay = Math.min(params.days, Math.max(0, currentDay));
-  const currentSnapshot =
-    activeSummary.representativeRun.timeline[clampedDay] ??
-    activeSummary.representativeRun.timeline[0];
-
-  // Timeline playback interval
+function Dialog({
+  title,
+  children,
+  onClose,
+  wide = false,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+  wide?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    if (!isPlaying) return;
-    const timer = window.setInterval(() => {
-      setCurrentDay((prev) => {
-        if (prev >= params.days) {
-          setIsPlaying(false);
-          return prev;
+    const before = document.activeElement as HTMLElement | null;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    ref.current?.focus();
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeRef.current();
+      if (event.key === "Tab") {
+        const items = ref.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input, select, [tabindex="0"]',
+        );
+        if (!items?.length) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (
+          event.shiftKey &&
+          (document.activeElement === first ||
+            document.activeElement === ref.current)
+        ) {
+          event.preventDefault();
+          last.focus();
+        } else if (
+          !event.shiftKey &&
+          (document.activeElement === last ||
+            document.activeElement === ref.current)
+        ) {
+          event.preventDefault();
+          first.focus();
         }
-        return prev + 1;
-      });
-    }, 320);
-    return () => window.clearInterval(timer);
-  }, [isPlaying, params.days]);
-
-  const handleTogglePatientZero = (nodeId: string) => {
-    setParams((prev) => {
-      const exists = prev.patientZeroIds.includes(nodeId);
-      let nextIds: string[];
-      if (exists) {
-        nextIds = prev.patientZeroIds.length > 1 ? prev.patientZeroIds.filter((id) => id !== nodeId) : prev.patientZeroIds;
-      } else {
-        nextIds = [...prev.patientZeroIds, nodeId];
       }
-      return {
-        ...prev,
-        patientZeroIds: nextIds,
-      };
-    });
-  };
-
+    };
+    document.addEventListener("keydown", keyboard);
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      document.removeEventListener("keydown", keyboard);
+      before?.focus();
+    };
+  }, []);
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top Tactical Command Bar */}
-      <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-4 py-2.5">
-        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/10">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-extrabold tracking-tight text-white">
-                  OPERACIÓN MANTA CERO
-                </h1>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-semibold">
-                  SEIR-V 3D Graph Engine
-                </span>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-mono">
-                  16 Barrios · {TOTAL_MANTA_POPULATION.toLocaleString()} Hab. · AWS us-east-1
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                Centro de Mando Epidemiológico del GAD Manta — Contención de Brote Zombie + Vector Necro-Dengue
-              </p>
-            </div>
+    <div
+      className="dialog-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        className={`game-dialog ${wide ? "wide" : ""}`}
+      >
+        <div className="dialog-heading">
+          <div>
+            <span className="eyebrow">OPERACIÓN MANTA CERO</span>
+            <h2>{title}</h2>
           </div>
-
-          {/* Right Header KPI Pills & Mayor Briefing Button */}
-          <div className="flex items-center gap-2.5">
-            <div className="hidden md:flex items-center gap-4 bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-1.5 text-xs">
-              <div>
-                <span className="text-slate-400">Vidas Salvadas (SGC vs Nada): </span>
-                <strong className="font-mono text-emerald-400">
-                  +{smartSummary.meanLivesSavedVsBaseline.toLocaleString()}
-                </strong>
-              </div>
-              <span className="text-slate-700">|</span>
-              <div>
-                <span className="text-slate-400">Ventaja vs Azar: </span>
-                <strong className="font-mono text-cyan-400">
-                  +
-                  {Math.max(
-                    0,
-                    smartSummary.meanLivesSavedVsBaseline - randomSummary.meanLivesSavedVsBaseline,
-                  ).toLocaleString()}
-                </strong>
-              </div>
-              <span className="text-slate-700">|</span>
-              <div>
-                <span className="text-slate-400">Semilla: </span>
-                <code className="text-amber-400 font-mono">{params.seed}</code>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsMayorModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition cursor-pointer"
-            >
-              <FileText className="w-4 h-4" />
-              <span>📜 Informe al Alcalde</span>
-            </button>
-          </div>
+          <button
+            className="icon-button"
+            aria-label="Cerrar ventana"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </button>
         </div>
-      </header>
-
-      {/* Main Command Dashboard Grid */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto p-3.5 grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-        {/* Left / Center Column: 3D Manta Viewport + Timeline + Comparison Chart (8 cols) */}
-        <div className="lg:col-span-8 flex flex-col gap-3.5">
-          {/* Top KPI Strip for Current Day & Strategy */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <div className="text-[11px] text-slate-400">🟢 Población Sana (S)</div>
-                <div className="text-lg font-mono font-bold text-emerald-400">
-                  {currentSnapshot.totalS.toLocaleString()}
-                </div>
-                <div className="text-[10px] text-slate-500">
-                  {((currentSnapshot.totalS / TOTAL_MANTA_POPULATION) * 100).toFixed(1)}% de Manta
-                </div>
-              </div>
-              <Shield className="w-7 h-7 text-emerald-500/30" />
-            </div>
-
-            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <div className="text-[11px] text-slate-400">🔴 Zombies Activos Hoy (I)</div>
-                <div className="text-lg font-mono font-bold text-rose-400">
-                  {currentSnapshot.totalI.toLocaleString()}
-                </div>
-                <div className="text-[10px] text-amber-400 font-mono">
-                  +{currentSnapshot.totalE.toLocaleString()} incubando (E)
-                </div>
-              </div>
-              <Skull className="w-7 h-7 text-rose-500/30" />
-            </div>
-
-            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <div className="text-[11px] text-slate-400">🔵 Protegidos / Exorcizados (R)</div>
-                <div className="text-lg font-mono font-bold text-cyan-400">
-                  {currentSnapshot.totalR.toLocaleString()}
-                </div>
-                <div className="text-[10px] text-emerald-400">
-                  0 vacunas desperdiciadas
-                </div>
-              </div>
-              <Sparkles className="w-7 h-7 text-cyan-500/30" />
-            </div>
-
-            <div
-              className={`rounded-xl p-3 flex items-center justify-between border ${
-                currentSnapshot.hospitalCollapsed
-                  ? 'bg-rose-950/50 border-rose-600/70'
-                  : 'bg-slate-900/90 border-slate-800'
-              }`}
-            >
-              <div>
-                <div className="text-[11px] text-slate-400">🏥 Hospital R. Zambrano</div>
-                <div
-                  className={`text-sm font-bold ${
-                    currentSnapshot.hospitalCollapsed ? 'text-rose-400' : 'text-emerald-400'
-                  }`}
-                >
-                  {currentSnapshot.hospitalCollapsed ? '⚠️ SATURADO' : '✅ OPERATIVO'}
-                </div>
-                <div className="text-[10px] text-slate-400 font-mono">
-                  Cap: {params.hospitalCapacity.toLocaleString()} | γ_ef={currentSnapshot.effectiveGamma}
-                </div>
-              </div>
-              <HeartPulse
-                className={`w-7 h-7 ${
-                  currentSnapshot.hospitalCollapsed ? 'text-rose-500 animate-pulse' : 'text-cyan-500/30'
-                }`}
-              />
-            </div>
-          </div>
-
-          {/* 3D Interactive Map of Manta */}
-          <div className="h-[530px]">
-            <MantaCity3DMap
-              snapshot={currentSnapshot}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={setSelectedNodeId}
-              patientZeroIds={params.patientZeroIds}
-              onTogglePatientZero={handleTogglePatientZero}
-              activeStrategy={activeStrategy}
-              onChangeStrategy={setActiveStrategy}
-            />
-          </div>
-
-          {/* Interactive Timeline Playback Bar */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl flex flex-col gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    if (clampedDay >= params.days) setCurrentDay(0);
-                    setIsPlaying((p) => !p);
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                  <span>{isPlaying ? 'Pausar' : 'Simular Día a Día'}</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsPlaying(false);
-                    setCurrentDay(0);
-                  }}
-                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
-                  title="Reiniciar al Día 0"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-                <span className="text-xs font-mono text-slate-300 flex items-center gap-1 ml-1">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                  <strong>Día {clampedDay}</strong> de {params.days}
-                </span>
-              </div>
-
-              <div className="text-xs text-slate-300 truncate max-w-xl font-medium">
-                <span className="text-emerald-400 font-semibold">Acción Comité: </span>
-                <span>{currentSnapshot.action.summaryText}</span>
-              </div>
-            </div>
-
-            <input
-              type="range"
-              min={0}
-              max={params.days}
-              value={clampedDay}
-              onChange={(e) => {
-                setIsPlaying(false);
-                setCurrentDay(parseInt(e.target.value, 10));
-              }}
-              aria-label="Línea de tiempo en días"
-              className="w-full accent-emerald-500 cursor-pointer"
-            />
-          </div>
-
-          {/* Monte Carlo 3-Strategy Comparison Chart */}
-          <ComparisonChart
-            result={mcResult}
-            currentDay={clampedDay}
-            onSelectDay={(day) => {
-              setIsPlaying(false);
-              setCurrentDay(day);
-            }}
-            activeStrategy={activeStrategy}
-          />
-        </div>
-
-        {/* Right Column: Jury Surprise Outbreak Panel + Scorecard + Mayor Action Log (4 cols) */}
-        <div className="lg:col-span-4 flex flex-col gap-3.5">
-          <SurpriseOutbreakPanel
-            params={params}
-            onChangeParams={setParams}
-            onRunSimulation={() => setRecalcTrigger((c) => c + 1)}
-            executionTimeMs={mcResult.executionTimeMs}
-          />
-
-          {/* Executive Strategy Comparison Scorecard */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
-            <div className="flex items-center gap-2 mb-3">
-              <Award className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-white">
-                Resultados Monte Carlo ({params.monteCarloRuns} corridas)
-              </h3>
-            </div>
-
-            <div className="space-y-2.5 text-xs">
-              <div className="p-2.5 rounded-xl bg-emerald-950/35 border border-emerald-500/40">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-emerald-300">
-                    🟢 1º Smart Graph Cortafuegos
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold text-[10px]">
-                    GANADORA
-                  </span>
-                </div>
-                <div className="mt-1.5 grid grid-cols-2 gap-1 text-[11px] text-slate-300 font-mono">
-                  <span>Salvados: +{smartSummary.meanLivesSavedVsBaseline.toLocaleString()}</span>
-                  <span>Pico I(t): {smartSummary.meanPeakZombies.toLocaleString()}</span>
-                  <span>
-                    Rango P10-P90: [{smartSummary.p10TotalInfected.toLocaleString()}–
-                    {smartSummary.p90TotalInfected.toLocaleString()}]
-                  </span>
-                  <span>Costo/Vida: ${smartSummary.costPerLifeSaved}</span>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-amber-950/25 border border-amber-700/40">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-amber-300">
-                    🟡 2º Intervención al Azar (${params.dailyBudget}/d)
-                  </span>
-                  <span className="text-[10px] text-amber-400 font-mono">Línea Base 2</span>
-                </div>
-                <div className="mt-1 grid grid-cols-2 gap-1 text-[11px] text-slate-400 font-mono">
-                  <span>Salvados: +{randomSummary.meanLivesSavedVsBaseline.toLocaleString()}</span>
-                  <span>Pico I(t): {randomSummary.meanPeakZombies.toLocaleString()}</span>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-rose-950/25 border border-rose-800/40">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-rose-300">🔴 3º Sin Intervención</span>
-                  <span className="text-[10px] text-rose-400 font-mono">Línea Base 1</span>
-                </div>
-                <div className="mt-1 grid grid-cols-2 gap-1 text-[11px] text-slate-400 font-mono">
-                  <span>Infectados: {noIntSummary.meanTotalInfected.toLocaleString()}</span>
-                  <span>Pico I(t): {noIntSummary.meanPeakZombies.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Chronological Action Log for the Mayor */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-bold text-white">
-                  Bitácora Táctica Día a Día (SGC)
-                </h3>
-              </div>
-              <span className="text-[10px] text-slate-400">Clic para viajar al día</span>
-            </div>
-
-            <div className="max-h-[260px] overflow-y-auto space-y-1.5 pr-1">
-              {smartSummary.representativeRun.timeline.slice(1).map((snap) => {
-                const isCurrent = snap.day === clampedDay;
-                return (
-                  <button
-                    key={snap.day}
-                    onClick={() => {
-                      setIsPlaying(false);
-                      setCurrentDay(snap.day);
-                    }}
-                    className={`w-full text-left p-2 rounded-xl border text-[11px] transition cursor-pointer ${
-                      isCurrent
-                        ? 'bg-emerald-950/50 border-emerald-500/60 text-white'
-                        : 'bg-slate-950/60 border-slate-800/80 text-slate-300 hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between font-mono text-[10px] text-slate-400 mb-0.5">
-                      <span className="text-emerald-400 font-bold">Día {snap.day}</span>
-                      <span>
-                        🔴 {snap.totalI.toLocaleString()} zombies | 💰 ${snap.action.budgetSpent}
-                      </span>
-                    </div>
-                    <div className="line-clamp-2 text-slate-200">{snap.action.summaryText}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Mayor Plain-Language Report Modal */}
-      <MayorReportModal
-        isOpen={isMayorModalOpen}
-        onClose={() => setIsMayorModalOpen(false)}
-        result={mcResult}
-      />
+        {children}
+      </div>
     </div>
   );
 }
-export default App;
+
+export default function App() {
+  const [game, setGame] = useState(() => createGame(DEFAULT_CONFIG));
+  const [selectedNode, setSelectedNode] = useState("N01");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [funding, setFunding] = useState<ResearchFunding>(250);
+  const [tab, setTab] = useState<"field" | "lab">("field");
+  const [modal, setModal] = useState<Modal>(null);
+  const [draft, setDraft] = useState<GameConfig>(DEFAULT_CONFIG);
+  const [showTip, setShowTip] = useState(true);
+  const [notice, setNotice] = useState("");
+  const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  const [analysisDay, setAnalysisDay] = useState(0);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const closeModal = () => setModal(null);
+  const snapshot = game.timeline[game.day];
+  const node = NODE_MAP[selectedNode];
+  const local = snapshot.nodes[selectedNode];
+  const remaining = game.params.dailyBudget - getPlanCost(orders, funding);
+  const newCases =
+    snapshot.cumulativeInfected -
+    game.timeline[Math.max(0, game.day - 1)].cumulativeInfected;
+  const hospitalLoad = Math.round(
+    (snapshot.totalI / game.params.hospitalCapacity) * 100,
+  );
+  const stage = game.research < 25 ? 0 : game.research < 65 ? 1 : 2;
+  const playing = game.status === "playing";
+
+  const queueOrder = (kind: Intervention) => {
+    setOrders((current) => [...current, { nodeId: selectedNode, kind }]);
+    setNotice(
+      `${INTERVENTIONS[kind].label} asignada a ${node.name}. Se ejecutará al avanzar el día.`,
+    );
+    setShowTip(false);
+  };
+  const nextDay = () => {
+    try {
+      const next = advanceDay(game, orders, funding);
+      setGame(next);
+      setOrders([]);
+      setEvaluation(null);
+      setNotice(`Día ${next.day}: ${next.log[0]}`);
+      setShowTip(false);
+      if (next.status !== "playing") setModal("result");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo avanzar.");
+    }
+  };
+  const newGame = () => {
+    try {
+      setGame(createGame(draft));
+      setSelectedNode(draft.patientZeroId);
+      setOrders([]);
+      setFunding(250);
+      setEvaluation(null);
+      setNotice("Nueva misión iniciada.");
+      setModal(null);
+      setShowTip(true);
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "Configuración inválida.",
+      );
+    }
+  };
+  const openAnalysis = () => {
+    setAnalysisDay(game.day);
+    setModal("analysis");
+    if (evaluation) return;
+    setIsEvaluating(true);
+    // Paint the dialog before the small, explicitly requested local Monte Carlo batch.
+    window.setTimeout(() => {
+      try {
+        const params = { ...game.params, days: game.day, monteCarloRuns: 20 };
+        const comparison = runMonteCarloComparison(params);
+        const totals = Array.from(
+          { length: 20 },
+          (_, index) =>
+            runSingleSeirSimulation(
+              params,
+              "SMART_CORTAFUEGOS",
+              index,
+              game.actions,
+            ).totalCumulativeInfected,
+        ).sort((a, b) => a - b);
+        setEvaluation({
+          comparison,
+          playerMean: Math.round(
+            totals.reduce((sum, value) => sum + value, 0) / totals.length,
+          ),
+          playerP10: computePercentile(totals, 10),
+          playerP90: computePercentile(totals, 90),
+        });
+      } catch {
+        setNotice("No se pudo calcular la comparación. Vuelve a intentarlo.");
+      } finally {
+        setIsEvaluating(false);
+      }
+    }, 60);
+  };
+  const openSettings = () => {
+    setDraft({ ...game.config });
+    setModal("settings");
+  };
+
+  return (
+    <div className="game-shell">
+      <header className="topbar">
+        <a className="brand" href="#" aria-label="Operación Manta Cero">
+          <span className="brand-mark">
+            <Dna size={26} />
+          </span>
+          <span>
+            MANTA<span className="brand-zero">CERO</span>
+            <small>LA CURA ESTÁ EN TUS MANOS</small>
+          </span>
+        </a>
+        <div className="mission-badge">
+          <span className="live-dot" />
+          OPERACIÓN NECRO-DENGUE <span className="badge-divider">/</span>
+          <b>DEMO JUGABLE</b>
+        </div>
+        <nav className="header-actions" aria-label="Opciones de misión">
+          <button aria-label="Evaluar mi estrategia" onClick={openAnalysis}>
+            <TrendingDown size={16} />
+            <span>Evaluar</span>
+          </button>
+          <button aria-label="Cómo jugar" onClick={() => setModal("help")}>
+            <CircleHelp size={16} />
+            <span>Cómo jugar</span>
+          </button>
+          <button aria-label="Nueva misión" onClick={openSettings}>
+            <Settings2 size={16} />
+            <span>Nueva misión</span>
+          </button>
+        </nav>
+      </header>
+      <main className="command-layout">
+        <aside className="situation-panel">
+          <div className="operation-label">
+            <span className="eyebrow">CENTRO DE RESPUESTA</span>
+            <span className="operation-index">EC—04</span>
+          </div>
+          <div className="mission-title">
+            <h1>
+              Una ciudad.
+              <br />
+              Una última
+              <br />
+              <em>oportunidad.</em>
+            </h1>
+            <p>
+              Contén el brote.
+              <br />
+              Encuentra la cura. Salva Manta.
+            </p>
+          </div>
+          <div className="mission-objective">
+            <div className="objective-icon">
+              <Target size={19} />
+            </div>
+            <div>
+              <span>OBJETIVO DE LA MISIÓN</span>
+              <p>
+                Desarrolla la cura antes del día {MAX_DAYS}, sin que el brote
+                alcance al {LOSS_THRESHOLD * 100}% de la población.
+              </p>
+            </div>
+          </div>
+          <div className="section-title">
+            <span>SITUACIÓN EN TIEMPO REAL</span>
+            <Activity size={14} />
+          </div>
+          <div className="situation-stat">
+            <div className="stat-symbol coral">
+              <Users size={18} />
+            </div>
+            <div>
+              <span>Infecciosos activos</span>
+              <strong className="coral-text">{format(snapshot.totalI)}</strong>
+            </div>
+            <svg viewBox="0 0 64 30" className="sparkline" aria-hidden="true">
+              <path
+                d={`M0 27 ${game.timeline
+                  .slice(-12)
+                  .map(
+                    (s, i, arr) =>
+                      `L${((i + 1) / arr.length) * 62} ${27 - (s.totalI / Math.max(1, ...game.timeline.map((t) => t.totalI))) * 24}`,
+                  )
+                  .join(" ")}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+            </svg>
+          </div>
+          <div className="situation-stat">
+            <div className="stat-symbol mint">
+              <ShieldCheck size={18} />
+            </div>
+            <div>
+              <span>Recuperados e inmunes</span>
+              <strong>{format(snapshot.totalR)}</strong>
+            </div>
+            <ArrowUpRight size={19} className="muted" />
+          </div>
+          <div className="hospital-status">
+            <div>
+              <HeartPulse size={15} />
+              <span>Capacidad hospitalaria</span>
+              <b className={hospitalLoad > 100 ? "coral-text" : ""}>
+                {hospitalLoad}%
+              </b>
+            </div>
+            <div className="thin-progress">
+              <span
+                style={{
+                  width: `${Math.min(100, hospitalLoad)}%`,
+                  background:
+                    hospitalLoad > 70 ? "var(--coral)" : "var(--mint)",
+                }}
+              />
+            </div>
+            <small>
+              {snapshot.hospitalCollapsed
+                ? "SATURADO · recuperación reducida"
+                : `${format(game.params.hospitalCapacity)} plazas · operativo`}
+            </small>
+          </div>
+          <div className="transmission">
+            <div className="section-title">
+              <span>ÚLTIMA TRANSMISIÓN</span>
+              <Radio size={14} />
+            </div>
+            <div className="transmission-content">
+              <span className="transmission-day">
+                DÍA {String(game.day).padStart(2, "0")}
+              </span>
+              <p key={game.day}>{game.log[0]}</p>
+              <span className="transmission-source">
+                <AudioLines size={12} /> RED DE VIGILANCIA · MANTA
+              </span>
+            </div>
+          </div>
+          <button className="analysis-link" onClick={openAnalysis}>
+            <TrendingDown size={17} />
+            <span>
+              Evaluar mi estrategia
+              <small>20 corridas · dos líneas base + SGC</small>
+            </span>
+            <ArrowUpRight size={17} />
+          </button>
+          <div className="scenario-footnote">
+            <span className="dot mint" />
+            MODELO SEIR-V <span>SEMILLA {game.config.seed}</span>
+          </div>
+        </aside>
+        <div className="map-column">
+          <div className="mobile-objective">
+            ENCUENTRA LA CURA <span>40 días · menos de 35% de contagios</span>
+          </div>
+          <div className="map-statusbar">
+            <div>
+              <span className="live-dot" />
+              VIGILANCIA ACTIVA{" "}
+              <span className="status-muted">
+                /{" "}
+                {game.config.scenario === "standard"
+                  ? "BROTE INICIAL"
+                  : game.config.scenario === "surprise"
+                    ? "DOBLE CONTAGIO"
+                    : "ESCAPE INMUNE"}
+              </span>
+            </div>
+            <span>
+              <MapPin size={12} /> MANABÍ, ECUADOR
+            </span>
+          </div>
+          <CureCityMap
+            snapshot={snapshot}
+            selectedNode={selectedNode}
+            onSelect={(id) => {
+              setSelectedNode(id);
+              setTab("field");
+            }}
+            orders={orders}
+          />
+          {showTip && (
+            <div className="map-tip">
+              <span className="tip-number">01</span>
+              <div>
+                <strong>Tu primera decisión importa.</strong>
+                <p>
+                  Selecciona una zona del mapa y asigna una brigada. Reserva
+                  fondos para la cura.
+                </p>
+              </div>
+              <button
+                aria-label="Ocultar consejo"
+                onClick={() => setShowTip(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          <div className="map-bottomline">
+            <span>
+              <i className="dot coral" />
+              {format(snapshot.cumulativeInfected)} contagios acumulados
+            </span>
+            <span>
+              {newCases > 0
+                ? `+${format(newCases)} en el último día`
+                : "El tiempo avanza cuando tú decides"}
+            </span>
+          </div>
+        </div>
+        <aside className="actions-panel">
+          <div className="actions-heading">
+            <span className="eyebrow">TOMA EL CONTROL</span>
+            <h2>Cada decisión cuenta.</h2>
+          </div>
+          <div className="budget-card">
+            <div>
+              <span>PRESUPUESTO DISPONIBLE</span>
+              <span className="daily-tag">DIARIO</span>
+            </div>
+            <strong>
+              ${format(remaining)}
+              <small> / ${format(game.params.dailyBudget)}</small>
+            </strong>
+            <div className="budget-segments">
+              {Array.from({ length: 20 }, (_, index) => (
+                <i
+                  key={index}
+                  className={
+                    (remaining / game.params.dailyBudget) * 20 > index
+                      ? "filled"
+                      : ""
+                  }
+                />
+              ))}
+            </div>
+            <p>Se renueva cada día. No es acumulable.</p>
+          </div>
+          <div
+            className="action-tabs"
+            role="tablist"
+            aria-label="Centro de decisiones"
+          >
+            <button
+              role="tab"
+              aria-selected={tab === "field"}
+              id="field-tab"
+              aria-controls="field-panel"
+              onClick={() => setTab("field")}
+              className={tab === "field" ? "active" : ""}
+            >
+              <ShieldPlus size={15} />
+              En terreno
+            </button>
+            <button
+              role="tab"
+              aria-selected={tab === "lab"}
+              id="lab-tab"
+              aria-controls="lab-panel"
+              onClick={() => setTab("lab")}
+              className={tab === "lab" ? "active" : ""}
+            >
+              <FlaskConical size={15} />
+              Laboratorio
+            </button>
+          </div>
+          {tab === "field" ? (
+            <div
+              role="tabpanel"
+              id="field-panel"
+              aria-labelledby="field-tab"
+              className="field-panel"
+            >
+              <div className="selected-zone">
+                <span>
+                  <MapPin size={12} /> ZONA SELECCIONADA <b>{node.id}</b>
+                </span>
+                <h3>{node.name}</h3>
+                <select
+                  className="mobile-zone-select"
+                  aria-label="Seleccionar zona de intervención"
+                  value={selectedNode}
+                  onChange={(event) => setSelectedNode(event.target.value)}
+                >
+                  {MANTA_NODES.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name}
+                    </option>
+                  ))}
+                </select>
+                <p>
+                  {format(local.S)} susceptibles <span>·</span>
+                  <b>{format(local.I)} infecciosos</b>
+                </p>
+              </div>
+              <div className="interventions">
+                {(Object.keys(INTERVENTIONS) as Intervention[]).map((kind) => {
+                  const Icon = ICONS[kind];
+                  const action = INTERVENTIONS[kind];
+                  const assigned = orders.some(
+                    (order) =>
+                      order.nodeId === selectedNode && order.kind === kind,
+                  );
+                  return (
+                    <button
+                      key={kind}
+                      className={`intervention ${assigned ? "assigned" : ""}`}
+                      onClick={() => queueOrder(kind)}
+                      disabled={
+                        !playing ||
+                        assigned ||
+                        remaining < action.cost ||
+                        (kind === "vaccine" && local.S === 0)
+                      }
+                    >
+                      <span className={`intervention-icon ${kind}`}>
+                        <Icon size={21} />
+                      </span>
+                      <span>
+                        <strong>{action.label}</strong>
+                        <small>{action.description}</small>
+                        <b>
+                          ${action.cost}
+                          <span> / brigada</span>
+                        </b>
+                      </span>
+                      <span className="intervention-add">
+                        {assigned ? <Check size={16} /> : <Plus size={16} />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div
+              role="tabpanel"
+              id="lab-panel"
+              aria-labelledby="lab-tab"
+              className="laboratory-panel"
+            >
+              <div className="lab-art">
+                <Dna size={54} />
+                <span>PROYECTO ANTÍDOTO / M—01</span>
+              </div>
+              <h3>
+                La ciencia necesita tiempo.
+                <br />Y tú puedes comprarlo.
+              </h3>
+              <p>
+                La investigación avanza solo si recibe fondos. La cura se valida
+                al llegar al 100%.
+              </p>
+              <div className="research-stages">
+                {[
+                  "Secuenciar el patógeno",
+                  "Desarrollar el antídoto",
+                  "Validar la cura",
+                ].map((label, index) => (
+                  <div
+                    className={
+                      index < stage || game.research === 100
+                        ? "complete"
+                        : index === stage
+                          ? "current"
+                          : ""
+                    }
+                    key={label}
+                  >
+                    <span>
+                      {index < stage || game.research === 100 ? (
+                        <Check size={12} />
+                      ) : (
+                        `0${index + 1}`
+                      )}
+                    </span>
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="research-funding">
+            <div className="section-title">
+              <span>
+                <FlaskConical size={13} /> INVERSIÓN EN LA CURA
+              </span>
+              <span className="mint-text">
+                +{funding === 500 ? 5 : funding === 250 ? 3 : 0}% / día
+              </span>
+            </div>
+            <div className="funding-options">
+              {([0, 250, 500] as ResearchFunding[]).map((amount) => (
+                <button
+                  key={amount}
+                  className={funding === amount ? "active" : ""}
+                  disabled={
+                    !playing ||
+                    getPlanCost(orders, amount) > game.params.dailyBudget
+                  }
+                  onClick={() => {
+                    setFunding(amount);
+                    setNotice(`Investigación: $${amount} por día.`);
+                  }}
+                >
+                  ${amount}
+                  <small>
+                    {amount === 0
+                      ? "Pausar"
+                      : amount === 250
+                        ? "Estándar"
+                        : "Prioridad"}
+                  </small>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="orders-section">
+            <div className="section-title">
+              <span>PLAN DEL PRÓXIMO DÍA</span>
+              <b>{orders.length} BRIGADAS</b>
+            </div>
+            {orders.length ? (
+              <ul className="orders-list">
+                {orders.map((order, index) => {
+                  const Icon = ICONS[order.kind];
+                  return (
+                    <li key={`${order.nodeId}-${order.kind}`}>
+                      <Icon size={13} />
+                      <span>
+                        {INTERVENTIONS[order.kind].label}
+                        <small>{NODE_MAP[order.nodeId].name}</small>
+                      </span>
+                      <button
+                        aria-label={`Retirar ${INTERVENTIONS[order.kind].label} de ${NODE_MAP[order.nodeId].name}`}
+                        onClick={() =>
+                          setOrders((current) =>
+                            current.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="empty-orders">
+                Selecciona una intervención para desplegar tu primera brigada.
+              </p>
+            )}
+          </div>
+        </aside>
+      </main>
+      <footer className="turnbar">
+        <div className="cure-progress">
+          <span className="cure-icon">
+            <FlaskConical size={24} />
+          </span>
+          <div className="cure-track">
+            <div>
+              <span>DESARROLLO DE LA CURA</span>
+              <strong>
+                {game.research}
+                <small>%</small>
+              </strong>
+            </div>
+            <div className="cure-progress-line">
+              <span style={{ width: `${game.research}%` }} />
+              <i style={{ left: "25%" }} />
+              <i style={{ left: "65%" }} />
+            </div>
+            <small>
+              {game.research === 100
+                ? "Antídoto validado"
+                : [
+                    "Fase 01 · Secuenciación del patógeno",
+                    "Fase 02 · Desarrollo del antídoto",
+                    "Fase 03 · Validación de la cura",
+                  ][stage]}
+            </small>
+          </div>
+        </div>
+        <div className="turn-instruction">
+          <Clock3 size={15} />
+          <span>
+            Sin prisa. Con estrategia.
+            <small>Las órdenes se ejecutan al avanzar.</small>
+          </span>
+        </div>
+        <div className="day-counter">
+          <span>DÍA</span>
+          <strong>{String(game.day).padStart(2, "0")}</strong>
+          <span>/ {MAX_DAYS}</span>
+        </div>
+        <button
+          className="advance-button"
+          onClick={nextDay}
+          disabled={!playing}
+        >
+          {playing
+            ? "Avanzar un día"
+            : game.status === "won"
+              ? "Cura encontrada"
+              : "Misión finalizada"}
+          {playing ? <ArrowRight size={19} /> : <Check size={19} />}
+        </button>
+      </footer>
+      <div className="sr-only" role="status" aria-live="polite">
+        {notice}
+      </div>
+
+      {modal === "help" && (
+        <Dialog title="La misión es encontrar la cura." onClose={closeModal}>
+          <p className="dialog-intro">
+            Eres el comité de respuesta de Manta. No controlas el virus:
+            proteges a la ciudad mientras la ciencia encuentra una salida.
+          </p>
+          <div className="help-steps">
+            <div>
+              <MapPin />
+              <span>
+                <b>01. Lee el mapa</b>Selecciona una de las 16 zonas. Coral
+                significa infección activa.
+              </span>
+            </div>
+            <div>
+              <ShieldPlus />
+              <span>
+                <b>02. Construye tu plan</b>Vacuna susceptibles, fumiga el
+                vector o corta rutas por un día. Retira órdenes antes de
+                ejecutar.
+              </span>
+            </div>
+            <div>
+              <FlaskConical />
+              <span>
+                <b>03. Financia la cura</b>$250 suma 3%; $500 suma 5% por día.
+                El presupuesto se renueva y no se acumula.
+              </span>
+            </div>
+            <div>
+              <ArrowRight />
+              <span>
+                <b>04. Avanza y adapta</b>Ganas con la cura al 100%. Pierdes al
+                alcanzar 35% de contagios acumulados o al terminar el día 40 sin
+                cura.
+              </span>
+            </div>
+          </div>
+          <p className="model-disclaimer">
+            Simulación educativa ficticia, no herramienta clínica. R combina
+            recuperados e inmunizados. Los contagios evitados no equivalen a
+            muertes evitadas. La semilla y tus decisiones hacen la partida
+            reproducible.
+          </p>
+          <button className="primary-button" onClick={closeModal}>
+            Entendido. Vamos a salvar Manta.
+            <ArrowRight size={17} />
+          </button>
+        </Dialog>
+      )}
+      {modal === "settings" && (
+        <Dialog title="Prepara una nueva misión." onClose={closeModal}>
+          <p className="dialog-intro">
+            Misma semilla + escenario + decisiones = mismo resultado. Reiniciar
+            descarta la partida actual.
+          </p>
+          <div className="settings-fields">
+            <label>
+              Semilla reproducible
+              <input
+                type="number"
+                min="0"
+                max="4294967295"
+                value={Number.isNaN(draft.seed) ? "" : draft.seed}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    seed: e.target.value === "" ? NaN : Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Origen del brote
+              <select
+                value={draft.patientZeroId}
+                onChange={(e) =>
+                  setDraft({ ...draft, patientZeroId: e.target.value })
+                }
+              >
+                {MANTA_NODES.map((n) => (
+                  <option value={n.id} key={n.id}>
+                    {n.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Escenario del jurado
+              <select
+                value={draft.scenario}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    scenario: e.target.value as GameConfig["scenario"],
+                  })
+                }
+              >
+                <option value="standard">Estándar · Necro-Dengue</option>
+                <option value="surprise">
+                  Brote sorpresa · doble contagio humano
+                </option>
+                <option value="escape">Escape inmune · vacuna al 45%</option>
+              </select>
+            </label>
+            <label>
+              Presupuesto diario
+              <select
+                value={draft.dailyBudget}
+                onChange={(e) =>
+                  setDraft({ ...draft, dailyBudget: Number(e.target.value) })
+                }
+              >
+                <option value={500}>$500 · recursos reducidos</option>
+                <option value={1000}>$1.000 · estándar</option>
+                <option value={1500}>$1.500 · refuerzo municipal</option>
+              </select>
+            </label>
+          </div>
+          <button
+            className="primary-button"
+            disabled={
+              !Number.isInteger(draft.seed) ||
+              draft.seed < 0 ||
+              draft.seed > 4294967295
+            }
+            onClick={newGame}
+          >
+            Iniciar nueva misión
+            <ArrowRight size={17} />
+          </button>
+        </Dialog>
+      )}
+      {modal === "result" && (
+        <Dialog
+          title={
+            game.status === "won"
+              ? "Manta tiene una nueva oportunidad."
+              : "No toda misión termina aquí."
+          }
+          onClose={closeModal}
+        >
+          <div className={`result-symbol ${game.status}`}>
+            <FlaskConical size={40} />
+          </div>
+          <p className="result-kicker">
+            {game.status === "won"
+              ? "CURA VALIDADA · MISIÓN CUMPLIDA"
+              : "MISIÓN FINALIZADA · VUELVE A INTENTARLO"}
+          </p>
+          <p className="dialog-intro">
+            {game.status === "won"
+              ? `En ${game.day} días tu equipo completó el antídoto. El ${((1 - snapshot.cumulativeInfected / TOTAL_MANTA_POPULATION) * 100).toFixed(1)}% de la población no contrajo la infección.`
+              : `La cura llegó al ${game.research}%. ${snapshot.cumulativeInfected >= TOTAL_MANTA_POPULATION * LOSS_THRESHOLD ? "El brote alcanzó al 35% de la población." : "Se agotaron los 40 días de la misión."} Revisa tu estrategia y prueba otra distribución de recursos.`}
+          </p>
+          <div className="result-stats">
+            <div>
+              <span>Contagios acumulados</span>
+              <strong>{format(snapshot.cumulativeInfected)}</strong>
+            </div>
+            <div>
+              <span>Inmunes y recuperados</span>
+              <strong>{format(snapshot.totalR)}</strong>
+            </div>
+          </div>
+          <button className="primary-button" onClick={openAnalysis}>
+            Comparar mi estrategia
+            <TrendingDown size={17} />
+          </button>
+          <button className="secondary-button" onClick={openSettings}>
+            <RotateCcw size={15} />
+            Volver a jugar
+          </button>
+        </Dialog>
+      )}
+      {modal === "analysis" && (
+        <Dialog title="Los datos, no las promesas." onClose={closeModal} wide>
+          <p className="dialog-intro">
+            Comparación hasta el día {game.day} · 20 corridas por estrategia ·
+            mismo presupuesto de ${format(game.params.dailyBudget)}/día.
+          </p>
+          {isEvaluating ? (
+            <div className="analysis-loading">
+              <Microscope size={32} />
+              <p>Repitiendo el brote con semillas reproducibles…</p>
+            </div>
+          ) : evaluation ? (
+            <>
+              <div className="evaluation-grid">
+                <div className="player-result">
+                  <span>TU PLAN</span>
+                  <strong>{format(evaluation.playerMean)}</strong>
+                  <small>contagios medios</small>
+                  <p>
+                    Rango P10–P90
+                    <br />
+                    {format(evaluation.playerP10)} –{" "}
+                    {format(evaluation.playerP90)}
+                  </p>
+                </div>
+                {(
+                  ["NO_INTERVENTION", "RANDOM", "SMART_CORTAFUEGOS"] as const
+                ).map((strategy) => {
+                  const result = evaluation.comparison.strategies[strategy];
+                  return (
+                    <div key={strategy}>
+                      <span>
+                        {strategy === "NO_INTERVENTION"
+                          ? "SIN INTERVENIR"
+                          : strategy === "RANDOM"
+                            ? "AL AZAR"
+                            : "SGC AUTOMÁTICA"}
+                      </span>
+                      <strong>{format(result.meanTotalInfected)}</strong>
+                      <small>contagios medios</small>
+                      <p>
+                        Rango P10–P90
+                        <br />
+                        {format(result.p10TotalInfected)} –{" "}
+                        {format(result.p90TotalInfected)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="evaluation-verdict">
+                <TrendingDown size={21} />
+                <p>
+                  {evaluation.comparison.strategies.NO_INTERVENTION
+                    .meanTotalInfected -
+                    evaluation.playerMean >=
+                  0
+                    ? "Tu plan evita"
+                    : "Tu plan produce"}{" "}
+                  <b>
+                    {format(
+                      Math.abs(
+                        evaluation.comparison.strategies.NO_INTERVENTION
+                          .meanTotalInfected - evaluation.playerMean,
+                      ),
+                    )}
+                  </b>{" "}
+                  contagios{" "}
+                  {evaluation.comparison.strategies.NO_INTERVENTION
+                    .meanTotalInfected -
+                    evaluation.playerMean >=
+                  0
+                    ? "frente a no intervenir."
+                    : "más que no intervenir."}
+                </p>
+              </div>
+              <ComparisonChart
+                result={evaluation.comparison}
+                currentDay={analysisDay}
+                onSelectDay={setAnalysisDay}
+                activeStrategy="SMART_CORTAFUEGOS"
+              />
+              <p className="model-disclaimer">
+                La gráfica muestra las tres estrategias automáticas; tu plan se
+                resume arriba. Se repite tu calendario de brigadas, no tus
+                decisiones adaptativas. Tu presupuesto incluye investigación;
+                las líneas base lo dedican a contención. P10–P90 es dispersión
+                de corridas, no intervalo de confianza. No se asume que una
+                estrategia siempre gane.
+              </p>
+            </>
+          ) : (
+            <p>No hay resultados disponibles. Cierra y vuelve a evaluar.</p>
+          )}
+          <button className="secondary-button" onClick={closeModal}>
+            Volver al centro de respuesta
+            <ArrowRight size={16} />
+          </button>
+        </Dialog>
+      )}
+    </div>
+  );
+}
