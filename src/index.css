@@ -2416,3 +2416,292 @@ svg {
     display: none;
   }
 }
+
+/* =========================================================================
+   Day advance report (DayTransition)
+   ========================================================================= */
+.day-transition {
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 42%, #10353c 0%, #081820 52%, #050e13 100%);
+  animation: day-transition-life 1500ms var(--ease-out-quart) both;
+}
+.day-transition-field {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#d7f2e50a 1px, transparent 1px),
+    linear-gradient(90deg, #d7f2e50a 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 74%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 74%);
+  animation: day-transition-field 900ms var(--ease-out-expo) 80ms both;
+}
+.day-transition-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #b1dfc866 22%,
+    #eaf7ef 50%,
+    #b1dfc866 78%,
+    transparent
+  );
+  box-shadow: 0 0 26px #b1dfc84d;
+  animation: day-transition-sweep 1000ms var(--ease-out-expo) 120ms both;
+}
+.day-transition-core {
+  position: relative;
+  z-index: 2;
+  padding: 0 22px;
+  text-align: center;
+  animation: day-transition-core 620ms var(--ease-out-expo) 100ms both;
+}
+.day-transition-kicker {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2.1px;
+  color: #9fb9bd;
+}
+.day-transition-kicker b {
+  color: #4d6f78;
+  font-weight: 400;
+  padding: 0 4px;
+}
+.day-transition-day {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0 14px;
+}
+.day-transition-day > span,
+.day-transition-day > small {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  color: #7f9ba3;
+}
+.day-transition-day > strong {
+  font-family: var(--mono);
+  font-size: clamp(76px, 13vw, 132px);
+  font-weight: 400;
+  line-height: 0.86;
+  letter-spacing: -0.03em;
+  color: #edf6ef;
+  text-shadow: 0 0 48px #b1dfc82e;
+}
+.day-transition-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--mint);
+  border: 1px solid #4e7264;
+  background: #b1dfc80a;
+  padding: 5px 9px;
+  border-radius: 3px;
+}
+.day-transition[data-status="lost"] .day-transition-status {
+  color: var(--coral);
+  border-color: #7d5348;
+  background: #f58a720a;
+}
+.day-transition[data-status="lost"] .day-transition-sweep {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #f58a7266 22%,
+    #ffd9cc 50%,
+    #f58a7266 78%,
+    transparent
+  );
+  box-shadow: 0 0 26px #f58a7240;
+}
+.day-transition[data-status="lost"] .day-transition-status .dot {
+  background: var(--coral);
+}
+.day-transition-readout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 34px 0 0;
+  padding: 20px 0 0;
+  border-top: 1px solid #d7f2e51a;
+  animation: day-transition-readout 500ms var(--ease-out-expo) 260ms both;
+}
+.day-transition-readout > div {
+  padding: 0 22px;
+  text-align: left;
+}
+.day-transition-readout > div + div {
+  border-left: 1px solid #d7f2e514;
+}
+.day-transition-readout dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1.2px;
+  color: #8ba6ad;
+  white-space: nowrap;
+}
+.day-transition-readout dt svg {
+  color: #6f948d;
+}
+.day-transition-readout dd {
+  margin: 9px 0 0;
+  font-family: var(--mono);
+  font-size: 24px;
+  letter-spacing: -0.6px;
+  color: #dfeae2;
+}
+.day-transition-readout dd small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.6px;
+  color: #7d949b;
+  margin-top: 5px;
+}
+.day-transition-unit {
+  font-size: 12px;
+  letter-spacing: 0;
+  color: #9fb6b5;
+  margin-left: 2px;
+}
+.day-transition-readout > div:nth-child(2) dd {
+  color: var(--mint);
+}
+.day-transition-timer {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  width: min(320px, 58vw);
+  height: 1px;
+  transform: translateX(-50%);
+  background: #d7f2e51c;
+  overflow: hidden;
+  z-index: 2;
+}
+.day-transition-timer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--mint);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: day-transition-timer 1400ms linear 60ms both;
+}
+.day-transition[data-status="lost"] .day-transition-timer::after {
+  background: var(--coral);
+}
+@keyframes day-transition-life {
+  0% {
+    opacity: 0;
+  }
+  9% {
+    opacity: 1;
+  }
+  84% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes day-transition-field {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes day-transition-sweep {
+  0% {
+    transform: translate3d(0, -4px, 0);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 100vh, 0);
+    opacity: 0;
+  }
+}
+@keyframes day-transition-core {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+@keyframes day-transition-readout {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes day-transition-timer {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (max-width: 680px) {
+  .day-transition-day > strong {
+    font-size: clamp(64px, 22vw, 96px);
+  }
+  .day-transition-readout {
+    margin-top: 26px;
+    padding-top: 16px;
+  }
+  .day-transition-readout > div {
+    padding: 0 12px;
+  }
+  .day-transition-readout dt {
+    font-size: 7px;
+    letter-spacing: 0.7px;
+    gap: 4px;
+  }
+  .day-transition-readout dd {
+    font-size: 19px;
+  }
+  .day-transition-readout dd small {
+    font-size: 7px;
+  }
+  .day-transition-timer {
+    bottom: 24px;
+  }
+}
