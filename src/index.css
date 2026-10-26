@@ -2432,7 +2432,8 @@ svg {
   isolation: isolate;
   background:
     radial-gradient(circle at 50% 42%, #10353c 0%, #081820 52%, #050e13 100%);
-  animation: day-transition-life 1500ms var(--ease-out-quart) both;
+  animation: day-transition-life var(--day-duration, 1500ms)
+    var(--ease-out-quart) both;
 }
 .day-transition-field {
   position: absolute;
@@ -2443,7 +2444,11 @@ svg {
   background-size: 44px 44px;
   mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 74%);
   -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 74%);
-  animation: day-transition-field 900ms var(--ease-out-expo) 80ms both;
+  animation-name: day-transition-field;
+  animation-duration: calc(var(--day-duration, 1500ms) * 0.6);
+  animation-timing-function: var(--ease-out-expo);
+  animation-delay: calc(var(--day-duration, 1500ms) * 0.0533);
+  animation-fill-mode: both;
 }
 .day-transition-sweep {
   position: absolute;
@@ -2460,14 +2465,22 @@ svg {
     transparent
   );
   box-shadow: 0 0 26px #b1dfc84d;
-  animation: day-transition-sweep 1000ms var(--ease-out-expo) 120ms both;
+  animation-name: day-transition-sweep;
+  animation-duration: calc(var(--day-duration, 1500ms) * 0.667);
+  animation-timing-function: var(--ease-out-expo);
+  animation-delay: calc(var(--day-duration, 1500ms) * 0.08);
+  animation-fill-mode: both;
 }
 .day-transition-core {
   position: relative;
   z-index: 2;
   padding: 0 22px;
   text-align: center;
-  animation: day-transition-core 620ms var(--ease-out-expo) 100ms both;
+  animation-name: day-transition-core;
+  animation-duration: calc(var(--day-duration, 1500ms) * 0.413);
+  animation-timing-function: var(--ease-out-expo);
+  animation-delay: calc(var(--day-duration, 1500ms) * 0.0667);
+  animation-fill-mode: both;
 }
 .day-transition-kicker {
   display: block;
@@ -2543,11 +2556,18 @@ svg {
   margin: 34px 0 0;
   padding: 20px 0 0;
   border-top: 1px solid #d7f2e51a;
-  animation: day-transition-readout 500ms var(--ease-out-expo) 260ms both;
 }
 .day-transition-readout > div {
   padding: 0 22px;
   text-align: left;
+  opacity: 0;
+  animation-name: day-transition-readout;
+  animation-duration: calc(var(--day-duration, 1500ms) * 0.333);
+  animation-timing-function: var(--ease-out-expo);
+  animation-delay: calc(
+    (var(--i, 0) * 0.06 + 0.1733) * var(--day-duration, 1500ms)
+  );
+  animation-fill-mode: both;
 }
 .day-transition-readout > div + div {
   border-left: 1px solid #d7f2e514;
@@ -2606,7 +2626,11 @@ svg {
   background: var(--mint);
   transform: scaleX(0);
   transform-origin: left center;
-  animation: day-transition-timer 1400ms linear 60ms both;
+  animation-name: day-transition-timer;
+  animation-duration: calc(var(--day-duration, 1500ms) - 100ms);
+  animation-timing-function: linear;
+  animation-delay: calc(var(--day-duration, 1500ms) * 0.04);
+  animation-fill-mode: both;
 }
 .day-transition[data-status="lost"] .day-transition-timer::after {
   background: var(--coral);

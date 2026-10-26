@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { Activity, FlaskConical, ShieldPlus } from "lucide-react";
 
+export const DAY_TRANSITION_MS = 1500;
+
 export interface DayTransitionReport {
   day: number;
   totalDays: number;
@@ -24,7 +26,16 @@ export function DayTransition({ report }: { report: DayTransitionReport }) {
     report;
 
   return (
-    <div className="day-transition" data-status={status} aria-hidden="true">
+    <div
+      className="day-transition"
+      data-status={status}
+      aria-hidden="true"
+      style={
+        {
+          "--day-duration": `${DAY_TRANSITION_MS}ms`,
+        } as CSSProperties
+      }
+    >
       <div className="day-transition-field" />
       <div className="day-transition-sweep" />
       <div className="day-transition-core">

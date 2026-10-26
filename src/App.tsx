@@ -31,6 +31,7 @@ import { CureCityMap } from "./components/CureCityMap";
 import { CureEarth3DMap, type MapStyleMode } from "./components/CureEarth3DMap";
 import { ComparisonChart } from "./components/ComparisonChart";
 import {
+  DAY_TRANSITION_MS,
   DayTransition,
   type DayTransitionReport,
 } from "./components/DayTransition";
@@ -249,7 +250,10 @@ export default function App({
       }
       advancing.current = true;
       setDayTransition(report);
-      transitionTimer.current = window.setTimeout(finishTurn, 1500);
+      transitionTimer.current = window.setTimeout(
+        finishTurn,
+        DAY_TRANSITION_MS,
+      );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo avanzar.");
     }
