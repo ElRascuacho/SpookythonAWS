@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Operación Manta Cero (Spookython AWS Track B) — Arquitectura Serverless 100% Free-Tier en us-east-1.
+  Motor Monte Carlo SEIR-V sobre Grafo Urbano de Manta + Informe Ejecutivo para el Alcalde.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures:
+      - arm64
+    Timeout: 15
+    MemorySize: 512
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref SpookythonSimulationsTable
+        BEDROCK_MODEL_ID: amazon.nova-micro-v1:0
+
+Resources:
+  SpookythonHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  MonteCarloSimFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/backend/handler.handler
+      Description: Ejecuta M corridas Monte Carlo SEIR-V (Nada vs Azar vs Smart Cortafuegos) con semilla determinista.
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SpookythonSimulationsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: 'arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0'
+      Events:
+        SimulateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /simulate
+            Method: POST
+        MayorReportRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /mayor-report
+            Method: POST
+
+  SpookythonSimulationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: SpookythonSimulations
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: scenarioKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: scenarioKey
+          KeyType: HASH
+
+Outputs:
+  ApiEndpoint:
+    Description: HTTP API Gateway endpoint URL in us-east-1
+    Value: !Sub 'https://${SpookythonHttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+  DynamoDBTableName:
+    Description: On-Demand DynamoDB Table for reproducible simulation caching
+    Value: !Ref SpookythonSimulationsTable
