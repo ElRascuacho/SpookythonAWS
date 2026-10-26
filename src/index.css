@@ -2219,6 +2219,7 @@ svg {
    3D Earth / Satellite & Tactical Volumetric Viewport (CureEarth3DMap)
    ========================================================================= */
 .earth-3d-map {
+  --pin-stem-h: 28px;
   background: radial-gradient(circle at 50% 42%, #132d38, #081319 78%);
 }
 .earth-webgl-viewport {
@@ -2265,39 +2266,115 @@ svg {
   color: var(--mint);
   background: #1d363e;
 }
+
+/* Zero-drift 0x0 marker host: preserves MapLibre's exact sub-pixel translate3d */
+.maplibregl-marker.earth-marker-host {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+  transition: none !important;
+  will-change: transform;
+  z-index: 3;
+}
+.maplibregl-marker.earth-marker-host.state-infected {
+  z-index: 5;
+}
+.maplibregl-marker.earth-marker-host.state-critical {
+  z-index: 6;
+}
+.maplibregl-marker.earth-marker-host.is-selected {
+  z-index: 20 !important;
+}
+.earth-marker-host .pin-anchor-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8ab4be;
+  border: 1.5px solid #0c1d24;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px #8ab4be80;
+  pointer-events: none;
+}
+.earth-marker-host.state-infected .pin-anchor-dot,
+.earth-marker-host.state-critical .pin-anchor-dot {
+  background: var(--coral);
+  box-shadow: 0 0 10px var(--coral);
+}
+.earth-marker-host.is-selected .pin-anchor-dot {
+  width: 9px;
+  height: 9px;
+  background: var(--mint);
+  box-shadow: 0 0 12px var(--mint);
+}
+.earth-marker-host .pin-stem {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1.5px;
+  height: var(--pin-stem-h, 28px);
+  background: linear-gradient(to top, #7da8b266, #9ec8bbcc);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.earth-marker-host.state-infected .pin-stem,
+.earth-marker-host.state-critical .pin-stem {
+  background: linear-gradient(to top, #f58a7255, #f58a72dd);
+}
+.earth-marker-host.is-selected .pin-stem {
+  width: 2px;
+  background: linear-gradient(to top, var(--mint), #ffffff);
+}
+
+/* Interactive badge anchored directly above the stem */
 .earth-node-pin {
-  position: relative;
+  position: absolute;
+  left: 0;
+  bottom: var(--pin-stem-h, 28px);
+  transform: translateX(-50%);
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 7px;
-  background: #0d1e25e8;
+  padding: 4px 8px;
+  background: #0b1a21eb;
   border: 1px solid #35545e;
-  border-radius: 3px;
+  border-radius: 4px;
   color: var(--text);
   font-family: var(--mono);
   cursor: pointer;
-  box-shadow: 0 6px 18px #050f14b3;
+  box-shadow: 0 6px 18px #040c11cc;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
   transition:
-    border-color 0.16s,
-    background 0.16s,
-    transform 0.16s;
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.earth-node-pin:not(:disabled):active {
+  transform: translateX(-50%) scale(0.98);
 }
 .earth-node-pin:hover {
-  border-color: #9ec8bb;
-  background: #142b34f5;
+  border-color: #a8d8c6;
+  background: #132932f7;
 }
 .earth-node-pin.infected {
-  border-color: #9e5446;
-  background: #191f24eb;
+  border-color: #a65748;
+  background: #171d22f0;
 }
 .earth-node-pin.selected {
   border-color: var(--mint);
-  background: #152f36;
+  background: #132d35fa;
+  padding: 5px 9px;
   box-shadow:
     0 0 0 1px var(--mint),
-    0 10px 24px #040d11cc;
-  z-index: 10;
+    0 10px 26px #030a0ee6;
 }
 .earth-node-pin.queued {
   border-color: #79b89c;
@@ -2307,8 +2384,22 @@ svg {
   align-items: center;
   gap: 5px;
   font-size: 8px;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   white-space: nowrap;
+}
+.earth-node-pin .pin-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #7da1ab;
+  flex-shrink: 0;
+}
+.earth-node-pin.infected .pin-dot {
+  background: var(--coral);
+  box-shadow: 0 0 6px var(--coral);
+}
+.earth-node-pin.selected .pin-dot {
+  background: var(--mint);
 }
 .earth-node-pin .pin-id {
   color: var(--mint);
@@ -2318,56 +2409,49 @@ svg {
   color: var(--coral);
 }
 .earth-node-pin .pin-name {
-  color: #d6e2df;
+  color: #e1ece9;
+  font-weight: 500;
+}
+.earth-node-pin .pin-badge {
+  font-size: 7px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: #1b333c;
+  color: #9ab6be;
+  letter-spacing: 0.3px;
+}
+.earth-node-pin.infected .pin-badge {
+  background: #f58a7226;
+  color: #ffa691;
 }
 .earth-node-pin .pin-tags {
   display: inline-flex;
   gap: 2px;
-  margin-left: 2px;
+  margin-left: 1px;
 }
 .earth-node-pin .pin-tag {
   font-style: normal;
-  font-size: 7px;
+  font-size: 8px;
   line-height: 1;
-  padding: 2px 3px;
+  padding: 1px 2px;
   border-radius: 2px;
-  font-weight: 700;
 }
 .earth-node-pin .pin-tag.origin {
+  font-size: 7px;
+  font-weight: 700;
   background: #f58a7233;
   color: var(--coral);
   border: 1px solid #f58a7280;
 }
-.earth-node-pin .pin-tag.vax {
-  background: #b1dfc82b;
-  color: var(--mint);
-}
-.earth-node-pin .pin-tag.fum {
-  background: #d3bc802e;
-  color: #e4cf97;
-}
-.earth-node-pin .pin-tag.cord {
-  background: #80e0bc2e;
-  color: #95ebd0;
-}
-.earth-node-pin .pin-metric {
+.earth-node-pin .pin-detail {
   font-size: 7px;
-  letter-spacing: 0.5px;
-  color: #88a4ad;
-  margin-top: 2px;
-}
-.earth-node-pin.infected .pin-metric {
-  color: #fa957f;
-}
-.earth-node-pin .pin-stem {
-  position: absolute;
-  left: 50%;
-  bottom: -14px;
-  width: 1px;
-  height: 13px;
-  background: linear-gradient(to bottom, #88b8ac, transparent);
-  transform: translateX(-50%);
-  pointer-events: none;
+  letter-spacing: 0.4px;
+  color: #9dc2b6;
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid #29464f;
+  width: 100%;
+  text-align: center;
 }
 .earth-orders-hud {
   position: absolute;

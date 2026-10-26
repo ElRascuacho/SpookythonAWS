@@ -31,8 +31,7 @@ interface Props {
   onSwitchTo2D: () => void;
 }
 
-const MANTA_CENTER: [number, number] = [-80.7225, -0.9555];
-const ORBIT_START: [number, number] = [-80.7225, -0.9555];
+const MANTA_CENTER: [number, number] = [-80.724, -0.9565];
 
 const SHORT_NAMES: Record<string, string> = {
   N01: "TARQUI",
@@ -94,6 +93,28 @@ function createPolygonRing(
 }
 
 /**
+ * Generates a hollow ring polygon (outer + inner hole) in [lng, lat].
+ */
+function createHollowRing(
+  lng: number,
+  lat: number,
+  outerRadiusM: number,
+  innerRadiusM: number,
+  sides = 16,
+  rotationRad = 0,
+): number[][][] {
+  const outer = createPolygonRing(lng, lat, outerRadiusM, sides, rotationRad);
+  const inner = createPolygonRing(
+    lng,
+    lat,
+    innerRadiusM,
+    sides,
+    rotationRad,
+  ).reverse();
+  return [outer, inner];
+}
+
+/**
  * Generates a rectangular building footprint rotated by angleRad.
  */
 function createBoxFootprint(
@@ -118,7 +139,7 @@ function createBoxFootprint(
 }
 
 /**
- * Generates a 3D architectural compound (multiple extruded volumes) tailored to each Manta zone.
+ * Builds a 3D architectural compound centered on [node.lng, node.lat].
  */
 function buildNode3DCompound(
   node: CityNode,
@@ -136,28 +157,56 @@ function buildNode3DCompound(
     geometry: { type: "Polygon"; coordinates: number[][][] };
   }> = [];
 
-  const baseRadius = isSelected ? 175 : 140;
+  const ringRadius = isSelected ? 155 : 130;
 
-  // 1. Tactical hex pedestal base
+  // 1. Outer 3D containment ring on the ground
+  features.push({
+    type: "Feature",
+    properties: {
+      id: node.id,
+      part: "perimeter-ring",
+      color: isSelected
+        ? "#b1dfc8"
+        : hasCordon
+          ? "#80e0bc"
+          : coreColor,
+      base: 0,
+      height: isSelected ? 14 : 9,
+    },
+    geometry: {
+      type: "Polygon",
+      coordinates: createHollowRing(
+        node.lng,
+        node.lat,
+        ringRadius,
+        ringRadius - 14,
+        12,
+      ),
+    },
+  });
+
+  // 2. Central hexagonal pedestal
   features.push({
     type: "Feature",
     properties: {
       id: node.id,
       part: "pedestal",
-      color: isSelected ? "#234752" : "#132830",
+      color: isSelected ? "#1f424d" : "#122730",
       base: 0,
-      height: 16,
+      height: 14,
     },
     geometry: {
       type: "Polygon",
-      coordinates: [createPolygonRing(node.lng, node.lat, baseRadius, 6, Math.PI / 6)],
+      coordinates: [
+        createPolygonRing(node.lng, node.lat, 82, 8, Math.PI / 8),
+      ],
     },
   });
 
-  // 2. Specialized 3D architectural compound based on node role
+  // 3. Role-specific 3D structure centered at [node.lng, node.lat]
   if (node.id === "N04") {
-    // Hospital Rodríguez Zambrano: Medical Cross 3D Complex + Central Heliport Tower
-    const wingH = Math.max(55, Math.round(coreHeight * 0.62));
+    // Hospital Rodríguez Zambrano: 3D Medical Cross + Central Beacon Spire
+    const wingH = Math.max(48, Math.round(coreHeight * 0.58));
     features.push(
       {
         type: "Feature",
@@ -165,12 +214,12 @@ function buildNode3DCompound(
           id: node.id,
           part: "hospital-ns",
           color: coreColor,
-          base: 16,
+          base: 14,
           height: wingH,
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createBoxFootprint(node.lng, node.lat, 34, 98, 0.15)],
+          coordinates: [createBoxFootprint(node.lng, node.lat, 24, 72, 0.12)],
         },
       },
       {
@@ -179,12 +228,12 @@ function buildNode3DCompound(
           id: node.id,
           part: "hospital-ew",
           color: coreColor,
-          base: 16,
+          base: 14,
           height: wingH,
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createBoxFootprint(node.lng, node.lat, 98, 34, 0.15)],
+          coordinates: [createBoxFootprint(node.lng, node.lat, 72, 24, 0.12)],
         },
       },
       {
@@ -194,65 +243,17 @@ function buildNode3DCompound(
           part: "hospital-core",
           color: accentColor,
           base: wingH,
-          height: Math.round(coreHeight * 1.08),
-        },
-        geometry: {
-          type: "Polygon",
-          coordinates: [createPolygonRing(node.lng, node.lat, 42, 8)],
-        },
-      },
-    );
-  } else if (node.id === "N15" || node.id === "N02") {
-    // Puerto de Manta / Playita Mía: Port Terminal Warehouses + Control Spire
-    const [p1Lng, p1Lat] = offsetLngLat(node.lng, node.lat, -65, 30);
-    const [p2Lng, p2Lat] = offsetLngLat(node.lng, node.lat, 65, -25);
-    features.push(
-      {
-        type: "Feature",
-        properties: {
-          id: node.id,
-          part: "port-pier-1",
-          color: "#22444f",
-          base: 16,
-          height: Math.max(42, Math.round(coreHeight * 0.45)),
-        },
-        geometry: {
-          type: "Polygon",
-          coordinates: [createBoxFootprint(p1Lng, p1Lat, 26, 78, -0.45)],
-        },
-      },
-      {
-        type: "Feature",
-        properties: {
-          id: node.id,
-          part: "port-pier-2",
-          color: "#22444f",
-          base: 16,
-          height: Math.max(48, Math.round(coreHeight * 0.52)),
-        },
-        geometry: {
-          type: "Polygon",
-          coordinates: [createBoxFootprint(p2Lng, p2Lat, 26, 78, -0.45)],
-        },
-      },
-      {
-        type: "Feature",
-        properties: {
-          id: node.id,
-          part: "port-tower",
-          color: coreColor,
-          base: 16,
           height: Math.round(coreHeight),
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createPolygonRing(node.lng, node.lat, 52, 8)],
+          coordinates: [createPolygonRing(node.lng, node.lat, 30, 8)],
         },
       },
     );
   } else {
-    // Standard District: Stepped 3D Core Tower + 3 Satellite Urban Blocks
-    const tier1H = Math.max(44, Math.round(coreHeight * 0.58));
+    // Stepped 3D Epidemiological Spire + 4 Symmetric Corner Blocks
+    const midH = Math.max(38, Math.round(coreHeight * 0.55));
     features.push(
       {
         type: "Feature",
@@ -260,12 +261,14 @@ function buildNode3DCompound(
           id: node.id,
           part: "core-lower",
           color: coreColor,
-          base: 16,
-          height: tier1H,
+          base: 14,
+          height: midH,
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createPolygonRing(node.lng, node.lat, 68, 8, Math.PI / 8)],
+          coordinates: [
+            createPolygonRing(node.lng, node.lat, 50, 8, Math.PI / 8),
+          ],
         },
       },
       {
@@ -274,72 +277,73 @@ function buildNode3DCompound(
           id: node.id,
           part: "core-spire",
           color: accentColor,
-          base: tier1H,
+          base: midH,
           height: Math.round(coreHeight),
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createPolygonRing(node.lng, node.lat, 38, 8, Math.PI / 8)],
+          coordinates: [
+            createPolygonRing(node.lng, node.lat, 28, 8, Math.PI / 8),
+          ],
         },
       },
     );
 
-    const offsets = [
-      [78, 52, 0.3],
-      [-76, 48, -0.2],
-      [0, -82, 0.1],
+    const subOffsets = [
+      [58, 42, 0.25],
+      [-58, 42, -0.25],
+      [58, -42, -0.25],
+      [-58, -42, 0.25],
     ];
-    offsets.forEach(([dx, dy, rot], idx) => {
+    subOffsets.forEach(([dx, dy, rot], idx) => {
       const [bLng, bLat] = offsetLngLat(node.lng, node.lat, dx, dy);
       features.push({
         type: "Feature",
         properties: {
           id: node.id,
-          part: `sat-${idx}`,
-          color: idx === 0 ? coreColor : "#1f3c46",
-          base: 16,
-          height: Math.max(32, Math.round(coreHeight * (0.32 + idx * 0.08))),
+          part: `sub-${idx}`,
+          color: idx % 2 === 0 ? coreColor : "#1d3942",
+          base: 10,
+          height: Math.max(24, Math.round(coreHeight * 0.34)),
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createBoxFootprint(bLng, bLat, 24, 20, rot)],
+          coordinates: [createBoxFootprint(bLng, bLat, 16, 14, rot)],
         },
       });
     });
   }
 
-  // 3. 3D Sanitary Cordon Barricade Walls (12 extruded barrier segments around the zone)
+  // 4. 3D Sanitary Cordon Barricade Pillars around the perimeter
   if (hasCordon) {
-    const wallSegments = 12;
-    const cordonRadius = 215;
-    for (let i = 0; i < wallSegments; i++) {
-      const angle = (i * 2 * Math.PI) / wallSegments;
+    const segments = 12;
+    const cordonR = 175;
+    for (let i = 0; i < segments; i++) {
+      const angle = (i * 2 * Math.PI) / segments;
       const [wLng, wLat] = offsetLngLat(
         node.lng,
         node.lat,
-        cordonRadius * Math.cos(angle),
-        cordonRadius * Math.sin(angle),
+        cordonR * Math.cos(angle),
+        cordonR * Math.sin(angle),
       );
       features.push({
         type: "Feature",
         properties: {
           id: node.id,
-          part: `cordon-wall-${i}`,
+          part: `cordon-${i}`,
           color: "#80e0bc",
           base: 0,
-          height: 115,
+          height: 85,
         },
         geometry: {
           type: "Polygon",
-          coordinates: [
-            createBoxFootprint(wLng, wLat, 10, 28, angle),
-          ],
+          coordinates: [createBoxFootprint(wLng, wLat, 7, 22, angle)],
         },
       });
     }
   }
 
-  // 4. Floating 3D Crown if Vaccinated or Fumigated
+  // 5. Floating 3D Intervention Ring for Vaccine / Fumigation
   if (hasVaccine || hasFumigate) {
     features.push({
       type: "Feature",
@@ -347,12 +351,12 @@ function buildNode3DCompound(
         id: node.id,
         part: "intervention-crown",
         color: hasVaccine ? "#b1dfc8" : "#d3bc80",
-        base: Math.round(coreHeight + 18),
-        height: Math.round(coreHeight + 42),
+        base: Math.round(coreHeight + 12),
+        height: Math.round(coreHeight + 28),
       },
       geometry: {
         type: "Polygon",
-        coordinates: [createPolygonRing(node.lng, node.lat, 46, 6)],
+        coordinates: createHollowRing(node.lng, node.lat, 42, 26, 8),
       },
     });
   }
@@ -361,16 +365,16 @@ function buildNode3DCompound(
 }
 
 /**
- * Generates an OpenFreeMap-compatible style specification that combines:
- * - AWS Open Data Terrain DEM tiles (3D topography of Manta & Montecristi)
- * - Esri World Imagery Satellite tiles (Google Earth look)
- * - OpenFreeMap vector streets & 3D buildings
+ * Style specification combining:
+ * - Esri World Imagery Satellite tiles (Google Earth view)
+ * - AWS Open Data DEM Hillshade (topographic relief without Z-plane distortion)
+ * - OpenFreeMap vector streets & 3D buildings of Manta
+ * Note: We intentionally keep the geometric terrain plane at z=0 so that
+ * 3D fill-extrusions, map.project() canvas arcs, and DOM markers share the
+ * exact same coordinate projection with zero parallax drift.
  */
 const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
   version: 8,
-  projection: {
-    type: "globe",
-  },
   sources: {
     "aws-terrain-dem": {
       type: "raster-dem",
@@ -388,7 +392,6 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       ],
       tileSize: 256,
       maxzoom: 18,
-      attribution: "Esri, Maxar, Earthstar Geographics · AWS Terrain",
     },
     "carto-dark-matter": {
       type: "raster",
@@ -403,10 +406,6 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       type: "vector",
       url: "https://tiles.openfreemap.org/planet",
     },
-  },
-  terrain: {
-    source: "aws-terrain-dem",
-    exaggeration: 1.75,
   },
   layers: [
     {
@@ -433,9 +432,9 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       paint: {
         "raster-opacity": 0.88,
         "raster-brightness-max": 0.78,
-        "raster-brightness-min": 0.04,
-        "raster-contrast": 0.26,
-        "raster-saturation": -0.28,
+        "raster-brightness-min": 0.05,
+        "raster-contrast": 0.24,
+        "raster-saturation": -0.25,
       },
     },
     {
@@ -443,8 +442,8 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       type: "hillshade",
       source: "aws-terrain-dem",
       paint: {
-        "hillshade-exaggeration": 0.45,
-        "hillshade-shadow-color": "#050d12",
+        "hillshade-exaggeration": 0.5,
+        "hillshade-shadow-color": "#040b0f",
         "hillshade-highlight-color": "#7fb8a4",
         "hillshade-accent-color": "#132a34",
       },
@@ -456,9 +455,9 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       "source-layer": "transportation",
       minzoom: 11,
       paint: {
-        "line-color": "#2f5764",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.6, 15, 3],
-        "line-opacity": 0.42,
+        "line-color": "#386878",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.7, 15, 2.8],
+        "line-opacity": 0.48,
       },
     },
     {
@@ -466,9 +465,9 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       type: "fill-extrusion",
       source: "openmaptiles",
       "source-layer": "building",
-      minzoom: 12.2,
+      minzoom: 12,
       paint: {
-        "fill-extrusion-color": "#162c35",
+        "fill-extrusion-color": "#162d36",
         "fill-extrusion-height": [
           "coalesce",
           ["get", "render_height"],
@@ -480,7 +479,7 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
           ["get", "render_min_height"],
           0,
         ],
-        "fill-extrusion-opacity": 0.68,
+        "fill-extrusion-opacity": 0.62,
       },
     },
   ],
@@ -500,7 +499,14 @@ export function CureEarth3DMap({
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<
-    Record<string, { marker: maplibregl.Marker; el: HTMLButtonElement }>
+    Record<
+      string,
+      {
+        marker: maplibregl.Marker;
+        hostEl: HTMLDivElement;
+        btnEl: HTMLButtonElement;
+      }
+    >
   >({});
 
   const [layer, setLayer] = useState<"infection" | "protection">("infection");
@@ -571,8 +577,8 @@ export function CureEarth3DMap({
 
       const coreHeight =
         layer === "protection"
-          ? Math.min(560, 75 + (state.R / Math.max(1, node.population)) * 480)
-          : Math.min(620, 72 + state.I * 0.28 + state.E * 0.18);
+          ? Math.min(340, 58 + (state.R / Math.max(1, node.population)) * 280)
+          : Math.min(380, 56 + state.I * 0.18 + state.E * 0.12);
 
       compoundFeatures.push(
         ...buildNode3DCompound(
@@ -590,8 +596,8 @@ export function CureEarth3DMap({
       // Ground Halo (Infection aura or Protection shield)
       const haloRadius =
         state.I > 0
-          ? 240 + Math.min(240, state.I * 0.14)
-          : 195 + state.vectorIndex * 90;
+          ? 200 + Math.min(180, state.I * 0.11)
+          : 165 + state.vectorIndex * 65;
       const haloColor = hasCordon
         ? "#80e0bc"
         : state.I > 0
@@ -600,10 +606,10 @@ export function CureEarth3DMap({
             ? "#d3bc80"
             : "#3d6975";
       const haloOpacity = hasCordon
-        ? 0.28
+        ? 0.25
         : state.I > 0
-          ? Math.min(0.38, 0.16 + state.I / 2500)
-          : 0.1;
+          ? Math.min(0.34, 0.14 + state.I / 2500)
+          : 0.08;
 
       haloFeatures.push({
         type: "Feature",
@@ -631,9 +637,23 @@ export function CureEarth3DMap({
         );
       const infected =
         snapshot.nodes[edge.source].I > 0 || snapshot.nodes[edge.target].I > 0;
+      const touchesSelected =
+        edge.source === selectedNode || edge.target === selectedNode;
 
-      const color = closed ? "#a7ddc4" : infected ? "#f58a72" : "#567d87";
-      const width = closed ? 3 : infected ? 2.6 + edge.weight * 4 : 1.6;
+      const color = closed
+        ? "#a7ddc4"
+        : infected
+          ? "#f58a72"
+          : touchesSelected
+            ? "#9ec8bb"
+            : "#567d87";
+      const width = closed
+        ? 3
+        : touchesSelected
+          ? 2.8
+          : infected
+            ? 2.2 + edge.weight * 3
+            : 1.4;
 
       return {
         type: "Feature" as const,
@@ -669,7 +689,7 @@ export function CureEarth3DMap({
     };
   }, [snapshot, selectedNode, orders, layer]);
 
-  // Initialize MapLibre 3D Globe & Terrain
+  // Initialize MapLibre 3D Map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -680,13 +700,18 @@ export function CureEarth3DMap({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: EARTH_3D_STYLE,
-      center: prefersReducedMotion ? MANTA_CENTER : ORBIT_START,
-      zoom: prefersReducedMotion ? 13.25 : 4.2,
-      pitch: prefersReducedMotion ? 60 : 15,
-      bearing: prefersReducedMotion ? -20 : 0,
-      maxPitch: 78,
+      center: MANTA_CENTER,
+      zoom: prefersReducedMotion ? 13.15 : 11.4,
+      pitch: prefersReducedMotion ? 56 : 25,
+      bearing: prefersReducedMotion ? -18 : -6,
+      maxPitch: 75,
       attributionControl: false,
     });
+
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize();
+    });
+    resizeObserver.observe(containerRef.current);
 
     map.on("load", () => {
       try {
@@ -699,7 +724,7 @@ export function CureEarth3DMap({
           "fog-ground-blend": 0.35,
         });
       } catch {
-        // Ignore if sky spec is unsupported by the GPU driver
+        // Ignore if sky spec is unsupported
       }
 
       // 1. Ground Bio-Halos
@@ -729,7 +754,7 @@ export function CureEarth3DMap({
         paint: {
           "line-color": ["get", "color"],
           "line-width": ["*", ["get", "width"], 2.8],
-          "line-opacity": 0.22,
+          "line-opacity": 0.24,
           "line-blur": 3,
         },
       });
@@ -740,7 +765,7 @@ export function CureEarth3DMap({
         paint: {
           "line-color": ["get", "color"],
           "line-width": ["get", "width"],
-          "line-opacity": 0.78,
+          "line-opacity": 0.82,
           "line-dasharray": [2, 2],
         },
       });
@@ -778,46 +803,58 @@ export function CureEarth3DMap({
 
       setMapReady(true);
 
-      // Google Earth style orbital dive into Manta on initial load
       if (!prefersReducedMotion) {
-        window.setTimeout(() => {
-          map.flyTo({
-            center: MANTA_CENTER,
-            zoom: 13.3,
-            pitch: 63,
-            bearing: -22,
-            duration: 2600,
-            essential: true,
-          });
-        }, 180);
+        map.flyTo({
+          center: MANTA_CENTER,
+          zoom: 13.15,
+          pitch: 58,
+          bearing: -18,
+          duration: 1600,
+          essential: true,
+        });
       }
     });
 
-    // Interactive accessible HTML markers anchored to each 3D zone
+    // Create zero-drift 0x0 marker hosts anchored at the exact [lng, lat] center
     for (const node of MANTA_NODES) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "earth-node-pin";
-      btn.setAttribute("aria-label", `Seleccionar zona ${node.name}`);
-      btn.onclick = (ev) => {
+      const hostEl = document.createElement("div");
+      hostEl.className = "earth-marker-host";
+
+      const btnEl = document.createElement("button");
+      btnEl.type = "button";
+      btnEl.className = "earth-node-pin";
+      btnEl.setAttribute("aria-label", `Seleccionar zona ${node.name}`);
+      btnEl.onclick = (ev) => {
         ev.stopPropagation();
         onSelectRef.current(node.id);
       };
 
+      const stemEl = document.createElement("span");
+      stemEl.className = "pin-stem";
+
+      const dotEl = document.createElement("span");
+      dotEl.className = "pin-anchor-dot";
+
+      hostEl.appendChild(dotEl);
+      hostEl.appendChild(stemEl);
+      hostEl.appendChild(btnEl);
+
       const marker = new maplibregl.Marker({
-        element: btn,
-        anchor: "bottom",
-        offset: [0, -18],
+        element: hostEl,
+        anchor: "center",
+        pitchAlignment: "viewport",
+        rotationAlignment: "viewport",
       })
         .setLngLat([node.lng, node.lat])
         .addTo(map);
 
-      markersRef.current[node.id] = { marker, el: btn };
+      markersRef.current[node.id] = { marker, hostEl, btnEl };
     }
 
     mapRef.current = map;
 
     return () => {
+      resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
     };
@@ -839,7 +876,7 @@ export function CureEarth3DMap({
       map.setPaintProperty(
         "manta-real-3d-buildings",
         "fill-extrusion-opacity",
-        isSat ? 0.52 : 0.82,
+        isSat ? 0.5 : 0.82,
       );
       map.setPaintProperty(
         "manta-real-3d-buildings",
@@ -889,7 +926,25 @@ export function CureEarth3DMap({
       const hasCord =
         nodeOrders.some((o) => o.kind === "cordon") || state.cordonedToday;
 
-      entry.el.className = [
+      const statusState =
+        state.I > 200
+          ? "critical"
+          : state.I > 0
+            ? "infected"
+            : state.R > 0
+              ? "protected"
+              : "healthy";
+
+      entry.hostEl.className = [
+        "earth-marker-host",
+        `state-${statusState}`,
+        isSelected ? "is-selected" : "",
+        nodeOrders.length > 0 ? "has-orders" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      entry.btnEl.className = [
         "earth-node-pin",
         isSelected ? "selected" : "",
         state.I > 0 ? "infected" : "healthy",
@@ -898,17 +953,19 @@ export function CureEarth3DMap({
         .filter(Boolean)
         .join(" ");
 
-      entry.el.setAttribute("aria-pressed", String(isSelected));
-      entry.el.setAttribute(
+      entry.btnEl.setAttribute("aria-pressed", String(isSelected));
+      entry.btnEl.setAttribute(
         "aria-label",
         `${node.name}: ${state.I} infecciosos, ${state.R} inmunes`,
       );
 
       const tagsHtml = [
-        isOrigin ? '<i class="pin-tag origin" title="Origen del brote">0</i>' : "",
-        hasVax ? '<i class="pin-tag vax" title="Vacunación">V</i>' : "",
-        hasFum ? '<i class="pin-tag fum" title="Fumigación">F</i>' : "",
-        hasCord ? '<i class="pin-tag cord" title="Cordón sanitario">C</i>' : "",
+        isOrigin
+          ? '<i class="pin-tag origin" title="Paciente Cero">P0</i>'
+          : "",
+        hasVax ? '<i class="pin-tag vax" title="Vacunación">💉</i>' : "",
+        hasFum ? '<i class="pin-tag fum" title="Fumigación">🌫️</i>' : "",
+        hasCord ? '<i class="pin-tag cord" title="Cordón sanitario">🚧</i>' : "",
       ]
         .filter(Boolean)
         .join("");
@@ -918,30 +975,40 @@ export function CureEarth3DMap({
           ? `${state.R.toLocaleString("es-EC")} INM`
           : state.I > 0
             ? `${state.I.toLocaleString("es-EC")} INF`
-            : "CONTROLADO";
+            : "0 INF";
 
-      entry.el.innerHTML = `
+      const detailHtml = isSelected
+        ? `<span class="pin-detail">${state.S.toLocaleString("es-EC")} susc. · ${state.R.toLocaleString("es-EC")} inm.</span>`
+        : "";
+
+      entry.btnEl.innerHTML = `
         <span class="pin-header">
+          <span class="pin-dot"></span>
           <b class="pin-id">${node.id === "N04" ? "✚" : node.id}</b>
           <span class="pin-name">${SHORT_NAMES[node.id]}</span>
+          <span class="pin-badge">${metricText}</span>
           ${tagsHtml ? `<span class="pin-tags">${tagsHtml}</span>` : ""}
         </span>
-        <span class="pin-metric">${metricText}</span>
-        <span class="pin-stem"></span>
+        ${detailHtml}
       `;
     }
   }, [snapshot, selectedNode, orders, layer, patientZeroId]);
 
-  // Smooth camera focus when selectedNode changes
+  // Smooth camera focus when selectedNode changes (without losing zoom context)
+  const isFirstSelectionRef = useRef(true);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
+    if (isFirstSelectionRef.current) {
+      isFirstSelectionRef.current = false;
+      return;
+    }
     const target = NODE_MAP[selectedNode];
     if (!target) return;
 
     map.easeTo({
       center: [target.lng, target.lat],
-      duration: 850,
+      duration: 650,
       essential: true,
     });
   }, [selectedNode, mapReady]);
@@ -953,7 +1020,7 @@ export function CureEarth3DMap({
     const rotate = () => {
       const map = mapRef.current;
       if (map) {
-        map.rotateTo((map.getBearing() + 0.18) % 360, { duration: 0 });
+        map.rotateTo((map.getBearing() + 0.16) % 360, { duration: 0 });
       }
       rafId = requestAnimationFrame(rotate);
     };
@@ -972,15 +1039,18 @@ export function CureEarth3DMap({
     ).matches;
 
     let rafId = 0;
-    let startTime = performance.now();
+    const startTime = performance.now();
 
     const renderOverlay = (now: number) => {
       const elapsed = (now - startTime) * 0.001;
-      const rect = canvas.parentElement?.getBoundingClientRect();
-      if (rect) {
+      const mapCanvas = map.getCanvas();
+      const width = mapCanvas.clientWidth;
+      const height = mapCanvas.clientHeight;
+
+      if (width > 0 && height > 0) {
         const dpr = window.devicePixelRatio || 1;
-        const targetW = Math.round(rect.width * dpr);
-        const targetH = Math.round(rect.height * dpr);
+        const targetW = Math.round(width * dpr);
+        const targetH = Math.round(height * dpr);
         if (canvas.width !== targetW || canvas.height !== targetH) {
           canvas.width = targetW;
           canvas.height = targetH;
@@ -989,13 +1059,17 @@ export function CureEarth3DMap({
         if (ctx) {
           ctx.save();
           ctx.scale(dpr, dpr);
-          ctx.clearRect(0, 0, rect.width, rect.height);
+          ctx.clearRect(0, 0, width, height);
 
           const snap = snapshotRef.current;
           const activeOrders = ordersRef.current;
           const selId = selectedNodeRef.current;
-          const pitchFactor = Math.max(0.25, map.getPitch() / 65);
-          const zoomScale = Math.pow(2, Math.max(0, map.getZoom() - 12.5));
+          const pitchFactor = Math.max(0.2, map.getPitch() / 62);
+          const zoomScale = Math.pow(2, Math.max(-1, map.getZoom() - 13));
+
+          // Update dynamic stem height CSS variable on the map container so labels sit cleanly above 3D towers
+          const stemPx = Math.round(14 + 26 * pitchFactor * Math.min(1.35, zoomScale));
+          containerRef.current?.style.setProperty("--pin-stem-h", `${stemPx}px`);
 
           // 1. Draw 3D Parabolic Arcs & Contagion Particles between Manta Zones
           for (let i = 0; i < MANTA_EDGES.length; i++) {
@@ -1013,6 +1087,8 @@ export function CureEarth3DMap({
                   (o.nodeId === edge.source || o.nodeId === edge.target),
               );
 
+            const touchesSelected =
+              edge.source === selId || edge.target === selId;
             const srcI = snap.nodes[edge.source]?.I ?? 0;
             const tgtI = snap.nodes[edge.target]?.I ?? 0;
             const infectedFlow = srcI + tgtI;
@@ -1020,10 +1096,9 @@ export function CureEarth3DMap({
             const dx = p2.x - p1.x;
             const dy = p2.y - p1.y;
             const dist = Math.hypot(dx, dy);
-            if (dist < 12 || dist > 1600) continue;
+            if (dist < 10 || dist > 1800) continue;
 
-            // Control point lifted upward in screen Y to create a 3D parabolic arch
-            const arcLift = Math.min(110, dist * 0.28) * pitchFactor;
+            const arcLift = Math.min(85, dist * 0.24) * pitchFactor;
             const cx = (p1.x + p2.x) * 0.5;
             const cy = (p1.y + p2.y) * 0.5 - arcLift;
 
@@ -1032,20 +1107,25 @@ export function CureEarth3DMap({
             ctx.quadraticCurveTo(cx, cy, p2.x, p2.y);
 
             if (isClosed) {
-              ctx.strokeStyle = "rgba(177, 223, 200, 0.72)";
-              ctx.lineWidth = 1.8;
+              ctx.strokeStyle = "rgba(128, 224, 188, 0.78)";
+              ctx.lineWidth = 2;
               ctx.setLineDash([4, 5]);
               ctx.stroke();
               ctx.setLineDash([]);
-            } else if (infectedFlow > 0) {
-              ctx.strokeStyle = "rgba(245, 138, 114, 0.42)";
-              ctx.lineWidth = 1.5;
+            } else if (infectedFlow > 0 || touchesSelected) {
+              ctx.strokeStyle =
+                infectedFlow > 0
+                  ? touchesSelected
+                    ? "rgba(245, 138, 114, 0.72)"
+                    : "rgba(245, 138, 114, 0.38)"
+                  : "rgba(177, 223, 200, 0.35)";
+              ctx.lineWidth = touchesSelected ? 1.9 : 1.3;
               ctx.stroke();
 
-              // Animated pathogen pulses traveling along the 3D arc
-              if (!prefersReducedMotion) {
+              // Animated pathogen pulses traveling along infected 3D arcs
+              if (infectedFlow > 0 && !prefersReducedMotion) {
                 const dir = srcI >= tgtI ? 1 : -1;
-                const speed = 0.28 + edge.weight * 0.55;
+                const speed = 0.26 + edge.weight * 0.5;
                 const tRaw = (elapsed * speed + i * 0.17) % 1;
                 const t = dir === 1 ? tRaw : 1 - tRaw;
                 const invT = 1 - t;
@@ -1055,10 +1135,10 @@ export function CureEarth3DMap({
                   invT * invT * p1.y + 2 * invT * t * cy + t * t * p2.y;
 
                 ctx.beginPath();
-                ctx.arc(px, py, 3.2, 0, Math.PI * 2);
+                ctx.arc(px, py, 3, 0, Math.PI * 2);
                 ctx.fillStyle = "#ff967d";
                 ctx.shadowColor = "#f58a72";
-                ctx.shadowBlur = 8;
+                ctx.shadowBlur = 7;
                 ctx.fill();
                 ctx.shadowBlur = 0;
               }
@@ -1070,9 +1150,9 @@ export function CureEarth3DMap({
             const pt = map.project([node.lng, node.lat]);
             if (
               pt.x < -100 ||
-              pt.x > rect.width + 100 ||
+              pt.x > width + 100 ||
               pt.y < -100 ||
-              pt.y > rect.height + 100
+              pt.y > height + 100
             ) {
               continue;
             }
@@ -1090,50 +1170,34 @@ export function CureEarth3DMap({
               nState.vaccinatedToday > 0;
             const isSel = node.id === selId;
 
-            const baseR = Math.min(72, Math.max(22, 26 * zoomScale));
-            const squashY = Math.max(0.42, 1 - pitchFactor * 0.48);
+            const baseR = Math.min(58, Math.max(18, 24 * zoomScale));
+            const squashY = Math.max(0.45, 1 - pitchFactor * 0.45);
 
-            // Selected Node 3D Ground Radar & Vertical Orbital Laser
+            // Selected Node 3D Ground Target Reticle
             if (isSel) {
-              const beamGrad = ctx.createLinearGradient(
-                pt.x,
-                pt.y,
-                pt.x,
-                pt.y - 130 * pitchFactor,
-              );
-              beamGrad.addColorStop(0, "rgba(177, 223, 200, 0.38)");
-              beamGrad.addColorStop(1, "rgba(177, 223, 200, 0)");
-              ctx.strokeStyle = beamGrad;
-              ctx.lineWidth = 2;
-              ctx.beginPath();
-              ctx.moveTo(pt.x, pt.y);
-              ctx.lineTo(pt.x, pt.y - 130 * pitchFactor);
-              ctx.stroke();
-
               ctx.save();
               ctx.translate(pt.x, pt.y);
               ctx.scale(1, squashY);
-              ctx.rotate(prefersReducedMotion ? 0 : elapsed * 0.65);
-              ctx.strokeStyle = "rgba(226, 241, 232, 0.78)";
-              ctx.lineWidth = 1.4;
-              ctx.setLineDash([6, 5]);
+              ctx.rotate(prefersReducedMotion ? 0 : elapsed * 0.55);
+              ctx.strokeStyle = "rgba(177, 223, 200, 0.85)";
+              ctx.lineWidth = 1.5;
+              ctx.setLineDash([6, 4]);
               ctx.beginPath();
-              ctx.arc(0, 0, baseR * 1.18, 0, Math.PI * 2);
+              ctx.arc(0, 0, baseR * 1.15, 0, Math.PI * 2);
               ctx.stroke();
               ctx.restore();
             }
 
             // 3D Geodesic Quarantine Dome for Sanitary Cordon
             if (hasCordon) {
-              const domeR = baseR * 1.25;
-              const domeH = domeR * (0.75 + pitchFactor * 0.35);
+              const domeR = baseR * 1.22;
+              const domeH = domeR * (0.7 + pitchFactor * 0.3);
 
               ctx.save();
-              ctx.strokeStyle = "rgba(128, 224, 188, 0.68)";
-              ctx.fillStyle = "rgba(128, 224, 188, 0.09)";
-              ctx.lineWidth = 1.4;
+              ctx.strokeStyle = "rgba(128, 224, 188, 0.7)";
+              ctx.fillStyle = "rgba(128, 224, 188, 0.08)";
+              ctx.lineWidth = 1.3;
 
-              // Dome outer arch
               ctx.beginPath();
               ctx.ellipse(
                 pt.x,
@@ -1150,36 +1214,21 @@ export function CureEarth3DMap({
               ctx.moveTo(pt.x - domeR, pt.y);
               ctx.quadraticCurveTo(
                 pt.x,
-                pt.y - domeH * 1.45,
+                pt.y - domeH * 1.35,
                 pt.x + domeR,
                 pt.y,
               );
               ctx.fill();
               ctx.stroke();
-
-              // Inner geodesic ribs
-              ctx.strokeStyle = "rgba(177, 223, 200, 0.35)";
-              ctx.lineWidth = 0.9;
-              for (const ribOffset of [-0.5, 0, 0.5]) {
-                ctx.beginPath();
-                ctx.moveTo(pt.x + domeR * ribOffset, pt.y + domeR * squashY * 0.4);
-                ctx.quadraticCurveTo(
-                  pt.x + domeR * ribOffset * 0.35,
-                  pt.y - domeH * 1.25,
-                  pt.x,
-                  pt.y - domeH * 0.72,
-                );
-                ctx.stroke();
-              }
               ctx.restore();
             }
 
             // 3D Bio-Mist Dispersion Ring for Fumigation
             if (hasFumigate) {
               const pulse = prefersReducedMotion ? 0.5 : (elapsed * 0.7) % 1;
-              const ringR = baseR * (0.7 + pulse * 0.65);
+              const ringR = baseR * (0.65 + pulse * 0.65);
               ctx.save();
-              ctx.translate(pt.x, pt.y - 16 * pitchFactor);
+              ctx.translate(pt.x, pt.y - 12 * pitchFactor);
               ctx.scale(1, squashY);
               ctx.strokeStyle = `rgba(211, 188, 128, ${0.75 * (1 - pulse)})`;
               ctx.lineWidth = 2;
@@ -1194,14 +1243,14 @@ export function CureEarth3DMap({
               const pulse = prefersReducedMotion
                 ? 0.4
                 : (elapsed * 0.85 + 0.3) % 1;
-              const lift = pulse * 55 * pitchFactor;
+              const lift = pulse * 44 * pitchFactor;
               ctx.save();
               ctx.translate(pt.x, pt.y - lift);
               ctx.scale(1, squashY);
               ctx.strokeStyle = `rgba(177, 223, 200, ${0.85 * (1 - pulse)})`;
               ctx.lineWidth = 2;
               ctx.beginPath();
-              ctx.arc(0, 0, baseR * 0.72, 0, Math.PI * 2);
+              ctx.arc(0, 0, baseR * 0.7, 0, Math.PI * 2);
               ctx.stroke();
               ctx.restore();
             }
@@ -1236,23 +1285,23 @@ export function CureEarth3DMap({
     setIsOrbiting(false);
     map.flyTo({
       center: MANTA_CENTER,
-      zoom: 3.4,
-      pitch: 10,
+      zoom: 6.2,
+      pitch: 12,
       bearing: 0,
-      duration: 1100,
+      duration: 950,
       essential: true,
     });
     window.setTimeout(() => {
       map.flyTo({
         center: MANTA_CENTER,
-        zoom: 13.35,
-        pitch: 64,
-        bearing: -22,
-        duration: 2400,
+        zoom: 13.15,
+        pitch: 58,
+        bearing: -18,
+        duration: 2100,
         essential: true,
       });
       setIsPitched(true);
-    }, 1150);
+    }, 1000);
   };
 
   const handleResetView = () => {
@@ -1261,10 +1310,10 @@ export function CureEarth3DMap({
     setIsOrbiting(false);
     map.flyTo({
       center: MANTA_CENTER,
-      zoom: 13.3,
-      pitch: 62,
-      bearing: -22,
-      duration: 950,
+      zoom: 13.15,
+      pitch: 58,
+      bearing: -18,
+      duration: 850,
       essential: true,
     });
     setIsPitched(true);
@@ -1273,12 +1322,12 @@ export function CureEarth3DMap({
   const handleTogglePitch = () => {
     const map = mapRef.current;
     if (!map) return;
-    const nextPitch = isPitched ? 0 : 63;
+    const nextPitch = isPitched ? 0 : 58;
     setIsPitched(!isPitched);
     map.easeTo({
       pitch: nextPitch,
-      bearing: isPitched ? 0 : -22,
-      duration: 700,
+      bearing: isPitched ? 0 : -18,
+      duration: 650,
     });
   };
 
@@ -1300,7 +1349,8 @@ export function CureEarth3DMap({
       {/* Top-Left Theater Heading */}
       <div className="map-heading">
         <span className="eyebrow">
-          GEODATA 3D · {styleMode === "satellite" ? "SATÉLITE REAL" : "VECTORIAL 3D"}
+          GEODATA 3D ·{" "}
+          {styleMode === "satellite" ? "SATÉLITE REAL" : "VECTORIAL 3D"}
         </span>
         <h2>
           Manta, Ecuador <span>00°57&apos;S / 80°43&apos;O · RELIEVE 3D</span>
@@ -1313,7 +1363,7 @@ export function CureEarth3DMap({
           <button
             className={styleMode === "satellite" ? "active" : ""}
             onClick={() => onChangeStyleMode("satellite")}
-            title="Imagen satelital tipo Google Earth con edificios y relieve 3D"
+            title="Imagen satelital tipo Google Earth con edificios y modelos 3D"
           >
             <Globe size={11} />
             3D Satélite
@@ -1376,7 +1426,7 @@ export function CureEarth3DMap({
         </button>
         <button
           aria-label="Alternar inclinación 3D"
-          title={isPitched ? "Cambiar a vista cenital" : "Inclinación 3D (63°)"}
+          title={isPitched ? "Cambiar a vista cenital" : "Inclinación 3D (58°)"}
           className={isPitched ? "active-cam" : ""}
           onClick={handleTogglePitch}
         >
@@ -1391,8 +1441,8 @@ export function CureEarth3DMap({
           <Orbit size={15} />
         </button>
         <button
-          aria-label="Vuelo orbital desde el espacio hacia Manta"
-          title="Inmersión desde el Globo Terráqueo (Google Earth)"
+          aria-label="Vuelo orbital hacia Manta"
+          title="Inmersión satelital hacia Manta"
           onClick={handleOrbitalDive}
         >
           <Globe size={15} />
@@ -1429,7 +1479,7 @@ export function CureEarth3DMap({
           Domo Cordón / Brigada 3D
         </span>
         <span className="map-count">
-          {affected} / 16 zonas afectadas · Arrastra con clic derecho para rotar 3D
+          {affected} / 16 zonas afectadas · Clic derecho + arrastrar para rotar 3D
         </span>
       </div>
     </section>
