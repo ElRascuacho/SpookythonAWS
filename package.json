@@ -5,8 +5,10 @@
   "description": "Operación Manta Cero — Simulación Epidemiológica 3D SEIR-V en Grafo Urbano (Spookython AWS Track B)",
   "type": "module",
   "scripts": {
+    "invite": "bun scripts/create-invite.ts",
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:lambda": "bun build backend/handler.ts --target=node --format=esm --outfile=build/lambda/handler.mjs",
     "preview": "vite preview",
     "test": "bun test"
   },

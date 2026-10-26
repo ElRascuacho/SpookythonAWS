@@ -19,6 +19,9 @@ lerna-debug.log*
 .env.development
 .env.test
 .env.production
+.env.*.local
+.env.local
+.invite-code.local
 
 # temp directory
 .temp

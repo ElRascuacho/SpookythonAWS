@@ -1,8 +1,24 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   Operación Manta Cero (Spookython AWS Track B) — Arquitectura Serverless 100% Free-Tier en us-east-1.
   Motor Monte Carlo SEIR-V sobre Grafo Urbano de Manta + Informe Ejecutivo para el Alcalde.
+
+Parameters:
+  InviteCodeHashes:
+    Type: String
+    NoEcho: true
+    AllowedPattern: "[a-f0-9]{64}(,[a-f0-9]{64})*"
+    Description: SHA-256 de códigos compartidos, separados por comas. Nunca el código original.
+  InviteSessionSecret:
+    Type: String
+    NoEcho: true
+    AllowedPattern: "[a-f0-9]{64}"
+    Description: Clave aleatoria de 32 bytes en hexadecimal para firmar sesiones.
+  InviteAppOrigin:
+    Type: String
+    AllowedPattern: "https://[^/]+"
+    Description: Origen HTTPS del frontend sin barra final; servir API y frontend bajo el mismo origen.
 
 Globals:
   Function:
@@ -15,28 +31,21 @@ Globals:
       Variables:
         TABLE_NAME: !Ref SpookythonSimulationsTable
         BEDROCK_MODEL_ID: amazon.nova-micro-v1:0
+        INVITE_CODE_HASHES: !Ref InviteCodeHashes
+        INVITE_SESSION_SECRET: !Ref InviteSessionSecret
+        INVITE_APP_ORIGIN: !Ref InviteAppOrigin
 
 Resources:
   SpookythonHttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: prod
-      CorsConfiguration:
-        AllowOrigins:
-          - '*'
-        AllowMethods:
-          - GET
-          - POST
-          - OPTIONS
-        AllowHeaders:
-          - Content-Type
-          - Authorization
 
   MonteCarloSimFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
-      Handler: dist/backend/handler.handler
+      CodeUri: ../build/lambda/
+      Handler: handler.handler
       Description: Ejecuta M corridas Monte Carlo SEIR-V (Nada vs Azar vs Smart Cortafuegos) con semilla determinista.
       Policies:
         - DynamoDBCrudPolicy:
@@ -45,8 +54,14 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
-              Resource: 'arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0'
+              Resource: "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0"
       Events:
+        InvitationRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /api/auth/{action}
+            Method: ANY
         SimulateRoute:
           Type: HttpApi
           Properties:
@@ -75,7 +90,7 @@ Resources:
 Outputs:
   ApiEndpoint:
     Description: HTTP API Gateway endpoint URL in us-east-1
-    Value: !Sub 'https://${SpookythonHttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Value: !Sub "https://${SpookythonHttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
   DynamoDBTableName:
     Description: On-Demand DynamoDB Table for reproducible simulation caching
     Value: !Ref SpookythonSimulationsTable

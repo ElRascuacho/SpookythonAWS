@@ -6,12 +6,29 @@ Demo jugable para navegador de **Operación Manta Cero**, Track B: La Plaga Zomb
 
 ```bash
 bun install
+bun run invite
+# Lee .invite-code.local y usa ese código en la pantalla de acceso.
 bun run dev
 # http://localhost:5173
 bun test
 bun run build
 bun run preview
 ```
+
+## Acceso por invitación
+
+Los códigos son **compartidos y reutilizables**: autorizan acceso a la demo, no identifican a una persona. No hay correo, registro ni cuentas.
+
+- `bun run invite` genera un código aleatorio de 80 bits en `.invite-code.local` y configura su hash SHA-256 y una clave de firma aleatoria en `.env.local`. Ambos archivos están ignorados por Git; el servidor de desarrollo bloquea su descarga. No sobrescribe archivos existentes.
+- Comparte únicamente el código con los invitados. Nunca compartas `.env.local` ni uses el prefijo `VITE_` para secretos: [Vite expone esas variables al cliente](https://vite.dev/guide/env-and-mode).
+- Vite sirve `/api/auth/login`, `/api/auth/session` y `/api/auth/logout` tanto en desarrollo (`localhost:5173`) como en preview (`localhost:4173`). Abre **localhost**, no la IP de la red. Para otro origen, configura `INVITE_APP_ORIGIN` (HTTPS salvo localhost) y reinicia.
+- Validación en servidor; cookie firmada `HttpOnly`, `SameSite=Strict`, `Secure` en HTTPS y duración máxima de **8 horas**, sin tokens en localStorage. Comprobación de origen en POST, límites de tamaño y cinco intentos por IP/minuto. [Referencia de seguridad de sesiones: OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html).
+- **Salir** pide confirmación porque descarta la partida. Recargar conserva el acceso, pero no el progreso. Al caducar la sesión se vuelve al formulario.
+- Para revocar un código, elimina su hash de `INVITE_CODE_HASHES` (lista separada por comas). Para revocar todas las sesiones, cambia `INVITE_SESSION_SECRET` por 32 bytes aleatorios en hexadecimal. Reinicia el servidor tras cambiar variables. Para regenerar todo localmente, respalda fuera del repositorio y retira los dos archivos locales antes de repetir `bun run invite`.
+
+**Límites de esta demo:** el rate limit es por proceso, no distribuido; antes de escalar necesita control compartido o WAF. Cerrar sesión borra la cookie del navegador, pero una copia robada del token sigue válida hasta caducar o revocar el código/clave. El JavaScript del juego es descargable y la simulación corre en cliente: esto controla el acceso normal y los endpoints, no es DRM ni protege código fuente o datos que se incluyan en assets públicos.
+
+**Despliegue:** un hosting estático por sí solo no sirve el login. El handler Lambda comparte el mismo control y protege `/simulate` y `/mayor-report`. `bun run build:lambda` genera únicamente `build/lambda/handler.mjs`: SAM empaqueta ese directorio, nunca la raíz con los secretos locales. La plantilla recibe hashes, clave y origen como parámetros e incorpora `/api/auth/{action}`. Requiere enrutar frontend y API bajo el mismo origen HTTPS, reenviar `Cookie`, `Origin` y `Set-Cookie`, y no cachear respuestas de autenticación. No se configuró ni desplegó esa distribución en AWS.
 
 ## Cómo jugar
 
@@ -50,10 +67,12 @@ La evaluación de tu plan repite el calendario ya elegido; no representa una pol
 - `src/domain/seirEngine.ts` — simulación compartida y calendario opcional de acciones manuales.
 - `src/domain/monteCarlo.ts` — baselines y agregación; la demo calcula solo al pedir evaluación.
 - `src/domain/__tests__/` — reproducibilidad, recursos, conservación de población, victoria/derrota y contratos existentes.
-- `backend/handler.ts`, `infra/template.yaml` — prototipo previo del backend, no utilizado por el juego local.
+- `src/InvitationGate.tsx`, `src/access.css` — pantalla de acceso y ciclo de sesión.
+- `backend/auth.ts`, `backend/devAuth.ts` — validación compartida y adaptador local Vite.
+- `backend/handler.ts`, `infra/template.yaml` — endpoints protegidos y plantilla AWS, no desplegados.
 
 ## Estado de entrega AWS
 
-Esta entrega es **frontend local**, sin autenticación, persistencia, llamadas a Bedrock ni evidencia de despliegue AWS. `bun run build` genera el sitio estático en `dist/`, listo para una siguiente fase de publicación. No publica automáticamente ni genera el artefacto Lambda esperado por la plantilla SAM.
+Esta entrega es una **demo local con autenticación por invitación**, sin persistencia de partidas, llamadas a Bedrock ni evidencia de despliegue AWS. `bun run build` genera el frontend en `dist/`; se necesita además un servidor de autenticación. `bun run build:lambda` genera el artefacto del backend por separado. Ninguno publica automáticamente.
 
 Pendientes para la entrega del reto: hosting público AWS, Budget con alerta y captura, diagrama exportado y fuente actualizados, costos reales verificados y pitch. [Arquitectura Pro propuesta](docs/04-arquitectura-aws-y-costos.md) y [costos históricos del borrador](docs/costos.md) son documentación de trabajo, no evidencia de servicios operativos ni facturación validada.

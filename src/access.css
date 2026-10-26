@@ -1,0 +1,449 @@
+.access-page {
+  min-height: 100svh;
+  padding: 32px clamp(24px, 5vw, 80px) 22px;
+  background:
+    radial-gradient(ellipse at 28% 46%, #19313866, transparent 53%), var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+.access-header,
+.access-brand,
+.access-private,
+.access-card-top,
+.access-footer,
+.access-eyebrow,
+.access-card-footer,
+.access-submit {
+  display: flex;
+  align-items: center;
+}
+.access-header {
+  justify-content: space-between;
+  gap: 20px;
+}
+.access-brand {
+  gap: 12px;
+  font-family: Bahnschrift, var(--body);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.access-brand small {
+  display: block;
+  font: 8px/1.8 var(--mono);
+  letter-spacing: 2px;
+  color: var(--muted);
+}
+.access-brand-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b1dfc83d;
+  color: var(--mint);
+  background: #b1dfc807;
+}
+.access-private {
+  gap: 9px;
+  font: 10px var(--mono);
+  letter-spacing: 1.6px;
+  color: var(--mint);
+}
+.access-private > span {
+  width: 5px;
+  height: 5px;
+  background: var(--mint);
+  border-radius: 50%;
+  box-shadow: 0 0 10px #b1dfc866;
+}
+.access-layout {
+  width: 100%;
+  max-width: 1200px;
+  margin: auto;
+  padding: 64px 0 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(350px, 0.9fr);
+  gap: clamp(40px, 7vw, 112px);
+  align-items: center;
+}
+.access-eyebrow {
+  gap: 9px;
+  color: #91b5ad;
+  font: 10px/1.5 var(--mono);
+  letter-spacing: 1.7px;
+  margin: 0 0 23px;
+}
+.access-eyebrow > span {
+  color: #506c70;
+  padding: 0 4px;
+}
+.access-story h1 {
+  margin: 0;
+  font:
+    500 clamp(43px, 4.5vw, 68px)/1.08 Bahnschrift,
+    var(--body);
+  letter-spacing: -2.5px;
+}
+.access-story h1 em {
+  color: var(--mint);
+  font-style: normal;
+}
+.access-lead {
+  color: #9caeb2;
+  font-size: 15px;
+  line-height: 1.8;
+  margin: 24px 0 5px;
+}
+.access-radar {
+  margin: 4px -18px 12px;
+}
+.access-radar svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+.access-pulse {
+  transform-origin: 314px 65px;
+  animation: access-pulse 4s ease-in-out infinite;
+}
+@keyframes access-pulse {
+  50% {
+    transform: scale(1.4);
+    opacity: 0.3;
+  }
+}
+.access-mission {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  border-top: 1px solid #b1dfc81c;
+  padding-top: 20px;
+}
+.access-mission > span {
+  font: 9px/1.9 var(--mono);
+  letter-spacing: 1.4px;
+  color: #789894;
+  white-space: nowrap;
+}
+.access-mission p {
+  color: #a7b8ba;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.access-mission strong {
+  font-weight: 400;
+  color: #d1dfd7;
+}
+.access-card {
+  background: #14252c;
+  border: 1px solid #aaccc326;
+  box-shadow: 0 24px 80px #00000025;
+  position: relative;
+}
+.access-card::before {
+  content: "";
+  position: absolute;
+  height: 2px;
+  width: 48px;
+  top: -1px;
+  left: -1px;
+  background: var(--mint);
+}
+.access-card-top {
+  justify-content: space-between;
+  padding: 17px 24px;
+  border-bottom: 1px solid #aaccc31a;
+  color: #8aa6a5;
+  font: 9px var(--mono);
+  letter-spacing: 1.8px;
+}
+.access-card-body {
+  padding: 32px 34px 27px;
+}
+.access-fingerprint {
+  color: var(--mint);
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b1dfc829;
+  border-radius: 50%;
+  margin-bottom: 27px;
+  background: #b1dfc805;
+}
+.access-card .access-eyebrow {
+  font-size: 9px;
+  margin-bottom: 12px;
+}
+.access-card h2 {
+  font:
+    500 clamp(26px, 2.2vw, 33px)/1.2 Bahnschrift,
+    var(--body);
+  letter-spacing: -0.8px;
+}
+.access-description {
+  margin: 15px 0 28px;
+  color: #a0b2b6;
+  font-size: 13px;
+  line-height: 1.75;
+  max-width: 300px;
+}
+.access-card label {
+  display: block;
+  font-size: 12px;
+  color: #d9e3df;
+  margin-bottom: 10px;
+}
+.access-input {
+  display: flex;
+  min-height: 52px;
+  background: #0c1c23;
+  border: 1px solid #8ca9a63b;
+  transition: border-color 0.15s;
+}
+.access-input:focus-within {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px #b1dfc815;
+}
+.access-input.has-error {
+  border-color: var(--coral);
+}
+.access-input input {
+  min-width: 0;
+  width: 100%;
+  color: var(--text);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 14px 0 14px 13px;
+  font: 12px var(--mono);
+  letter-spacing: 0.4px;
+  outline: none;
+}
+.access-input input::placeholder {
+  color: #778e96;
+  font-size: 10px;
+  letter-spacing: 0.2px;
+}
+.access-input button {
+  color: var(--muted);
+  padding: 12px;
+  display: grid;
+  place-items: center;
+}
+.access-input button:hover {
+  color: var(--mint);
+}
+.access-hint {
+  color: #8ca1a8;
+  font-size: 10px;
+  line-height: 1.6;
+  margin: 9px 0 20px;
+}
+.access-error {
+  color: #ffad99;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: -6px 0 17px;
+}
+.access-submit {
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 50px;
+  background: var(--mint);
+  border: 1px solid var(--mint);
+  border-radius: 2px;
+  padding: 14px 17px;
+  color: #10291e;
+  font-size: 12px;
+  font-weight: 700;
+}
+.access-submit:not(:disabled):hover {
+  background: #c8efda;
+  transform: translateY(-1px);
+}
+.access-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.access-help {
+  text-align: center;
+  color: #d0dcd8;
+  font-size: 11px;
+  line-height: 1.9;
+  margin: 24px 0 0;
+}
+.access-help span {
+  color: var(--muted);
+}
+.access-card-footer {
+  gap: 12px;
+  padding: 19px 34px;
+  background: #0f202677;
+  border-top: 1px solid #aaccc31a;
+  color: #97b8ad;
+  font-size: 10px;
+  line-height: 1.7;
+}
+.access-card-footer strong {
+  font-weight: 400;
+  color: #8fa2a8;
+}
+.access-footer {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid #b1dfc81a;
+  color: #7e999f;
+  font: 9px/1.6 var(--mono);
+  letter-spacing: 0.8px;
+}
+.access-footer b {
+  color: #466365;
+  margin: 0 10px;
+}
+.access-footer > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.access-check,
+.access-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--mint);
+  font-size: 13px;
+}
+.access-check {
+  min-height: 165px;
+}
+.access-loading {
+  min-height: 100svh;
+  background: var(--ink);
+}
+.access-spinner {
+  animation: access-spin 1.2s linear infinite;
+}
+@keyframes access-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.access-banner {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 60;
+  padding: 12px 24px;
+  background: #4a2e26;
+  color: #ffcebd;
+  font-size: 13px;
+}
+.access-banner button {
+  text-decoration: underline;
+  margin-left: 10px;
+}
+@media (min-width: 1600px) {
+  .access-layout {
+    padding-block: 85px;
+  }
+}
+@media (max-width: 850px) {
+  .access-layout {
+    gap: 32px;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
+  }
+  .access-card-body {
+    padding-inline: 25px;
+  }
+  .access-story h1 {
+    font-size: 43px;
+  }
+  .access-mission {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .access-footer > span:last-child {
+    display: none;
+  }
+}
+@media (max-width: 660px) {
+  .access-page {
+    padding: 22px 20px 20px;
+  }
+  .access-brand {
+    font-size: 16px;
+    gap: 9px;
+  }
+  .access-brand small {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .access-brand-icon {
+    width: 36px;
+    height: 40px;
+  }
+  .access-private {
+    font-size: 8px;
+    letter-spacing: 0.8px;
+    gap: 6px;
+  }
+  .access-layout {
+    display: flex;
+    flex-direction: column;
+    padding: 32px 0;
+    gap: 30px;
+    max-width: 420px;
+  }
+  .access-story {
+    width: 100%;
+  }
+  .access-story h1 {
+    font-size: 38px;
+    letter-spacing: -1.8px;
+  }
+  .access-eyebrow {
+    font-size: 9px;
+    margin-bottom: 17px;
+  }
+  .access-lead {
+    font-size: 13px;
+    margin-top: 16px;
+  }
+  .access-radar,
+  .access-mission {
+    display: none;
+  }
+  .access-card {
+    width: 100%;
+  }
+  .access-card-body {
+    padding: 24px;
+  }
+  .access-fingerprint {
+    display: none;
+  }
+  .access-card h2 {
+    font-size: 28px;
+  }
+  .access-input input {
+    font-size: 16px;
+  }
+  .access-card-footer {
+    padding-inline: 24px;
+  }
+  .access-footer {
+    font-size: 8px;
+    gap: 7px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .access-page *,
+  .access-spinner {
+    animation: none;
+    transition: none;
+  }
+}
