@@ -157,7 +157,7 @@ function buildNode3DCompound(
     geometry: { type: "Polygon"; coordinates: number[][][] };
   }> = [];
 
-  const ringRadius = isSelected ? 155 : 130;
+  const ringRadius = isSelected ? 150 : 125;
 
   // 1. Outer 3D containment ring on the ground
   features.push({
@@ -165,11 +165,7 @@ function buildNode3DCompound(
     properties: {
       id: node.id,
       part: "perimeter-ring",
-      color: isSelected
-        ? "#b1dfc8"
-        : hasCordon
-          ? "#80e0bc"
-          : coreColor,
+      color: isSelected ? "#b1dfc8" : hasCordon ? "#80e0bc" : coreColor,
       base: 0,
       height: isSelected ? 14 : 9,
     },
@@ -198,7 +194,7 @@ function buildNode3DCompound(
     geometry: {
       type: "Polygon",
       coordinates: [
-        createPolygonRing(node.lng, node.lat, 82, 8, Math.PI / 8),
+        createPolygonRing(node.lng, node.lat, 78, 8, Math.PI / 8),
       ],
     },
   });
@@ -206,7 +202,7 @@ function buildNode3DCompound(
   // 3. Role-specific 3D structure centered at [node.lng, node.lat]
   if (node.id === "N04") {
     // Hospital Rodríguez Zambrano: 3D Medical Cross + Central Beacon Spire
-    const wingH = Math.max(48, Math.round(coreHeight * 0.58));
+    const wingH = Math.max(46, Math.round(coreHeight * 0.58));
     features.push(
       {
         type: "Feature",
@@ -219,7 +215,7 @@ function buildNode3DCompound(
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createBoxFootprint(node.lng, node.lat, 24, 72, 0.12)],
+          coordinates: [createBoxFootprint(node.lng, node.lat, 22, 68, 0.12)],
         },
       },
       {
@@ -233,7 +229,7 @@ function buildNode3DCompound(
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createBoxFootprint(node.lng, node.lat, 72, 24, 0.12)],
+          coordinates: [createBoxFootprint(node.lng, node.lat, 68, 22, 0.12)],
         },
       },
       {
@@ -247,13 +243,13 @@ function buildNode3DCompound(
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createPolygonRing(node.lng, node.lat, 30, 8)],
+          coordinates: [createPolygonRing(node.lng, node.lat, 28, 8)],
         },
       },
     );
   } else {
     // Stepped 3D Epidemiological Spire + 4 Symmetric Corner Blocks
-    const midH = Math.max(38, Math.round(coreHeight * 0.55));
+    const midH = Math.max(36, Math.round(coreHeight * 0.55));
     features.push(
       {
         type: "Feature",
@@ -267,7 +263,7 @@ function buildNode3DCompound(
         geometry: {
           type: "Polygon",
           coordinates: [
-            createPolygonRing(node.lng, node.lat, 50, 8, Math.PI / 8),
+            createPolygonRing(node.lng, node.lat, 46, 8, Math.PI / 8),
           ],
         },
       },
@@ -283,17 +279,17 @@ function buildNode3DCompound(
         geometry: {
           type: "Polygon",
           coordinates: [
-            createPolygonRing(node.lng, node.lat, 28, 8, Math.PI / 8),
+            createPolygonRing(node.lng, node.lat, 26, 8, Math.PI / 8),
           ],
         },
       },
     );
 
     const subOffsets = [
-      [58, 42, 0.25],
-      [-58, 42, -0.25],
-      [58, -42, -0.25],
-      [-58, -42, 0.25],
+      [54, 40, 0.25],
+      [-54, 40, -0.25],
+      [54, -40, -0.25],
+      [-54, -40, 0.25],
     ];
     subOffsets.forEach(([dx, dy, rot], idx) => {
       const [bLng, bLat] = offsetLngLat(node.lng, node.lat, dx, dy);
@@ -304,11 +300,11 @@ function buildNode3DCompound(
           part: `sub-${idx}`,
           color: idx % 2 === 0 ? coreColor : "#1d3942",
           base: 10,
-          height: Math.max(24, Math.round(coreHeight * 0.34)),
+          height: Math.max(22, Math.round(coreHeight * 0.34)),
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createBoxFootprint(bLng, bLat, 16, 14, rot)],
+          coordinates: [createBoxFootprint(bLng, bLat, 15, 13, rot)],
         },
       });
     });
@@ -317,7 +313,7 @@ function buildNode3DCompound(
   // 4. 3D Sanitary Cordon Barricade Pillars around the perimeter
   if (hasCordon) {
     const segments = 12;
-    const cordonR = 175;
+    const cordonR = 168;
     for (let i = 0; i < segments; i++) {
       const angle = (i * 2 * Math.PI) / segments;
       const [wLng, wLat] = offsetLngLat(
@@ -333,11 +329,11 @@ function buildNode3DCompound(
           part: `cordon-${i}`,
           color: "#80e0bc",
           base: 0,
-          height: 85,
+          height: 82,
         },
         geometry: {
           type: "Polygon",
-          coordinates: [createBoxFootprint(wLng, wLat, 7, 22, angle)],
+          coordinates: [createBoxFootprint(wLng, wLat, 7, 20, angle)],
         },
       });
     }
@@ -351,12 +347,12 @@ function buildNode3DCompound(
         id: node.id,
         part: "intervention-crown",
         color: hasVaccine ? "#b1dfc8" : "#d3bc80",
-        base: Math.round(coreHeight + 12),
-        height: Math.round(coreHeight + 28),
+        base: Math.round(coreHeight + 10),
+        height: Math.round(coreHeight + 24),
       },
       geometry: {
         type: "Polygon",
-        coordinates: createHollowRing(node.lng, node.lat, 42, 26, 8),
+        coordinates: createHollowRing(node.lng, node.lat, 40, 24, 8),
       },
     });
   }
@@ -364,15 +360,6 @@ function buildNode3DCompound(
   return features;
 }
 
-/**
- * Style specification combining:
- * - Esri World Imagery Satellite tiles (Google Earth view)
- * - AWS Open Data DEM Hillshade (topographic relief without Z-plane distortion)
- * - OpenFreeMap vector streets & 3D buildings of Manta
- * Note: We intentionally keep the geometric terrain plane at z=0 so that
- * 3D fill-extrusions, map.project() canvas arcs, and DOM markers share the
- * exact same coordinate projection with zero parallax drift.
- */
 const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -497,32 +484,21 @@ export function CureEarth3DMap({
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pinHostRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<
-    Record<
-      string,
-      {
-        marker: maplibregl.Marker;
-        hostEl: HTMLDivElement;
-        btnEl: HTMLButtonElement;
-      }
-    >
-  >({});
 
   const [layer, setLayer] = useState<"infection" | "protection">("infection");
   const [mapReady, setMapReady] = useState(false);
   const [isOrbiting, setIsOrbiting] = useState(false);
   const [isPitched, setIsPitched] = useState(true);
 
-  // Refs for the 60fps tactical holographic overlay canvas
+  // Refs for the 60fps tactical holographic overlay canvas & pin projection
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
   const ordersRef = useRef(orders);
   ordersRef.current = orders;
   const selectedNodeRef = useRef(selectedNode);
   selectedNodeRef.current = selectedNode;
-  const layerRef = useRef(layer);
-  layerRef.current = layer;
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
 
@@ -577,8 +553,8 @@ export function CureEarth3DMap({
 
       const coreHeight =
         layer === "protection"
-          ? Math.min(340, 58 + (state.R / Math.max(1, node.population)) * 280)
-          : Math.min(380, 56 + state.I * 0.18 + state.E * 0.12);
+          ? Math.min(300, 52 + (state.R / Math.max(1, node.population)) * 240)
+          : Math.min(340, 50 + state.I * 0.16 + state.E * 0.1);
 
       compoundFeatures.push(
         ...buildNode3DCompound(
@@ -596,8 +572,8 @@ export function CureEarth3DMap({
       // Ground Halo (Infection aura or Protection shield)
       const haloRadius =
         state.I > 0
-          ? 200 + Math.min(180, state.I * 0.11)
-          : 165 + state.vectorIndex * 65;
+          ? 190 + Math.min(160, state.I * 0.1)
+          : 155 + state.vectorIndex * 60;
       const haloColor = hasCordon
         ? "#80e0bc"
         : state.I > 0
@@ -701,8 +677,8 @@ export function CureEarth3DMap({
       container: containerRef.current,
       style: EARTH_3D_STYLE,
       center: MANTA_CENTER,
-      zoom: prefersReducedMotion ? 13.15 : 11.4,
-      pitch: prefersReducedMotion ? 56 : 25,
+      zoom: prefersReducedMotion ? 13.15 : 11.6,
+      pitch: prefersReducedMotion ? 56 : 28,
       bearing: prefersReducedMotion ? -18 : -6,
       maxPitch: 75,
       attributionControl: false,
@@ -809,47 +785,11 @@ export function CureEarth3DMap({
           zoom: 13.15,
           pitch: 58,
           bearing: -18,
-          duration: 1600,
+          duration: 1500,
           essential: true,
         });
       }
     });
-
-    // Create zero-drift 0x0 marker hosts anchored at the exact [lng, lat] center
-    for (const node of MANTA_NODES) {
-      const hostEl = document.createElement("div");
-      hostEl.className = "earth-marker-host";
-
-      const btnEl = document.createElement("button");
-      btnEl.type = "button";
-      btnEl.className = "earth-node-pin";
-      btnEl.setAttribute("aria-label", `Seleccionar zona ${node.name}`);
-      btnEl.onclick = (ev) => {
-        ev.stopPropagation();
-        onSelectRef.current(node.id);
-      };
-
-      const stemEl = document.createElement("span");
-      stemEl.className = "pin-stem";
-
-      const dotEl = document.createElement("span");
-      dotEl.className = "pin-anchor-dot";
-
-      hostEl.appendChild(dotEl);
-      hostEl.appendChild(stemEl);
-      hostEl.appendChild(btnEl);
-
-      const marker = new maplibregl.Marker({
-        element: hostEl,
-        anchor: "center",
-        pitchAlignment: "viewport",
-        rotationAlignment: "viewport",
-      })
-        .setLngLat([node.lng, node.lat])
-        .addTo(map);
-
-      markersRef.current[node.id] = { marker, hostEl, btnEl };
-    }
 
     mapRef.current = map;
 
@@ -907,93 +847,6 @@ export function CureEarth3DMap({
     edgesSrc?.setData(edgesGeoJson);
   }, [buildingsGeoJson, halosGeoJson, edgesGeoJson, mapReady]);
 
-  // Update DOM HUD pins on all 16 Manta zones
-  useEffect(() => {
-    for (const node of MANTA_NODES) {
-      const entry = markersRef.current[node.id];
-      if (!entry) continue;
-
-      const state = snapshot.nodes[node.id];
-      const isSelected = node.id === selectedNode;
-      const nodeOrders = orders.filter((o) => o.nodeId === node.id);
-      const isOrigin = node.id === patientZeroId && snapshot.day <= 2;
-
-      const hasVax =
-        nodeOrders.some((o) => o.kind === "vaccine") ||
-        state.vaccinatedToday > 0;
-      const hasFum =
-        nodeOrders.some((o) => o.kind === "fumigate") || state.fumigatedToday;
-      const hasCord =
-        nodeOrders.some((o) => o.kind === "cordon") || state.cordonedToday;
-
-      const statusState =
-        state.I > 200
-          ? "critical"
-          : state.I > 0
-            ? "infected"
-            : state.R > 0
-              ? "protected"
-              : "healthy";
-
-      entry.hostEl.className = [
-        "earth-marker-host",
-        `state-${statusState}`,
-        isSelected ? "is-selected" : "",
-        nodeOrders.length > 0 ? "has-orders" : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      entry.btnEl.className = [
-        "earth-node-pin",
-        isSelected ? "selected" : "",
-        state.I > 0 ? "infected" : "healthy",
-        nodeOrders.length > 0 ? "queued" : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      entry.btnEl.setAttribute("aria-pressed", String(isSelected));
-      entry.btnEl.setAttribute(
-        "aria-label",
-        `${node.name}: ${state.I} infecciosos, ${state.R} inmunes`,
-      );
-
-      const tagsHtml = [
-        isOrigin
-          ? '<i class="pin-tag origin" title="Paciente Cero">P0</i>'
-          : "",
-        hasVax ? '<i class="pin-tag vax" title="Vacunación">💉</i>' : "",
-        hasFum ? '<i class="pin-tag fum" title="Fumigación">🌫️</i>' : "",
-        hasCord ? '<i class="pin-tag cord" title="Cordón sanitario">🚧</i>' : "",
-      ]
-        .filter(Boolean)
-        .join("");
-
-      const metricText =
-        layer === "protection"
-          ? `${state.R.toLocaleString("es-EC")} INM`
-          : state.I > 0
-            ? `${state.I.toLocaleString("es-EC")} INF`
-            : "0 INF";
-
-      const detailHtml = isSelected
-        ? `<span class="pin-detail">${state.S.toLocaleString("es-EC")} susc. · ${state.R.toLocaleString("es-EC")} inm.</span>`
-        : "";
-
-      entry.btnEl.innerHTML = `
-        <span class="pin-header">
-          <span class="pin-dot"></span>
-          <b class="pin-id">${node.id === "N04" ? "✚" : node.id}</b>
-          <span class="pin-name">${SHORT_NAMES[node.id]}</span>
-          <span class="pin-badge">${metricText}</span>
-          ${tagsHtml ? `<span class="pin-tags">${tagsHtml}</span>` : ""}
-        </span>
-        ${detailHtml}
-      `;
-    }
-  }, [snapshot, selectedNode, orders, layer, patientZeroId]);
-
   // Smooth camera focus when selectedNode changes (without losing zoom context)
   const isFirstSelectionRef = useRef(true);
   useEffect(() => {
@@ -1028,7 +881,8 @@ export function CureEarth3DMap({
     return () => cancelAnimationFrame(rafId);
   }, [isOrbiting, mapReady]);
 
-  // 60fps Holographic 3D Overlay: Parabolic Contagion Arcs, Quarantine Domes & Bio-Pulses
+  // Unified 60fps Projection Loop: Synchronizes both the 3D Hologram Canvas AND the 16 Zone Pins
+  // using the exact same map.project([lng, lat]) coordinate on every camera frame.
   useEffect(() => {
     const canvas = overlayCanvasRef.current;
     const map = mapRef.current;
@@ -1041,12 +895,38 @@ export function CureEarth3DMap({
     let rafId = 0;
     const startTime = performance.now();
 
-    const renderOverlay = (now: number) => {
+    const syncScene = (now: number) => {
       const elapsed = (now - startTime) * 0.001;
       const mapCanvas = map.getCanvas();
       const width = mapCanvas.clientWidth;
       const height = mapCanvas.clientHeight;
+      const zoom = map.getZoom();
+      const pitchFactor = Math.max(0.15, map.getPitch() / 60);
+      const zoomScale = Math.pow(2, Math.max(-2, zoom - 13));
 
+      // Scale pin size and stem smoothly with zoom so labels never drift at low or high zoom
+      const pinScale = Math.min(1.08, Math.max(0.72, (zoom - 9.2) / 3.9));
+      const stemPx = Math.round(
+        Math.max(4, Math.min(26, (zoom - 10.8) * 9 * pitchFactor)),
+      );
+      const rootEl = containerRef.current?.parentElement;
+      if (rootEl) {
+        rootEl.style.setProperty("--pin-stem-h", `${stemPx}px`);
+        rootEl.style.setProperty("--pin-scale", pinScale.toFixed(3));
+      }
+
+      // 1. Project all 16 Zone Pins to their exact (pt.x, pt.y) screen coordinates
+      const projectedPts: Record<string, { x: number; y: number }> = {};
+      for (const node of MANTA_NODES) {
+        const pt = map.project([node.lng, node.lat]);
+        projectedPts[node.id] = pt;
+        const hostEl = pinHostRefs.current[node.id];
+        if (hostEl) {
+          hostEl.style.transform = `translate3d(${pt.x.toFixed(1)}px, ${pt.y.toFixed(1)}px, 0)`;
+        }
+      }
+
+      // 2. Render 3D Parabolic Arcs, Quarantine Domes & Bio-Pulses at the exact same projectedPts
       if (width > 0 && height > 0) {
         const dpr = window.devicePixelRatio || 1;
         const targetW = Math.round(width * dpr);
@@ -1064,20 +944,12 @@ export function CureEarth3DMap({
           const snap = snapshotRef.current;
           const activeOrders = ordersRef.current;
           const selId = selectedNodeRef.current;
-          const pitchFactor = Math.max(0.2, map.getPitch() / 62);
-          const zoomScale = Math.pow(2, Math.max(-1, map.getZoom() - 13));
 
-          // Update dynamic stem height CSS variable on the map container so labels sit cleanly above 3D towers
-          const stemPx = Math.round(14 + 26 * pitchFactor * Math.min(1.35, zoomScale));
-          containerRef.current?.style.setProperty("--pin-stem-h", `${stemPx}px`);
-
-          // 1. Draw 3D Parabolic Arcs & Contagion Particles between Manta Zones
           for (let i = 0; i < MANTA_EDGES.length; i++) {
             const edge = MANTA_EDGES[i];
-            const srcNode = NODE_MAP[edge.source];
-            const tgtNode = NODE_MAP[edge.target];
-            const p1 = map.project([srcNode.lng, srcNode.lat]);
-            const p2 = map.project([tgtNode.lng, tgtNode.lat]);
+            const p1 = projectedPts[edge.source];
+            const p2 = projectedPts[edge.target];
+            if (!p1 || !p2) continue;
 
             const isClosed =
               snap.action.cordonedEdges.includes(edge.id) ||
@@ -1098,7 +970,7 @@ export function CureEarth3DMap({
             const dist = Math.hypot(dx, dy);
             if (dist < 10 || dist > 1800) continue;
 
-            const arcLift = Math.min(85, dist * 0.24) * pitchFactor;
+            const arcLift = Math.min(80, dist * 0.22) * pitchFactor;
             const cx = (p1.x + p2.x) * 0.5;
             const cy = (p1.y + p2.y) * 0.5 - arcLift;
 
@@ -1122,7 +994,6 @@ export function CureEarth3DMap({
               ctx.lineWidth = touchesSelected ? 1.9 : 1.3;
               ctx.stroke();
 
-              // Animated pathogen pulses traveling along infected 3D arcs
               if (infectedFlow > 0 && !prefersReducedMotion) {
                 const dir = srcI >= tgtI ? 1 : -1;
                 const speed = 0.26 + edge.weight * 0.5;
@@ -1145,10 +1016,10 @@ export function CureEarth3DMap({
             }
           }
 
-          // 2. Draw 3D Holographic Domes, Shields & Target Reticles over Nodes
           for (const node of MANTA_NODES) {
-            const pt = map.project([node.lng, node.lat]);
+            const pt = projectedPts[node.id];
             if (
+              !pt ||
               pt.x < -100 ||
               pt.x > width + 100 ||
               pt.y < -100 ||
@@ -1170,10 +1041,9 @@ export function CureEarth3DMap({
               nState.vaccinatedToday > 0;
             const isSel = node.id === selId;
 
-            const baseR = Math.min(58, Math.max(18, 24 * zoomScale));
+            const baseR = Math.min(56, Math.max(14, 24 * zoomScale));
             const squashY = Math.max(0.45, 1 - pitchFactor * 0.45);
 
-            // Selected Node 3D Ground Target Reticle
             if (isSel) {
               ctx.save();
               ctx.translate(pt.x, pt.y);
@@ -1188,7 +1058,6 @@ export function CureEarth3DMap({
               ctx.restore();
             }
 
-            // 3D Geodesic Quarantine Dome for Sanitary Cordon
             if (hasCordon) {
               const domeR = baseR * 1.22;
               const domeH = domeR * (0.7 + pitchFactor * 0.3);
@@ -1223,12 +1092,11 @@ export function CureEarth3DMap({
               ctx.restore();
             }
 
-            // 3D Bio-Mist Dispersion Ring for Fumigation
             if (hasFumigate) {
               const pulse = prefersReducedMotion ? 0.5 : (elapsed * 0.7) % 1;
               const ringR = baseR * (0.65 + pulse * 0.65);
               ctx.save();
-              ctx.translate(pt.x, pt.y - 12 * pitchFactor);
+              ctx.translate(pt.x, pt.y - 10 * pitchFactor);
               ctx.scale(1, squashY);
               ctx.strokeStyle = `rgba(211, 188, 128, ${0.75 * (1 - pulse)})`;
               ctx.lineWidth = 2;
@@ -1238,12 +1106,11 @@ export function CureEarth3DMap({
               ctx.restore();
             }
 
-            // 3D Rising Immunization Shield Ring for Vaccination
             if (hasVaccine) {
               const pulse = prefersReducedMotion
                 ? 0.4
                 : (elapsed * 0.85 + 0.3) % 1;
-              const lift = pulse * 44 * pitchFactor;
+              const lift = pulse * 40 * pitchFactor;
               ctx.save();
               ctx.translate(pt.x, pt.y - lift);
               ctx.scale(1, squashY);
@@ -1261,21 +1128,19 @@ export function CureEarth3DMap({
       }
 
       if (!prefersReducedMotion) {
-        rafId = requestAnimationFrame(renderOverlay);
+        rafId = requestAnimationFrame(syncScene);
       }
     };
 
-    rafId = requestAnimationFrame(renderOverlay);
-    const onMapMove = () => {
-      if (prefersReducedMotion) {
-        renderOverlay(performance.now());
-      }
+    rafId = requestAnimationFrame(syncScene);
+    const onMapRender = () => {
+      syncScene(performance.now());
     };
-    map.on("move", onMapMove);
+    map.on("render", onMapRender);
 
     return () => {
       cancelAnimationFrame(rafId);
-      map.off("move", onMapMove);
+      map.off("render", onMapRender);
     };
   }, [mapReady]);
 
@@ -1345,6 +1210,115 @@ export function CureEarth3DMap({
         className="earth-hologram-canvas"
         aria-hidden="true"
       />
+
+      {/* Synchronized 16 Zone Pins Layer (driven by the exact same map.project coordinates) */}
+      <div className="earth-pins-layer">
+        {MANTA_NODES.map((node) => {
+          const state = snapshot.nodes[node.id];
+          const isSelected = node.id === selectedNode;
+          const nodeOrders = orders.filter((o) => o.nodeId === node.id);
+          const isOrigin = node.id === patientZeroId && snapshot.day <= 2;
+
+          const hasVax =
+            nodeOrders.some((o) => o.kind === "vaccine") ||
+            state.vaccinatedToday > 0;
+          const hasFum =
+            nodeOrders.some((o) => o.kind === "fumigate") ||
+            state.fumigatedToday;
+          const hasCord =
+            nodeOrders.some((o) => o.kind === "cordon") || state.cordonedToday;
+
+          const statusState =
+            state.I > 200
+              ? "critical"
+              : state.I > 0
+                ? "infected"
+                : state.R > 0
+                  ? "protected"
+                  : "healthy";
+
+          const metricText =
+            layer === "protection"
+              ? `${state.R.toLocaleString("es-EC")} INM`
+              : state.I > 0
+                ? `${state.I.toLocaleString("es-EC")} INF`
+                : "0 INF";
+
+          return (
+            <div
+              key={node.id}
+              ref={(el) => {
+                pinHostRefs.current[node.id] = el;
+              }}
+              className={[
+                "earth-marker-host",
+                `state-${statusState}`,
+                isSelected ? "is-selected" : "",
+                nodeOrders.length > 0 ? "has-orders" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <span className="pin-anchor-dot" />
+              <span className="pin-stem" />
+              <button
+                type="button"
+                className={[
+                  "earth-node-pin",
+                  isSelected ? "selected" : "",
+                  state.I > 0 ? "infected" : "healthy",
+                  nodeOrders.length > 0 ? "queued" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-pressed={isSelected}
+                aria-label={`${node.name}: ${state.I} infecciosos, ${state.R} inmunes`}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  onSelect(node.id);
+                }}
+              >
+                <span className="pin-header">
+                  <span className="pin-dot" />
+                  <b className="pin-id">{node.id === "N04" ? "✚" : node.id}</b>
+                  <span className="pin-name">{SHORT_NAMES[node.id]}</span>
+                  <span className="pin-badge">{metricText}</span>
+                  {(isOrigin || hasVax || hasFum || hasCord) && (
+                    <span className="pin-tags">
+                      {isOrigin && (
+                        <i className="pin-tag origin" title="Paciente Cero">
+                          P0
+                        </i>
+                      )}
+                      {hasVax && (
+                        <i className="pin-tag vax" title="Vacunación">
+                          💉
+                        </i>
+                      )}
+                      {hasFum && (
+                        <i className="pin-tag fum" title="Fumigación">
+                          🌫️
+                        </i>
+                      )}
+                      {hasCord && (
+                        <i className="pin-tag cord" title="Cordón sanitario">
+                          🚧
+                        </i>
+                      )}
+                    </span>
+                  )}
+                </span>
+                {isSelected && (
+                  <span className="pin-detail">
+                    {state.S.toLocaleString("es-EC")} susc. ·{" "}
+                    {state.R.toLocaleString("es-EC")} inm.
+                  </span>
+                )}
+              </button>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Top-Left Theater Heading */}
       <div className="map-heading">

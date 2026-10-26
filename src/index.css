@@ -2219,7 +2219,8 @@ svg {
    3D Earth / Satellite & Tactical Volumetric Viewport (CureEarth3DMap)
    ========================================================================= */
 .earth-3d-map {
-  --pin-stem-h: 28px;
+  --pin-stem-h: 22px;
+  --pin-scale: 1;
   background: radial-gradient(circle at 50% 42%, #132d38, #081319 78%);
 }
 .earth-webgl-viewport {
@@ -2239,6 +2240,15 @@ svg {
   height: 100%;
   pointer-events: none;
   z-index: 2;
+}
+.earth-pins-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 3;
 }
 .earth-top-controls {
   position: absolute;
@@ -2267,8 +2277,8 @@ svg {
   background: #1d363e;
 }
 
-/* Zero-drift 0x0 marker host: preserves MapLibre's exact sub-pixel translate3d */
-.maplibregl-marker.earth-marker-host {
+/* Zero-drift 0x0 marker host driven by map.project([lng, lat]) */
+.earth-marker-host {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
@@ -2280,13 +2290,13 @@ svg {
   will-change: transform;
   z-index: 3;
 }
-.maplibregl-marker.earth-marker-host.state-infected {
+.earth-marker-host.state-infected {
   z-index: 5;
 }
-.maplibregl-marker.earth-marker-host.state-critical {
+.earth-marker-host.state-critical {
   z-index: 6;
 }
-.maplibregl-marker.earth-marker-host.is-selected {
+.earth-marker-host.is-selected {
   z-index: 20 !important;
 }
 .earth-marker-host .pin-anchor-dot {
@@ -2318,7 +2328,7 @@ svg {
   left: 0;
   bottom: 0;
   width: 1.5px;
-  height: var(--pin-stem-h, 28px);
+  height: var(--pin-stem-h, 22px);
   background: linear-gradient(to top, #7da8b266, #9ec8bbcc);
   transform: translateX(-50%);
   pointer-events: none;
@@ -2336,8 +2346,9 @@ svg {
 .earth-node-pin {
   position: absolute;
   left: 0;
-  bottom: var(--pin-stem-h, 28px);
-  transform: translateX(-50%);
+  bottom: var(--pin-stem-h, 22px);
+  transform: translateX(-50%) scale(var(--pin-scale, 1));
+  transform-origin: center bottom;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
@@ -2358,7 +2369,7 @@ svg {
     box-shadow 0.15s;
 }
 .earth-node-pin:not(:disabled):active {
-  transform: translateX(-50%) scale(0.98);
+  transform: translateX(-50%) scale(calc(var(--pin-scale, 1) * 0.98));
 }
 .earth-node-pin:hover {
   border-color: #a8d8c6;
