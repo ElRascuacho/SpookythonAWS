@@ -31,6 +31,10 @@ import { CureCityMap } from "./components/CureCityMap";
 import { CureEarth3DMap, type MapStyleMode } from "./components/CureEarth3DMap";
 import { ComparisonChart } from "./components/ComparisonChart";
 import {
+  DayTransition,
+  type DayTransitionReport,
+} from "./components/DayTransition";
+import {
   advanceDay,
   createGame,
   getPlanCost,
@@ -181,6 +185,17 @@ export default function App({
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [mapView, setMapView] = useState<"3d" | "2d">("3d");
   const [styleMode, setStyleMode] = useState<MapStyleMode>("satellite");
+  const [dayTransition, setDayTransition] =
+    useState<DayTransitionReport | null>(null);
+  const transitionTimer = useRef<number | null>(null);
+  const advancing = useRef(false);
+  useEffect(
+    () => () => {
+      if (transitionTimer.current !== null)
+        window.clearTimeout(transitionTimer.current);
+    },
+    [],
+  );
   const closeModal = () => setModal(null);
   const snapshot = game.timeline[game.day];
   const node = NODE_MAP[selectedNode];
@@ -203,20 +218,50 @@ export default function App({
     setShowTip(false);
   };
   const nextDay = () => {
+    if (advancing.current) return;
     try {
       const next = advanceDay(game, orders, funding);
+      const report: DayTransitionReport = {
+        day: next.day,
+        totalDays: MAX_DAYS,
+        research: next.research,
+        newCases:
+          next.timeline[next.day].cumulativeInfected -
+          game.timeline[game.day].cumulativeInfected,
+        brigades: orders.length,
+        funding,
+        status: next.status,
+      };
       setGame(next);
       setOrders([]);
       setEvaluation(null);
       setNotice(`Día ${next.day}: ${next.log[0]}`);
       setShowTip(false);
-      if (next.status !== "playing") setModal("result");
+      const finishTurn = () => {
+        advancing.current = false;
+        transitionTimer.current = null;
+        setDayTransition(null);
+        if (next.status !== "playing") setModal("result");
+      };
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        finishTurn();
+        return;
+      }
+      advancing.current = true;
+      setDayTransition(report);
+      transitionTimer.current = window.setTimeout(finishTurn, 1500);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo avanzar.");
     }
   };
   const newGame = () => {
     try {
+      if (transitionTimer.current !== null) {
+        window.clearTimeout(transitionTimer.current);
+        transitionTimer.current = null;
+      }
+      advancing.current = false;
+      setDayTransition(null);
       setGame(createGame(draft));
       setSelectedNode(draft.patientZeroId);
       setOrders([]);
@@ -798,7 +843,8 @@ export default function App({
         <button
           className="advance-button"
           onClick={nextDay}
-          disabled={!playing}
+          disabled={!playing || dayTransition !== null}
+          aria-busy={dayTransition !== null}
         >
           {playing
             ? "Avanzar un día"
@@ -811,6 +857,7 @@ export default function App({
       <div className="sr-only" role="status" aria-live="polite">
         {notice}
       </div>
+      {dayTransition && <DayTransition report={dayTransition} />}
 
       {modal === "logout" && (
         <Dialog title="¿Cerrar sesión?" onClose={closeModal}>
