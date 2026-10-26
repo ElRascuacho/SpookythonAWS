@@ -1,10 +1,31 @@
 # Arquitectura AWS Serverless y Declaración de Costos
 
-Esta arquitectura está diseñada para cumplir dos objetivos simultáneos de la rúbrica: **ejecutar cientos de simulaciones Monte Carlo en segundos** (Calidad Técnica 25% + Nivel Pro) y **mantener el costo operativo real en $0.00 USD dentro de la Capa Gratuita de AWS** (Costos 10% + Criterio de Desempate).
+Esta propuesta busca cumplir los objetivos de la rúbrica: **ejecutar simulaciones Monte Carlo en AWS** (Nivel Pro) y mantener los costos bajos. Las cifras de este documento son estimaciones; no representan facturación verificada de la cuenta AWS.
 
 ---
 
-## Diagrama de Arquitectura (`us-east-1`)
+## Alcance acordado para Nivel Pro
+
+El objetivo prioritario es ejecutar el Monte Carlo en AWS. La calibración con datos epidemiológicos reales y la generación de informes con IA quedan como objetivos secundarios: se incorporarán si hay datos verificables, tiempo para validarlos y presupuesto disponible. No se afirmará que el modelo está calibrado sin documentar la procedencia de los datos y su validación.
+
+| Decisión | Alcance |
+| :--- | :--- |
+| Corridas | 500 corridas por estrategia para las tres estrategias (1.500 corridas en total), conservando la semilla determinista. |
+| Resultados | Persistir métricas agregadas y una trayectoria representativa por estrategia; no guardar la trayectoria completa de cada corrida. |
+| Informe para el alcalde | Mantener como base el informe determinístico existente. Bedrock queda como mejora opcional, no como dependencia para la entrega. |
+| Calibración | Objetivo secundario, sujeto a datos reales verificables y validación del modelo. |
+
+### Propuesta técnica pendiente de implementación
+
+El endpoint síncrono actual no es el flujo objetivo para el Monte Carlo de Nivel Pro. Se propone iniciar el trabajo de forma asíncrona: API Gateway crea un trabajo y devuelve un identificador; Step Functions Distributed Map coordina lotes deterministas en Lambdas con concurrencia acotada; DynamoDB registra el estado del trabajo y S3 almacena el resultado final agregado y las trayectorias representativas. La interfaz consulta el estado y recupera el resultado por identificador.
+
+Distributed Map permite cargas de alta concurrencia y admite hasta 10.000 ejecuciones hijas en paralelo, sujeto a las cuotas de la cuenta y a la concurrencia configurada ([documentación de AWS Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/state-map.html)). La propuesta todavía debe validarse contra las cuotas, permisos y costos de la cuenta AWS antes de desplegarla.
+
+**Estado:** las decisiones de alcance anteriores están acordadas; el flujo asíncrono es una propuesta técnica y todavía no está implementado ni desplegado. El diagrama de abajo corresponde a la propuesta anterior y debe actualizarse para reflejar este flujo antes de usarse como arquitectura objetivo. Las cifras de costo de este documento son estimaciones, no gasto real verificado en la cuenta.
+
+---
+
+## Diagrama de Arquitectura Anterior (`us-east-1`)
 
 ```mermaid
 flowchart LR
@@ -63,9 +84,9 @@ flowchart LR
 
 ## Declaración de Costos (Base para `docs/costos.md`)
 
-### 1. Costo Real Durante la Hackathon (48 horas de desarrollo + día del Pitch)
+### 1. Estimación de costos durante la Hackathon (48 horas de desarrollo + día del Pitch)
 
-| Servicio | Uso Estimado en el Evento | Límite Capa Gratuita (AWS Free Tier) | Costo Real Facturado |
+| Servicio | Uso estimado en el evento | Límite Capa Gratuita (AWS Free Tier) | Costo estimado |
 | :--- | :--- | :--- | :---: |
 | **AWS Lambda** | ~2,000 ejecuciones (512 MB, ~800 ms c/u) | 1,000,000 ejecuciones + 400,000 GB-s / mes | **$0.00 USD** |
 | **API Gateway (HTTP)** | ~2,500 peticiones | 1,000,000 peticiones / mes | **$0.00 USD** |
@@ -73,7 +94,7 @@ flowchart LR
 | **S3 + CloudFront / Amplify** | ~500 MB transferencia | 5 GB S3 + 1 TB CloudFront / mes | **$0.00 USD** |
 | **Amazon Bedrock (Nova Micro)** | ~100 informes para el Alcalde (~800 tokens c/u) | Pago por uso ($0.000035 / 1K input tokens) | **~$0.01 USD** |
 | **AWS Budgets + CloudWatch** | 1 Budget con alerta + <50 MB logs | Primer budget gratis + 5 GB logs gratis | **$0.00 USD** |
-| **TOTAL EVENTO** | | | **~$0.01 USD** |
+| **TOTAL ESTIMADO** | | | **~$0.01 USD** |
 
 ### 2. Proyección de Costo Operativo Mensual en Producción (GAD Municipal de Manta)
 
