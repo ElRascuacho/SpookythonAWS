@@ -1,0 +1,178 @@
+[
+  {
+    "id": "N01",
+    "name": "Mercado Central de Tarqui",
+    "category": "Comercial / Mercado",
+    "lat": -0.9585,
+    "lng": -80.7089,
+    "population": 17619,
+    "baseVectorRisk": 0.85,
+    "betweenness": 0.94,
+    "roleDescription": "Super-propagador comercial; altísimo grado de conexión hacia todos los corredores."
+  },
+  {
+    "id": "N02",
+    "name": "Playita Mía (Tarqui)",
+    "category": "Pesquero / Mercado",
+    "lat": -0.9512,
+    "lng": -80.7095,
+    "population": 11746,
+    "baseVectorRisk": 0.9,
+    "betweenness": 0.62,
+    "roleDescription": "Foco costero y comercial de madrugada; alta humedad y presencia del vector Necro-Dengue."
+  },
+  {
+    "id": "N03",
+    "name": "ULEAM (Campus Principal)",
+    "category": "Educación Superior",
+    "lat": -0.9531,
+    "lng": -80.7456,
+    "population": 21534,
+    "baseVectorRisk": 0.4,
+    "betweenness": 0.89,
+    "roleDescription": "Hub estudiantil; conecta jóvenes de todos los barrios residenciales de Manta."
+  },
+  {
+    "id": "N04",
+    "name": "Hospital Rodríguez Zambrano",
+    "category": "Salud Crítica",
+    "lat": -0.9628,
+    "lng": -80.7412,
+    "population": 5873,
+    "baseVectorRisk": 0.25,
+    "betweenness": 0.58,
+    "roleDescription": "Nodo crítico de salud; recibe flujo de infectados y define el umbral de colapso hospitalario."
+  },
+  {
+    "id": "N05",
+    "name": "Terminal Terrestre de Manta",
+    "category": "Transporte Masivo",
+    "lat": -0.9689,
+    "lng": -80.6892,
+    "population": 14682,
+    "baseVectorRisk": 0.5,
+    "betweenness": 0.78,
+    "roleDescription": "Puerta de entrada/salida y nodo puente hacia Eloy Alfaro, Los Esteros y Zona Industrial."
+  },
+  {
+    "id": "N06",
+    "name": "Mall del Pacífico / Murciélago",
+    "category": "Comercial / Recreación",
+    "lat": -0.9425,
+    "lng": -80.7314,
+    "population": 15661,
+    "baseVectorRisk": 0.2,
+    "betweenness": 0.64,
+    "roleDescription": "Concentrador de alto flujo vespertino, turístico y de fines de semana."
+  },
+  {
+    "id": "N07",
+    "name": "Centro de Manta (Av. 2 / Banco)",
+    "category": "Administrativo",
+    "lat": -0.9478,
+    "lng": -80.7225,
+    "population": 18598,
+    "baseVectorRisk": 0.45,
+    "betweenness": 0.91,
+    "roleDescription": "Puente central entre el oeste (ULEAM/Barbasquillo) y el este (Tarqui/Esteros)."
+  },
+  {
+    "id": "N08",
+    "name": "Parroquia Eloy Alfaro (Cuba)",
+    "category": "Residencial Denso",
+    "lat": -0.981,
+    "lng": -80.698,
+    "population": 34259,
+    "baseVectorRisk": 0.75,
+    "betweenness": 0.82,
+    "roleDescription": "Alta densidad habitacional; principal origen de trabajadores hacia mercados y centro."
+  },
+  {
+    "id": "N09",
+    "name": "Parroquia Los Esteros",
+    "category": "Residencial / Industrial",
+    "lat": -0.956,
+    "lng": -80.695,
+    "population": 27407,
+    "baseVectorRisk": 0.8,
+    "betweenness": 0.74,
+    "roleDescription": "Conecta zona atunera/industrial con Tarqui y Playita Mía."
+  },
+  {
+    "id": "N10",
+    "name": "San Mateo",
+    "category": "Periférico / Pesquero",
+    "lat": -0.959,
+    "lng": -80.809,
+    "population": 7831,
+    "baseVectorRisk": 0.55,
+    "betweenness": 0.18,
+    "roleDescription": "Nodo periférico oeste con baja conectividad (fácil de aislar mediante cordón sanitario)."
+  },
+  {
+    "id": "N11",
+    "name": "Barbasquillo / Zona Hotelera",
+    "category": "Turístico / Residencial",
+    "lat": -0.946,
+    "lng": -80.756,
+    "population": 9788,
+    "baseVectorRisk": 0.2,
+    "betweenness": 0.42,
+    "roleDescription": "Conectado con ULEAM, San Mateo y Mall del Pacífico."
+  },
+  {
+    "id": "N12",
+    "name": "Colegio Manta / Red Escolar Centro",
+    "category": "Educación Secundaria",
+    "lat": -0.9545,
+    "lng": -80.719,
+    "population": 13703,
+    "baseVectorRisk": 0.5,
+    "betweenness": 0.67,
+    "roleDescription": "Amplificador temprano de contagios domésticos entre Tarqui y Ciudadela Umiña."
+  },
+  {
+    "id": "N13",
+    "name": "Zona Industrial Atunera (Vía Rocafuerte)",
+    "category": "Industrial",
+    "lat": -0.962,
+    "lng": -80.678,
+    "population": 16640,
+    "baseVectorRisk": 0.6,
+    "betweenness": 0.53,
+    "roleDescription": "Turnos rotativos que mezclan población de Eloy Alfaro, Los Esteros y Terminal."
+  },
+  {
+    "id": "N14",
+    "name": "Ciudadela Universitaria / Umiña",
+    "category": "Residencial",
+    "lat": -0.951,
+    "lng": -80.738,
+    "population": 15661,
+    "baseVectorRisk": 0.3,
+    "betweenness": 0.79,
+    "roleDescription": "Puente directo entre ULEAM, Hospital Rodríguez Zambrano y Centro de Manta."
+  },
+  {
+    "id": "N15",
+    "name": "Puerto Marítimo de Manta",
+    "category": "Logístico / Portuario",
+    "lat": -0.937,
+    "lng": -80.72,
+    "population": 8809,
+    "baseVectorRisk": 0.45,
+    "betweenness": 0.38,
+    "roleDescription": "Conectado con Centro de Manta, Mall del Pacífico y corredor logístico."
+  },
+  {
+    "id": "N16",
+    "name": "Urbirríos / Vivienda Popular",
+    "category": "Residencial Denso",
+    "lat": -0.992,
+    "lng": -80.685,
+    "population": 24470,
+    "baseVectorRisk": 0.8,
+    "betweenness": 0.48,
+    "roleDescription": "Gran reservorio poblacional conectado por líneas de bus FETUM al Terminal y Tarqui."
+  }
+]

@@ -1,0 +1,68 @@
+{
+  "version": "v2026.10-manta-census",
+  "generatedAt": "2026-10-27T03:42:37.859Z",
+  "nodeCount": 16,
+  "totalPopulation": 264281,
+  "provenanceSummary": "Datos integrados de INEC (Censo 2022), MSP (Gaceta SE41), NASA POWER (MERRA-2) y OpenStreetMap para Manta, Manabí.",
+  "files": {
+    "manta-nodes.json": {
+      "path": "src/data/fixtures/manta-nodes.json",
+      "sha256": "75e40c42ea0178066a023a10d2fbc5c952b9c2233cf5bc66502fd97d6d4aa69f",
+      "recordsCount": 16,
+      "methodologicalCategory": "UNCALIBRATED_STRUCTURAL_PROXY"
+    },
+    "climate-manta.json": {
+      "path": "src/data/fixtures/climate-manta.json",
+      "sha256": "d54d7ccfa66fd1b10e82d7190d4c38c9a5d93d2e801ffc8db0c2f7ac0ddca875",
+      "recordsCount": 60,
+      "methodologicalCategory": "GRIDDED_ESTIMATE"
+    }
+  },
+  "sources": [
+    {
+      "dimension": "Demografía Cantonal",
+      "authority": "INEC (Censo de Población y Vivienda 2022)",
+      "sourceUrl": "https://www.ecuadorencifras.gob.ec/censo-de-poblacion-y-vivienda/",
+      "captureDate": "2026-10-20",
+      "methodologicalCategory": "OBSERVED_OFFICIAL",
+      "license": "Datos Abiertos Ecuador / Atribución Estatal INEC",
+      "notes": "Población cantonal oficial 271.145 hab. Cobertura en modelo: 264.281 hab. (97.5%)."
+    },
+    {
+      "dimension": "Vigilancia Epidemiológica",
+      "authority": "MSP (Dirección Nacional de Vigilancia Epidemiológica)",
+      "sourceUrl": "https://www.salud.gob.ec/gacetas-vectoriales-2026/",
+      "captureDate": "2026-10-17",
+      "methodologicalCategory": "OBSERVED_OFFICIAL",
+      "license": "Información Pública Institucional del Estado ecuatoriano",
+      "notes": "Gaceta ETV SE41. Justificación del reservorio vectorial y estacionalidad de Aedes aegypti en Manabí."
+    },
+    {
+      "dimension": "Capacidad Hospitalaria",
+      "authority": "INEC / MSP (Registro de Camas y Egresos Hospitalarios)",
+      "sourceUrl": "https://www.ecuadorencifras.gob.ec/camas-y-egresos-hospitalarios/",
+      "captureDate": "2026-10-20",
+      "methodologicalCategory": "OBSERVED_OFFICIAL",
+      "license": "Creative Commons Atribución 4.0 (CC BY 4.0)",
+      "notes": "Estadística estructural agregada. En el modelo, hospitalCapacity = 2500 actúa como umbral efectivo de contingencia municipal ante casos sintomáticos activos, no inventario de camas censables vacías."
+    },
+    {
+      "dimension": "Climatología y Vector",
+      "authority": "NASA POWER API (Global Energy Resources / MERRA-2)",
+      "sourceUrl": "https://power.larc.nasa.gov/docs/services/api/temporal/daily/",
+      "captureDate": "2026-10-22",
+      "methodologicalCategory": "GRIDDED_ESTIMATE",
+      "license": "Dominio Público (NASA Open Data Policy)",
+      "notes": "Estimación en malla satelital 0.5° para punto (-0.95, -80.71). Modulación térmica y de humedad."
+    },
+    {
+      "dimension": "Red Vial y Equipamientos Urbanos",
+      "authority": "OpenStreetMap Contributors",
+      "sourceUrl": "https://osmfoundation.org/wiki/Attribution_Guidelines",
+      "captureDate": "2026-10-15",
+      "methodologicalCategory": "OBSERVED_OFFICIAL",
+      "license": "Open Database License (ODbL) 1.0",
+      "notes": "Geolocalización de 16 equipamientos estratégicos y corredores FETUM de transporte."
+    }
+  ]
+}

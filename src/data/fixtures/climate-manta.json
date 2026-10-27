@@ -1,0 +1,422 @@
+[
+  {
+    "day": 1,
+    "temperatureC": 26.4,
+    "humidityPct": 83,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.07
+  },
+  {
+    "day": 2,
+    "temperatureC": 26.6,
+    "humidityPct": 83,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.09
+  },
+  {
+    "day": 3,
+    "temperatureC": 26.8,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.09
+  },
+  {
+    "day": 4,
+    "temperatureC": 26.9,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.1
+  },
+  {
+    "day": 5,
+    "temperatureC": 27.1,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.11
+  },
+  {
+    "day": 6,
+    "temperatureC": 27.3,
+    "humidityPct": 81,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.12
+  },
+  {
+    "day": 7,
+    "temperatureC": 27.4,
+    "humidityPct": 80,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.12
+  },
+  {
+    "day": 8,
+    "temperatureC": 27.5,
+    "humidityPct": 80,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.12
+  },
+  {
+    "day": 9,
+    "temperatureC": 27.7,
+    "humidityPct": 79,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.13
+  },
+  {
+    "day": 10,
+    "temperatureC": 27.8,
+    "humidityPct": 78,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.13
+  },
+  {
+    "day": 11,
+    "temperatureC": 27.8,
+    "humidityPct": 77,
+    "precipitationMm": 4.2,
+    "vectorMultiplier": 1.13
+  },
+  {
+    "day": 12,
+    "temperatureC": 27.9,
+    "humidityPct": 76,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.13
+  },
+  {
+    "day": 13,
+    "temperatureC": 28,
+    "humidityPct": 76,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.13
+  },
+  {
+    "day": 14,
+    "temperatureC": 28,
+    "humidityPct": 75,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.13
+  },
+  {
+    "day": 15,
+    "temperatureC": 28,
+    "humidityPct": 74,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.13
+  },
+  {
+    "day": 16,
+    "temperatureC": 28,
+    "humidityPct": 73,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.12
+  },
+  {
+    "day": 17,
+    "temperatureC": 28,
+    "humidityPct": 73,
+    "precipitationMm": 5.2,
+    "vectorMultiplier": 1.12
+  },
+  {
+    "day": 18,
+    "temperatureC": 27.9,
+    "humidityPct": 72,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.11
+  },
+  {
+    "day": 19,
+    "temperatureC": 27.8,
+    "humidityPct": 72,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.1
+  },
+  {
+    "day": 20,
+    "temperatureC": 27.8,
+    "humidityPct": 71,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.1
+  },
+  {
+    "day": 21,
+    "temperatureC": 27.7,
+    "humidityPct": 71,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.09
+  },
+  {
+    "day": 22,
+    "temperatureC": 27.5,
+    "humidityPct": 71,
+    "precipitationMm": 5.2,
+    "vectorMultiplier": 1.08
+  },
+  {
+    "day": 23,
+    "temperatureC": 27.4,
+    "humidityPct": 71,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.07
+  },
+  {
+    "day": 24,
+    "temperatureC": 27.3,
+    "humidityPct": 71,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.07
+  },
+  {
+    "day": 25,
+    "temperatureC": 27.1,
+    "humidityPct": 71,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.06
+  },
+  {
+    "day": 26,
+    "temperatureC": 26.9,
+    "humidityPct": 72,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.05
+  },
+  {
+    "day": 27,
+    "temperatureC": 26.8,
+    "humidityPct": 72,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.04
+  },
+  {
+    "day": 28,
+    "temperatureC": 26.6,
+    "humidityPct": 73,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.04
+  },
+  {
+    "day": 29,
+    "temperatureC": 26.4,
+    "humidityPct": 73,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.02
+  },
+  {
+    "day": 30,
+    "temperatureC": 26.2,
+    "humidityPct": 74,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.02
+  },
+  {
+    "day": 31,
+    "temperatureC": 26,
+    "humidityPct": 75,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.01
+  },
+  {
+    "day": 32,
+    "temperatureC": 25.8,
+    "humidityPct": 76,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1
+  },
+  {
+    "day": 33,
+    "temperatureC": 25.6,
+    "humidityPct": 76,
+    "precipitationMm": 6.2,
+    "vectorMultiplier": 0.99
+  },
+  {
+    "day": 34,
+    "temperatureC": 25.5,
+    "humidityPct": 77,
+    "precipitationMm": 7.2,
+    "vectorMultiplier": 0.99
+  },
+  {
+    "day": 35,
+    "temperatureC": 25.3,
+    "humidityPct": 78,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.98
+  },
+  {
+    "day": 36,
+    "temperatureC": 25.1,
+    "humidityPct": 79,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.98
+  },
+  {
+    "day": 37,
+    "temperatureC": 25,
+    "humidityPct": 80,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.98
+  },
+  {
+    "day": 38,
+    "temperatureC": 24.9,
+    "humidityPct": 80,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.97
+  },
+  {
+    "day": 39,
+    "temperatureC": 24.7,
+    "humidityPct": 81,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.96
+  },
+  {
+    "day": 40,
+    "temperatureC": 24.6,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.96
+  },
+  {
+    "day": 41,
+    "temperatureC": 24.6,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.96
+  },
+  {
+    "day": 42,
+    "temperatureC": 24.5,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.96
+  },
+  {
+    "day": 43,
+    "temperatureC": 24.4,
+    "humidityPct": 83,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.95
+  },
+  {
+    "day": 44,
+    "temperatureC": 24.4,
+    "humidityPct": 83,
+    "precipitationMm": 7.2,
+    "vectorMultiplier": 0.95
+  },
+  {
+    "day": 45,
+    "temperatureC": 24.4,
+    "humidityPct": 83,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.95
+  },
+  {
+    "day": 46,
+    "temperatureC": 24.4,
+    "humidityPct": 83,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.95
+  },
+  {
+    "day": 47,
+    "temperatureC": 24.4,
+    "humidityPct": 83,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.95
+  },
+  {
+    "day": 48,
+    "temperatureC": 24.5,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.96
+  },
+  {
+    "day": 49,
+    "temperatureC": 24.6,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.96
+  },
+  {
+    "day": 50,
+    "temperatureC": 24.6,
+    "humidityPct": 82,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.96
+  },
+  {
+    "day": 51,
+    "temperatureC": 24.7,
+    "humidityPct": 81,
+    "precipitationMm": 4.2,
+    "vectorMultiplier": 0.96
+  },
+  {
+    "day": 52,
+    "temperatureC": 24.9,
+    "humidityPct": 80,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.97
+  },
+  {
+    "day": 53,
+    "temperatureC": 25,
+    "humidityPct": 80,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.98
+  },
+  {
+    "day": 54,
+    "temperatureC": 25.1,
+    "humidityPct": 79,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.98
+  },
+  {
+    "day": 55,
+    "temperatureC": 25.3,
+    "humidityPct": 78,
+    "precipitationMm": 3.2,
+    "vectorMultiplier": 0.98
+  },
+  {
+    "day": 56,
+    "temperatureC": 25.5,
+    "humidityPct": 77,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.99
+  },
+  {
+    "day": 57,
+    "temperatureC": 25.6,
+    "humidityPct": 76,
+    "precipitationMm": 0,
+    "vectorMultiplier": 0.99
+  },
+  {
+    "day": 58,
+    "temperatureC": 25.8,
+    "humidityPct": 76,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1
+  },
+  {
+    "day": 59,
+    "temperatureC": 26,
+    "humidityPct": 75,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.01
+  },
+  {
+    "day": 60,
+    "temperatureC": 26.2,
+    "humidityPct": 74,
+    "precipitationMm": 0,
+    "vectorMultiplier": 1.02
+  }
+]
