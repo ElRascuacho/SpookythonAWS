@@ -100,7 +100,8 @@ export async function handler(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
   const method = event.requestContext?.http?.method ?? "POST";
-  const path = event.rawPath ?? event.requestContext?.http?.path ?? "/simulate";
+  const rawPath = event.rawPath ?? event.requestContext?.http?.path ?? "/simulate";
+  const path = rawPath.replace(/^\/prod(?=\/|$)/, "") || "/";
 
   try {
     const headers = new Headers();

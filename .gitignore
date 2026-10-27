@@ -28,6 +28,10 @@ lerna-debug.log*
 .temp
 .tmp
 
+# SAM build
+.aws-sam/
+samconfig.toml
+
 # Local agent / workspace metadata
 .atl/
 AGENTS.md

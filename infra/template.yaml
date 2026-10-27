@@ -17,7 +17,7 @@ Parameters:
     Description: Clave aleatoria de 32 bytes en hexadecimal para firmar sesiones.
   InviteAppOrigin:
     Type: String
-    AllowedPattern: "https://[^/]+"
+    AllowedPattern: "https?://[^/]+"
     Description: Origen HTTPS del frontend sin barra final; servir API y frontend bajo el mismo origen.
   OpenAiApiKey:
     Type: String
