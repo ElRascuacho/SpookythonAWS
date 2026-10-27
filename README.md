@@ -1,4 +1,4 @@
-﻿# Manta Cero — Encuentra la cura
+# Manta Cero — Encuentra la cura
 
 Demo jugable para navegador de **Operación Manta Cero**, Track B: La Plaga Zombie. Eres el comité de respuesta de Manta: distribuye recursos entre contención e investigación para encontrar la cura antes de que el brote desborde la ciudad.
 
@@ -28,7 +28,7 @@ Los códigos son **compartidos y reutilizables**: autorizan acceso a la demo, no
 
 **Límites de esta demo:** el rate limit es por proceso, no distribuido; antes de escalar necesita control compartido o WAF. Cerrar sesión borra la cookie del navegador, pero una copia robada del token sigue válida hasta caducar o revocar el código/clave. El JavaScript del juego es descargable y la simulación corre en cliente: esto controla el acceso normal y los endpoints, no es DRM ni protege código fuente o datos que se incluyan en assets públicos.
 
-**Despliegue:** un hosting estático por sí solo no sirve el login. El handler Lambda comparte el mismo control y protege `/api/news`, `/simulate` y `/mayor-report`. `bun run build:lambda` genera únicamente `build/lambda/handler.mjs`: SAM empaqueta ese directorio, nunca la raíz con los secretos locales. La plantilla recibe hashes, clave de sesión, origen y opcionalmente la clave de OpenAI como parámetros `NoEcho` (vacía = boletín determinista). Requiere enrutar frontend y API bajo el mismo origen HTTPS, reenviar `Cookie`, `Origin` y `Set-Cookie`, y no cachear respuestas de autenticación. No se configuró ni desplegó esa distribución en AWS.
+**Despliegue:** El frontend estático y el backend serverless están alojados y unificados en AWS mediante **Amazon CloudFront** y **Amazon S3** (Origin Access Control) junto con **AWS Lambda ARM64** y **API Gateway**. Esto permite servir la UI y los endpoints protegidos (`/api/auth/*`, `/api/news`, `/simulate`, `/mayor-report`) bajo el mismo origen HTTPS seguro, garantizando el funcionamiento de las cookies `HttpOnly; SameSite=Strict` sin fricciones de CORS. La compilación se realiza con `bun run build` para la web y `bun run build:lambda` para el paquete serverless (`build/lambda/handler.mjs`).
 
 ## Campaña cinematográfica
 
@@ -89,13 +89,41 @@ La evaluación de tu plan repite el calendario ya elegido; no representa una pol
 - `src/domain/monteCarlo.ts` — baselines y agregación; la demo calcula solo al pedir evaluación.
 - `src/domain/newsModel.ts` — contrato, prompt editorial y boletín determinista de respaldo.
 - `src/domain/newsClient.ts` — llamada a `/api/news` con reserva local ante cualquier fallo.
-- `src/domain/__tests__/`, `backend/__tests__/` — reproducibilidad, economía, conservación, victoria/derrota, autenticación y noticias (22 pruebas).
+- `src/domain/__tests__/`, `backend/__tests__/`, `tests/e2e/` — reproducibilidad, economía, conservación, victoria/derrota, esquemas Zod, agregador, workers, reconciliación y smoke tests (90 pruebas automatizadas pasando en verde).
 - `src/InvitationGate.tsx`, `src/access.css` — pantalla de acceso y ciclo de sesión.
 - `backend/auth.ts`, `backend/devAuth.ts` — validación compartida y adaptador local Vite con `/api/news`.
-- `backend/news.ts`, `backend/handler.ts`, `infra/template.yaml` — generación del boletín, endpoints protegidos y plantilla AWS, no desplegados.
+- `backend/news.ts`, `backend/handler.ts`, `infra/template.yaml` — generación del boletín, endpoints protegidos y plantilla AWS SAM desplegada en producción.
+- `.github/workflows/deploy.yml` — pipeline de CI/CD para testeo y auto-despliegue continuo en AWS.
 
-## Estado de entrega AWS
+## Despliegue y Arquitectura Cloud en AWS (Producción)
 
-Esta entrega es una **demo local con autenticación por invitación**, sin persistencia de partidas ni evidencia de despliegue AWS. El único servicio externo de IA es OpenAI para el boletín diario, invocado desde el servidor y con respaldo determinista si falta la clave. `bun run build` genera el frontend en `dist/`; se necesita además un servidor de autenticación. `bun run build:lambda` genera el artefacto del backend por separado. Ninguno publica automáticamente.
+El proyecto cuenta con una arquitectura serverless 100% operativa y desplegada en la región **`us-east-1`**:
 
-Pendientes para la entrega del reto: hosting público AWS, Budget con alerta y captura, diagrama exportado y fuente actualizados, costos reales verificados y pitch. [Arquitectura Pro propuesta](docs/04-arquitectura-aws-y-costos.md) y [costos históricos del borrador](docs/costos.md) son documentación de trabajo, no evidencia de servicios operativos ni facturación validada.
+- **URL Pública en Vivo (CloudFront):** [https://d1jqe51rtigrcl.cloudfront.net](https://d1jqe51rtigrcl.cloudfront.net)
+- **API Gateway Endpoint:** `https://n4n7yll0f4.execute-api.us-east-1.amazonaws.com/prod`
+- **Cómputo Serverless:** AWS Lambda ARM64 (Graviton2) con Node.js 20.
+- **Base de Datos:** Amazon DynamoDB (`SpookythonSimulations`) en modo On-Demand.
+- **Hosting Frontend:** Amazon S3 privado con Origin Access Control (OAC) y CDN global CloudFront.
+
+### Verificación en Vivo del Backend Cloud
+
+Para validar la salud y el determinismo de los endpoints desplegados en AWS:
+
+```bash
+bun run verify:cloud
+```
+
+### Control de Presupuesto y Costos (AWS Budgets)
+
+Para garantizar que el costo del proyecto se mantenga estrictamente acotado y dentro de la capa gratuita (*Free Tier*), se configuró una alarma de presupuesto de **$5.00 USD** con alertas automáticas:
+
+![Presupuesto AWS](./docs/images/aws-budget.png)
+
+### Auto-deploy Continuo (CI/CD)
+
+Cada commit sobre la rama `main` dispara el flujo de GitHub Actions ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)):
+1. Ejecución de la suite completa de 90 pruebas con Bun (`bun test`).
+2. Compilación del bundle de Lambda (`bun run build:lambda`) y assets web (`bun run build`).
+3. Empaquetado y despliegue de infraestructura con **AWS SAM CLI**.
+4. Sincronización de artefactos web en Amazon S3 (`aws s3 sync dist/`).
+5. Invalidación automática de la caché perimetral en Amazon CloudFront.
