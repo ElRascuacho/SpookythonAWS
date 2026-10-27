@@ -1,3 +1,4 @@
+import { BUDGET_LEVELS, ECONOMY } from "./economy";
 import {
   DEFAULT_SIMULATION_PARAMS,
   MANTA_EDGES,
@@ -32,22 +33,26 @@ export interface CureGame {
 
 export const MAX_DAYS = 40;
 export const LOSS_THRESHOLD = 0.35;
-export const RESEARCH_LEVELS = [0, 250, 500] as const;
+export const RESEARCH_LEVELS = [
+  0,
+  ECONOMY.researchStandardUsd,
+  ECONOMY.researchPriorityUsd,
+] as const;
 export type ResearchFunding = (typeof RESEARCH_LEVELS)[number];
 export const INTERVENTIONS = {
   vaccine: {
     label: "Vacunación",
-    cost: 200,
-    description: "850 dosis · solo población susceptible",
+    cost: ECONOMY.vaccineLotUsd,
+    description: `${ECONOMY.vaccineLotDoses} dosis · solo población susceptible`,
   },
   fumigate: {
     label: "Fumigación",
-    cost: 250,
+    cost: ECONOMY.fumigationUsd,
     description: "Reduce un 80% el vector ambiental",
   },
   cordon: {
     label: "Cordón sanitario",
-    cost: 300,
+    cost: ECONOMY.cordonUsd,
     description: "Reduce un 92% la movilidad · 1 día",
   },
 };
@@ -59,7 +64,7 @@ export function createGame(config: GameConfig): CureGame {
     config.seed > 4294967295 ||
     !NODE_MAP[config.patientZeroId] ||
     !["standard", "surprise", "escape"].includes(config.scenario) ||
-    ![500, 1000, 1500].includes(config.dailyBudget)
+    !BUDGET_LEVELS.some((level) => level === config.dailyBudget)
   )
     throw new Error("Configuración de partida inválida.");
   const params: SimulationParams = {
@@ -163,7 +168,12 @@ export function advanceDay(
   const snapshot = run.timeline[day];
   const research = Math.min(
     100,
-    game.research + (funding === 500 ? 5 : funding === 250 ? 3 : 0),
+    game.research +
+      (funding === ECONOMY.researchPriorityUsd
+        ? 5
+        : funding === ECONOMY.researchStandardUsd
+          ? 3
+          : 0),
   );
   const overwhelmed =
     snapshot.cumulativeInfected >= TOTAL_MANTA_POPULATION * LOSS_THRESHOLD;

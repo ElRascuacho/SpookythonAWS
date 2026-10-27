@@ -19,6 +19,15 @@ Parameters:
     Type: String
     AllowedPattern: "https://[^/]+"
     Description: Origen HTTPS del frontend sin barra final; servir API y frontend bajo el mismo origen.
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Clave de OpenAI solo para el boletín diario. Vacía = boletín determinista de respaldo.
+  OpenAiNewsModel:
+    Type: String
+    Default: gpt-4o-mini
+    Description: Modelo de OpenAI usado por /api/news.
 
 Globals:
   Function:
@@ -34,6 +43,8 @@ Globals:
         INVITE_CODE_HASHES: !Ref InviteCodeHashes
         INVITE_SESSION_SECRET: !Ref InviteSessionSecret
         INVITE_APP_ORIGIN: !Ref InviteAppOrigin
+        OPENAI_API_KEY: !Ref OpenAiApiKey
+        OPENAI_NEWS_MODEL: !Ref OpenAiNewsModel
 
 Resources:
   SpookythonHttpApi:
@@ -62,6 +73,12 @@ Resources:
             ApiId: !Ref SpookythonHttpApi
             Path: /api/auth/{action}
             Method: ANY
+        NewsRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /api/news
+            Method: POST
         SimulateRoute:
           Type: HttpApi
           Properties:

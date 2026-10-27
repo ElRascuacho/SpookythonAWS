@@ -1,3 +1,4 @@
+import { ECONOMY } from './economy';
 import { CityEdge, CityNode, SimulationParams } from './types';
 
 /**
@@ -391,11 +392,11 @@ export const DEFAULT_SIMULATION_PARAMS: SimulationParams = {
   gamma: 0.10,
   hospitalCapacity: 2500,
   vaccineEfficacy: 0.85,
-  dailyBudget: 1000,
-  vaccineCost: 200,
+  dailyBudget: 7500,
+  vaccineCost: ECONOMY.vaccineLotUsd,
   vaccineBatchSize: 850,
-  fumigationCost: 250,
-  cordonCost: 300,
+  fumigationCost: ECONOMY.fumigationUsd,
+  cordonCost: ECONOMY.cordonUsd,
   days: 60,
   seed: 20261030,
   monteCarloRuns: 60,

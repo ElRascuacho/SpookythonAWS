@@ -5,6 +5,7 @@ import {
   SimulationParams,
 } from "../src/domain/types";
 import { authorize } from "./auth";
+import { NEWS_ROUTE, handleNewsRoute } from "./news";
 
 export interface APIGatewayProxyEventV2 {
   rawPath?: string;
@@ -90,6 +91,7 @@ export function buildMayorExecutiveBriefing(
 /**
  * AWS Lambda HTTP API Handler (ARM64 Graviton2, us-east-1).
  * Routes:
+ * - POST /api/news -> Generates the daily bulletin with OpenAI (fallback deterministic).
  * - POST /simulate -> Runs deterministic Monte Carlo SEIR-V comparison across all 3 strategies.
  * - POST /mayor-report -> Generates the plain-language briefing for the Mayor of Manta.
  */
@@ -118,10 +120,8 @@ export async function handler(
       headers,
       body: ["GET", "HEAD"].includes(method) ? undefined : body,
     });
-    const auth = await authorize(
-      request,
-      event.requestContext?.http?.sourceIp ?? "unknown",
-    );
+    const clientIp = event.requestContext?.http?.sourceIp ?? "unknown";
+    const auth = await authorize(request, clientIp);
     if (auth) {
       const cookie = auth.headers.get("set-cookie");
       auth.headers.delete("set-cookie");
@@ -130,6 +130,15 @@ export async function handler(
         headers: Object.fromEntries(auth.headers.entries()),
         body: await auth.text(),
         ...(cookie ? { cookies: [cookie] } : {}),
+      };
+    }
+    // Se resuelve antes del enrutado de simulación: comparte contrato con el dev server.
+    if (path === NEWS_ROUTE) {
+      const newsResponse = await handleNewsRoute(request, clientIp);
+      return {
+        statusCode: newsResponse.status,
+        headers: Object.fromEntries(newsResponse.headers.entries()),
+        body: await newsResponse.text(),
       };
     }
     if (!["/simulate", "/mayor-report"].includes(path))

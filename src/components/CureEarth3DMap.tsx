@@ -9,6 +9,7 @@ import {
   Map as MapIcon,
   Minus,
   Orbit,
+  Plane,
   Plus,
   ShieldCheck,
   ShieldPlus,
@@ -32,6 +33,22 @@ interface Props {
 }
 
 const MANTA_CENTER: [number, number] = [-80.724, -0.9565];
+
+/**
+ * Hard camera cage: the 3D viewport can never leave the city of Manta.
+ * [[west, south], [east, north]] in [lng, lat].
+ */
+const MANTA_BOUNDS: [[number, number], [number, number]] = [
+  [-80.86, -1.03],
+  [-80.63, -0.9],
+];
+
+/** Lowest zoom the city camera is ever allowed to reach (city-only, clean satellite tiles). */
+const MANTA_MIN_ZOOM = 12.4;
+/** Highest zoom allowed (keeps the tactical 3D models readable). */
+const MANTA_MAX_ZOOM = 18;
+/** Floor for the optional cinematic city flyover (stays city-scale). */
+const CITY_FLYOVER_MIN_ZOOM = 12.6;
 
 const SHORT_NAMES: Record<string, string> = {
   N01: "TARQUI",
@@ -380,15 +397,6 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       tileSize: 256,
       maxzoom: 18,
     },
-    "carto-dark-matter": {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-      maxzoom: 18,
-    },
     openmaptiles: {
       type: "vector",
       url: "https://tiles.openfreemap.org/planet",
@@ -403,21 +411,11 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       },
     },
     {
-      id: "tactical-dark-raster",
-      type: "raster",
-      source: "carto-dark-matter",
-      paint: {
-        "raster-opacity": 0.95,
-        "raster-contrast": 0.15,
-        "raster-brightness-max": 0.82,
-      },
-    },
-    {
       id: "satellite-earth-raster",
       type: "raster",
       source: "esri-world-satellite",
       paint: {
-        "raster-opacity": 0.88,
+        "raster-opacity": 0.94,
         "raster-brightness-max": 0.78,
         "raster-brightness-min": 0.05,
         "raster-contrast": 0.24,
@@ -486,6 +484,7 @@ export function CureEarth3DMap({
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const pinHostRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const flyoverTimerRef = useRef<number | null>(null);
 
   const [layer, setLayer] = useState<"infection" | "protection">("infection");
   const [mapReady, setMapReady] = useState(false);
@@ -681,6 +680,10 @@ export function CureEarth3DMap({
       pitch: prefersReducedMotion ? 56 : 28,
       bearing: prefersReducedMotion ? -18 : -6,
       maxPitch: 75,
+      // City-only camera cage: no planet / earth zoom-out is possible anymore.
+      maxBounds: MANTA_BOUNDS,
+      minZoom: MANTA_MIN_ZOOM,
+      maxZoom: MANTA_MAX_ZOOM,
       attributionControl: false,
     });
 
@@ -794,6 +797,10 @@ export function CureEarth3DMap({
     mapRef.current = map;
 
     return () => {
+      if (flyoverTimerRef.current !== null) {
+        window.clearTimeout(flyoverTimerRef.current);
+        flyoverTimerRef.current = null;
+      }
       resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
@@ -809,7 +816,7 @@ export function CureEarth3DMap({
       map.setPaintProperty(
         "satellite-earth-raster",
         "raster-opacity",
-        isSat ? 0.88 : 0,
+        isSat ? 0.94 : 0,
       );
     }
     if (map.getLayer("manta-real-3d-buildings")) {
@@ -1144,29 +1151,38 @@ export function CureEarth3DMap({
     };
   }, [mapReady]);
 
-  const handleOrbitalDive = () => {
+  const handleCityFlyover = () => {
     const map = mapRef.current;
     if (!map) return;
     setIsOrbiting(false);
+    if (flyoverTimerRef.current !== null) {
+      window.clearTimeout(flyoverTimerRef.current);
+      flyoverTimerRef.current = null;
+    }
+    // Local establishing shot over the city — never leaves MANTA_BOUNDS
+    // and never zooms out past CITY_FLYOVER_MIN_ZOOM.
     map.flyTo({
       center: MANTA_CENTER,
-      zoom: 6.2,
-      pitch: 12,
-      bearing: 0,
-      duration: 950,
+      zoom: Math.max(CITY_FLYOVER_MIN_ZOOM, 12.4),
+      pitch: 50,
+      bearing: -40,
+      duration: 1200,
+      curve: 1.3,
       essential: true,
     });
-    window.setTimeout(() => {
+    flyoverTimerRef.current = window.setTimeout(() => {
+      flyoverTimerRef.current = null;
       map.flyTo({
         center: MANTA_CENTER,
-        zoom: 13.15,
+        zoom: Math.max(CITY_FLYOVER_MIN_ZOOM, 13.15),
         pitch: 58,
         bearing: -18,
-        duration: 2100,
+        duration: 2000,
+        curve: 1.3,
         essential: true,
       });
       setIsPitched(true);
-    }, 1000);
+    }, 1250);
   };
 
   const handleResetView = () => {
@@ -1333,7 +1349,11 @@ export function CureEarth3DMap({
 
       {/* Top-Right Layer & 3D Mode Switcher */}
       <div className="earth-top-controls">
-        <div className="map-layers" aria-label="Modo de visualización del mapa">
+        <div
+          className="map-layers"
+          role="group"
+          aria-label="Modo de visualización del mapa"
+        >
           <button
             className={styleMode === "satellite" ? "active" : ""}
             onClick={() => onChangeStyleMode("satellite")}
@@ -1359,7 +1379,11 @@ export function CureEarth3DMap({
           </button>
         </div>
 
-        <div className="map-layers" aria-label="Capas epidemiológicas">
+        <div
+          className="map-layers"
+          role="group"
+          aria-label="Capas epidemiológicas"
+        >
           <button
             className={layer === "infection" ? "active" : ""}
             onClick={() => setLayer("infection")}
@@ -1415,11 +1439,11 @@ export function CureEarth3DMap({
           <Orbit size={15} />
         </button>
         <button
-          aria-label="Vuelo orbital hacia Manta"
-          title="Inmersión satelital hacia Manta"
-          onClick={handleOrbitalDive}
+          aria-label="Sobrevuelo cinematográfico de la ciudad de Manta"
+          title="Sobrevuelo local de Manta"
+          onClick={handleCityFlyover}
         >
-          <Globe size={15} />
+          <Plane size={15} />
         </button>
       </div>
 

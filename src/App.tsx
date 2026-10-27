@@ -2,26 +2,19 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
-  ArrowUpRight,
-  AudioLines,
   Check,
   CircleHelp,
-  Clock3,
   Dna,
   FlaskConical,
   HeartPulse,
   LogOut,
   MapPin,
   Microscope,
-  Plus,
-  Radio,
   RotateCcw,
   Settings2,
   ShieldCheck,
   ShieldPlus,
   SprayCan,
-  Target,
-  Trash2,
   TrendingDown,
   Users,
   X,
@@ -35,6 +28,7 @@ import {
   DayTransition,
   type DayTransitionReport,
 } from "./components/DayTransition";
+import { NewsFlash } from "./components/NewsFlash";
 import {
   advanceDay,
   createGame,
@@ -42,20 +36,22 @@ import {
   INTERVENTIONS,
   LOSS_THRESHOLD,
   MAX_DAYS,
+  RESEARCH_LEVELS,
+  type CureGame,
   type GameConfig,
   type Intervention,
   type Order,
   type ResearchFunding,
 } from "./domain/cureGame";
+import { BUDGET_LEVELS } from "./domain/economy";
 import {
   MANTA_NODES,
   NODE_MAP,
   TOTAL_MANTA_POPULATION,
 } from "./domain/mantaGraph";
-import {
-  computePercentile,
-  runMonteCarloComparison,
-} from "./domain/monteCarlo";
+import { computePercentile, runMonteCarloComparison } from "./domain/monteCarlo";
+import { requestNews } from "./domain/newsClient";
+import type { GameNews, NewsState } from "./domain/newsModel";
 import { runSingleSeirSimulation } from "./domain/seirEngine";
 import type { MonteCarloComparisonResult } from "./domain/types";
 
@@ -63,7 +59,7 @@ const DEFAULT_CONFIG: GameConfig = {
   seed: 20261030,
   scenario: "standard",
   patientZeroId: "N01",
-  dailyBudget: 1000,
+  dailyBudget: BUDGET_LEVELS[1],
 };
 const format = (value: number) => value.toLocaleString("es-EC");
 const ICONS: Record<Intervention, LucideIcon> = {
@@ -71,12 +67,74 @@ const ICONS: Record<Intervention, LucideIcon> = {
   fumigate: SprayCan,
   cordon: ShieldCheck,
 };
+const PHASES = [
+  "Secuenciación del patógeno",
+  "Desarrollo del antídoto",
+  "Validación de la cura",
+];
+const BUDGET_LABELS: Record<number, string> = {
+  4000: "Austeridad municipal",
+  7500: "Emergencia municipal",
+  11000: "Refuerzo COE Nacional",
+};
+const FUNDING_LABELS: Record<number, string> = {
+  0: "Pausar",
+  1200: "Estándar",
+  2200: "Prioridad",
+};
 type Modal = "help" | "settings" | "analysis" | "result" | "logout" | null;
 interface Evaluation {
   comparison: MonteCarloComparisonResult;
   playerMean: number;
   playerP10: number;
   playerP90: number;
+}
+
+const researchGainFor = (funding: ResearchFunding) =>
+  funding === RESEARCH_LEVELS[2] ? 5 : funding === RESEARCH_LEVELS[1] ? 3 : 0;
+
+const describeNewsFacts = (state: NewsState) =>
+  `+${format(state.newCases)} contagios · ${format(state.cumulativeInfected)} acumulados · cura ${state.research}% · $${format(state.budgetSpent)} ejecutados · hospital ${state.hospitalLoadPct}%`;
+
+function buildNewsState(
+  previous: CureGame,
+  next: CureGame,
+  orders: Order[],
+  funding: ResearchFunding,
+): NewsState {
+  const before = previous.timeline[previous.day];
+  const after = next.timeline[next.day];
+  const newCases = after.cumulativeInfected - before.cumulativeInfected;
+  return {
+    day: next.day,
+    totalDays: MAX_DAYS,
+    status: next.status,
+    scenario: next.config.scenario,
+    seed: next.config.seed,
+    dailyBudget: next.params.dailyBudget,
+    budgetSpent: getPlanCost(orders, funding),
+    funding,
+    research: next.research,
+    researchGain: next.research - previous.research,
+    newCases,
+    cumulativeInfected: after.cumulativeInfected,
+    activeInfections: after.totalI,
+    infectionsGrowthPct:
+      before.cumulativeInfected > 0
+        ? Number((newCases / before.cumulativeInfected) * 100) || 0
+        : 0,
+    hospitalLoadPct: Math.round(
+      (after.totalI / next.params.hospitalCapacity) * 100,
+    ),
+    decisions: {
+      vaccine: orders.filter((order) => order.kind === "vaccine").length,
+      fumigate: orders.filter((order) => order.kind === "fumigate").length,
+      cordon: orders.filter((order) => order.kind === "cordon").length,
+    },
+    zonesAffected: Object.values(after.nodes).filter((zone) => zone.I > 0)
+      .length,
+    zonesTotal: MANTA_NODES.length,
+  };
 }
 
 function Dialog({
@@ -175,11 +233,9 @@ export default function App({
   const [game, setGame] = useState(() => createGame(DEFAULT_CONFIG));
   const [selectedNode, setSelectedNode] = useState("N01");
   const [orders, setOrders] = useState<Order[]>([]);
-  const [funding, setFunding] = useState<ResearchFunding>(250);
-  const [tab, setTab] = useState<"field" | "lab">("field");
+  const [funding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
   const [modal, setModal] = useState<Modal>(null);
   const [draft, setDraft] = useState<GameConfig>(DEFAULT_CONFIG);
-  const [showTip, setShowTip] = useState(true);
   const [notice, setNotice] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [analysisDay, setAnalysisDay] = useState(0);
@@ -188,8 +244,12 @@ export default function App({
   const [styleMode, setStyleMode] = useState<MapStyleMode>("satellite");
   const [dayTransition, setDayTransition] =
     useState<DayTransitionReport | null>(null);
+  const [news, setNews] = useState<GameNews | null>(null);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsFacts, setNewsFacts] = useState("");
   const transitionTimer = useRef<number | null>(null);
   const advancing = useRef(false);
+  const newsRequestId = useRef(0);
   useEffect(
     () => () => {
       if (transitionTimer.current !== null)
@@ -209,6 +269,7 @@ export default function App({
     (snapshot.totalI / game.params.hospitalCapacity) * 100,
   );
   const stage = game.research < 25 ? 0 : game.research < 65 ? 1 : 2;
+  const researchGain = researchGainFor(funding);
   const playing = game.status === "playing";
 
   const queueOrder = (kind: Intervention) => {
@@ -216,7 +277,22 @@ export default function App({
     setNotice(
       `${INTERVENTIONS[kind].label} asignada a ${node.name}. Se ejecutará al avanzar el día.`,
     );
-    setShowTip(false);
+  };
+  const closeNews = () => {
+    newsRequestId.current += 1;
+    setNews(null);
+    setNewsLoading(false);
+  };
+  const startNews = (state: NewsState) => {
+    const requestId = ++newsRequestId.current;
+    setNews(null);
+    setNewsFacts(describeNewsFacts(state));
+    setNewsLoading(true);
+    requestNews(state).then((result) => {
+      if (newsRequestId.current !== requestId) return;
+      setNews(result);
+      setNewsLoading(false);
+    });
   };
   const nextDay = () => {
     if (advancing.current) return;
@@ -233,11 +309,11 @@ export default function App({
         funding,
         status: next.status,
       };
+      startNews(buildNewsState(game, next, orders, funding));
       setGame(next);
       setOrders([]);
       setEvaluation(null);
       setNotice(`Día ${next.day}: ${next.log[0]}`);
-      setShowTip(false);
       const finishTurn = () => {
         advancing.current = false;
         transitionTimer.current = null;
@@ -266,14 +342,17 @@ export default function App({
       }
       advancing.current = false;
       setDayTransition(null);
+      newsRequestId.current += 1;
+      setNews(null);
+      setNewsFacts("");
+      setNewsLoading(false);
       setGame(createGame(draft));
       setSelectedNode(draft.patientZeroId);
       setOrders([]);
-      setFunding(250);
+      setFunding(RESEARCH_LEVELS[1]);
       setEvaluation(null);
       setNotice("Nueva misión iniciada.");
       setModal(null);
-      setShowTip(true);
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "Configuración inválida.",
@@ -322,7 +401,7 @@ export default function App({
 
   return (
     <div className="game-shell">
-      <header className="topbar">
+      <header className="hub-topbar">
         <a className="brand" href="#" aria-label="Operación Manta Cero">
           <span className="brand-mark">
             <Dna size={26} />
@@ -351,228 +430,112 @@ export default function App({
             <span>Nueva misión</span>
           </button>
           {onLogout && (
-            <button aria-label="Cerrar sesión" title="Cerrar sesión" onClick={() => setModal("logout")} disabled={loggingOut}>
+            <button
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              onClick={() => setModal("logout")}
+              disabled={loggingOut}
+            >
               <LogOut size={16} />
               <span>{loggingOut ? "Saliendo…" : "Salir"}</span>
             </button>
           )}
         </nav>
       </header>
-      <main className="command-layout">
-        <aside className="situation-panel">
-          <div className="operation-label">
-            <span className="eyebrow">CENTRO DE RESPUESTA</span>
-            <span className="operation-index">EC—04</span>
-          </div>
-          <div className="mission-title">
-            <h1>
-              Una ciudad.
-              <br />
-              Una última
-              <br />
-              <em>oportunidad.</em>
-            </h1>
-            <p>
-              Contén el brote.
-              <br />
-              Encuentra la cura. Salva Manta.
-            </p>
-          </div>
-          <div className="mission-objective">
-            <div className="objective-icon">
-              <Target size={19} />
-            </div>
-            <div>
-              <span>OBJETIVO DE LA MISIÓN</span>
-              <p>
-                Desarrolla la cura antes del día {MAX_DAYS}, sin que el brote
-                alcance al {LOSS_THRESHOLD * 100}% de la población.
-              </p>
-            </div>
-          </div>
-          <div className="section-title">
-            <span>SITUACIÓN EN TIEMPO REAL</span>
-            <Activity size={14} />
-          </div>
-          <div className="situation-stat">
-            <div className="stat-symbol coral">
-              <Users size={18} />
-            </div>
-            <div>
-              <span>Infecciosos activos</span>
-              <strong className="coral-text">{format(snapshot.totalI)}</strong>
-            </div>
-            <svg viewBox="0 0 64 30" className="sparkline" aria-hidden="true">
-              <path
-                d={`M0 27 ${game.timeline
-                  .slice(-12)
-                  .map(
-                    (s, i, arr) =>
-                      `L${((i + 1) / arr.length) * 62} ${27 - (s.totalI / Math.max(1, ...game.timeline.map((t) => t.totalI))) * 24}`,
-                  )
-                  .join(" ")}`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-            </svg>
-          </div>
-          <div className="situation-stat">
-            <div className="stat-symbol mint">
-              <ShieldCheck size={18} />
-            </div>
-            <div>
-              <span>Recuperados e inmunes</span>
-              <strong>{format(snapshot.totalR)}</strong>
-            </div>
-            <ArrowUpRight size={19} className="muted" />
-          </div>
-          <div className="hospital-status">
-            <div>
-              <HeartPulse size={15} />
-              <span>Capacidad hospitalaria</span>
-              <b className={hospitalLoad > 100 ? "coral-text" : ""}>
-                {hospitalLoad}%
-              </b>
-            </div>
-            <div className="thin-progress">
-              <span
-                style={{
-                  width: `${Math.min(100, hospitalLoad)}%`,
-                  background:
-                    hospitalLoad > 70 ? "var(--coral)" : "var(--mint)",
-                }}
-              />
-            </div>
-            <small>
-              {snapshot.hospitalCollapsed
-                ? "SATURADO · recuperación reducida"
-                : `${format(game.params.hospitalCapacity)} plazas · operativo`}
-            </small>
-          </div>
-          <div className="transmission">
-            <div className="section-title">
-              <span>ÚLTIMA TRANSMISIÓN</span>
-              <Radio size={14} />
-            </div>
-            <div className="transmission-content">
-              <span className="transmission-day">
-                DÍA {String(game.day).padStart(2, "0")}
-              </span>
-              <p key={game.day}>{game.log[0]}</p>
-              <span className="transmission-source">
-                <AudioLines size={12} /> RED DE VIGILANCIA · MANTA
-              </span>
-            </div>
-          </div>
-          <button className="analysis-link" onClick={openAnalysis}>
-            <TrendingDown size={17} />
-            <span>
-              Evaluar mi estrategia
-              <small>20 corridas · dos líneas base + SGC</small>
-            </span>
-            <ArrowUpRight size={17} />
-          </button>
-          <div className="scenario-footnote">
-            <span className="dot mint" />
-            MODELO SEIR-V <span>SEMILLA {game.config.seed}</span>
-          </div>
-        </aside>
-        <div className="map-column">
-          <div className="mobile-objective">
-            ENCUENTRA LA CURA <span>40 días · menos de 35% de contagios</span>
-          </div>
-          <div className="map-statusbar">
-            <div>
-              <span className="live-dot" />
-              VIGILANCIA ACTIVA{" "}
-              <span className="status-muted">
-                /{" "}
-                {game.config.scenario === "standard"
-                  ? "BROTE INICIAL"
-                  : game.config.scenario === "surprise"
-                    ? "DOBLE CONTAGIO"
-                    : "ESCAPE INMUNE"}
-              </span>
-            </div>
-            <span>
-              <MapPin size={12} /> MANABÍ, ECUADOR
-            </span>
-          </div>
-          {mapView === "3d" ? (
-            <CureEarth3DMap
-              snapshot={snapshot}
-              selectedNode={selectedNode}
-              onSelect={(id) => {
-                setSelectedNode(id);
-                setTab("field");
-              }}
-              orders={orders}
-              patientZeroId={game.config.patientZeroId}
-              styleMode={styleMode}
-              onChangeStyleMode={setStyleMode}
-              onSwitchTo2D={() => setMapView("2d")}
+
+      <main className="map-stage">
+        {mapView === "3d" ? (
+          <CureEarth3DMap
+            snapshot={snapshot}
+            selectedNode={selectedNode}
+            onSelect={setSelectedNode}
+            orders={orders}
+            patientZeroId={game.config.patientZeroId}
+            styleMode={styleMode}
+            onChangeStyleMode={setStyleMode}
+            onSwitchTo2D={() => setMapView("2d")}
+          />
+        ) : (
+          <CureCityMap
+            snapshot={snapshot}
+            selectedNode={selectedNode}
+            onSelect={setSelectedNode}
+            orders={orders}
+            onSwitchTo3D={(mode) => {
+              setStyleMode(mode);
+              setMapView("3d");
+            }}
+          />
+        )}
+      </main>
+
+      <section className="hud-situation" aria-label="Situación en tiempo real">
+        <div className="hud-title">
+          <span>SITUACIÓN EN TIEMPO REAL</span>
+          <Activity size={12} />
+        </div>
+        <div className="hud-metric coral">
+          <span className="hud-icon">
+            <Users size={13} />
+          </span>
+          <span>Infecciosos</span>
+          <strong>{format(snapshot.totalI)}</strong>
+          <small>
+            {newCases > 0 ? `+${format(newCases)} hoy` : "Sin nuevos hoy"}
+          </small>
+        </div>
+        <div className="hud-metric">
+          <span className="hud-icon">
+            <ShieldCheck size={13} />
+          </span>
+          <span>Inmunes</span>
+          <strong>{format(snapshot.totalR)}</strong>
+          <small>
+            {((snapshot.totalR / TOTAL_MANTA_POPULATION) * 100).toFixed(1)}% de
+            la ciudad
+          </small>
+        </div>
+        <div className="hud-metric hospital">
+          <span className="hud-icon">
+            <HeartPulse size={13} />
+          </span>
+          <span>Hospital</span>
+          <strong className={hospitalLoad > 100 ? "coral-text" : ""}>
+            {hospitalLoad}%
+          </strong>
+          <small className={snapshot.hospitalCollapsed ? "over" : ""}>
+            {snapshot.hospitalCollapsed ? "Saturado" : "Operativo"}
+          </small>
+          <div className="hud-hospital-track">
+            <i
+              className={hospitalLoad > 70 ? "over" : ""}
+              style={{ width: `${Math.min(100, hospitalLoad)}%` }}
             />
-          ) : (
-            <CureCityMap
-              snapshot={snapshot}
-              selectedNode={selectedNode}
-              onSelect={(id) => {
-                setSelectedNode(id);
-                setTab("field");
-              }}
-              orders={orders}
-              onSwitchTo3D={(mode) => {
-                setStyleMode(mode);
-                setMapView("3d");
-              }}
-            />
-          )}
-          {showTip && (
-            <div className="map-tip">
-              <span className="tip-number">01</span>
-              <div>
-                <strong>Tu primera decisión importa.</strong>
-                <p>
-                  Selecciona una zona del mapa y asigna una brigada. Reserva
-                  fondos para la cura.
-                </p>
-              </div>
-              <button
-                aria-label="Ocultar consejo"
-                onClick={() => setShowTip(false)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
-          <div className="map-bottomline">
-            <span>
-              <i className="dot coral" />
-              {format(snapshot.cumulativeInfected)} contagios acumulados
-            </span>
-            <span>
-              {newCases > 0
-                ? `+${format(newCases)} en el último día`
-                : "El tiempo avanza cuando tú decides"}
-            </span>
           </div>
         </div>
-        <aside className="actions-panel">
-          <div className="actions-heading">
-            <span className="eyebrow">TOMA EL CONTROL</span>
-            <h2>Cada decisión cuenta.</h2>
-          </div>
-          <div className="budget-card">
-            <div>
-              <span>PRESUPUESTO DISPONIBLE</span>
-              <span className="daily-tag">DIARIO</span>
-            </div>
+      </section>
+
+      {(news || newsLoading) && (
+        <NewsFlash
+          news={news}
+          loading={newsLoading}
+          day={game.day}
+          facts={newsFacts}
+          onClose={closeNews}
+        />
+      )}
+
+      <footer className="command-bar">
+        <div className="command-row primary">
+          <div className="cash-block">
+            <span>
+              PRESUPUESTO <b>USD / DÍA</b>
+            </span>
             <strong>
               ${format(remaining)}
               <small> / ${format(game.params.dailyBudget)}</small>
             </strong>
-            <div className="budget-segments">
+            <div className="budget-segments" aria-hidden="true">
               {Array.from({ length: 20 }, (_, index) => (
                 <i
                   key={index}
@@ -584,280 +547,168 @@ export default function App({
                 />
               ))}
             </div>
-            <p>Se renueva cada día. No es acumulable.</p>
           </div>
-          <div
-            className="action-tabs"
-            role="tablist"
-            aria-label="Centro de decisiones"
-          >
-            <button
-              role="tab"
-              aria-selected={tab === "field"}
-              id="field-tab"
-              aria-controls="field-panel"
-              onClick={() => setTab("field")}
-              className={tab === "field" ? "active" : ""}
+          <div className="zone-block">
+            <span>
+              ZONA <b>{node.id}</b>
+            </span>
+            <strong>{node.name}</strong>
+            <select
+              className="mobile-zone-select"
+              aria-label="Seleccionar zona de intervención"
+              value={selectedNode}
+              onChange={(event) => setSelectedNode(event.target.value)}
             >
-              <ShieldPlus size={15} />
-              En terreno
-            </button>
-            <button
-              role="tab"
-              aria-selected={tab === "lab"}
-              id="lab-tab"
-              aria-controls="lab-panel"
-              onClick={() => setTab("lab")}
-              className={tab === "lab" ? "active" : ""}
-            >
-              <FlaskConical size={15} />
-              Laboratorio
-            </button>
-          </div>
-          {tab === "field" ? (
-            <div
-              role="tabpanel"
-              id="field-panel"
-              aria-labelledby="field-tab"
-              className="field-panel"
-            >
-              <div className="selected-zone">
-                <span>
-                  <MapPin size={12} /> ZONA SELECCIONADA <b>{node.id}</b>
-                </span>
-                <h3>{node.name}</h3>
-                <select
-                  className="mobile-zone-select"
-                  aria-label="Seleccionar zona de intervención"
-                  value={selectedNode}
-                  onChange={(event) => setSelectedNode(event.target.value)}
-                >
-                  {MANTA_NODES.map((zone) => (
-                    <option key={zone.id} value={zone.id}>
-                      {zone.name}
-                    </option>
-                  ))}
-                </select>
-                <p>
-                  {format(local.S)} susceptibles <span>·</span>
-                  <b>{format(local.I)} infecciosos</b>
-                </p>
-              </div>
-              <div className="interventions">
-                {(Object.keys(INTERVENTIONS) as Intervention[]).map((kind) => {
-                  const Icon = ICONS[kind];
-                  const action = INTERVENTIONS[kind];
-                  const assigned = orders.some(
-                    (order) =>
-                      order.nodeId === selectedNode && order.kind === kind,
-                  );
-                  return (
-                    <button
-                      key={kind}
-                      className={`intervention ${assigned ? "assigned" : ""}`}
-                      onClick={() => queueOrder(kind)}
-                      disabled={
-                        !playing ||
-                        assigned ||
-                        remaining < action.cost ||
-                        (kind === "vaccine" && local.S === 0)
-                      }
-                    >
-                      <span className={`intervention-icon ${kind}`}>
-                        <Icon size={21} />
-                      </span>
-                      <span>
-                        <strong>{action.label}</strong>
-                        <small>{action.description}</small>
-                        <b>
-                          ${action.cost}
-                          <span> / brigada</span>
-                        </b>
-                      </span>
-                      <span className="intervention-add">
-                        {assigned ? <Check size={16} /> : <Plus size={16} />}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div
-              role="tabpanel"
-              id="lab-panel"
-              aria-labelledby="lab-tab"
-              className="laboratory-panel"
-            >
-              <div className="lab-art">
-                <Dna size={54} />
-                <span>PROYECTO ANTÍDOTO / M—01</span>
-              </div>
-              <h3>
-                La ciencia necesita tiempo.
-                <br />Y tú puedes comprarlo.
-              </h3>
-              <p>
-                La investigación avanza solo si recibe fondos. La cura se valida
-                al llegar al 100%.
-              </p>
-              <div className="research-stages">
-                {[
-                  "Secuenciar el patógeno",
-                  "Desarrollar el antídoto",
-                  "Validar la cura",
-                ].map((label, index) => (
-                  <div
-                    className={
-                      index < stage || game.research === 100
-                        ? "complete"
-                        : index === stage
-                          ? "current"
-                          : ""
-                    }
-                    key={label}
-                  >
-                    <span>
-                      {index < stage || game.research === 100 ? (
-                        <Check size={12} />
-                      ) : (
-                        `0${index + 1}`
-                      )}
-                    </span>
-                    {label}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="research-funding">
-            <div className="section-title">
-              <span>
-                <FlaskConical size={13} /> INVERSIÓN EN LA CURA
-              </span>
-              <span className="mint-text">
-                +{funding === 500 ? 5 : funding === 250 ? 3 : 0}% / día
-              </span>
-            </div>
-            <div className="funding-options">
-              {([0, 250, 500] as ResearchFunding[]).map((amount) => (
-                <button
-                  key={amount}
-                  className={funding === amount ? "active" : ""}
-                  disabled={
-                    !playing ||
-                    getPlanCost(orders, amount) > game.params.dailyBudget
-                  }
-                  onClick={() => {
-                    setFunding(amount);
-                    setNotice(`Investigación: $${amount} por día.`);
-                  }}
-                >
-                  ${amount}
-                  <small>
-                    {amount === 0
-                      ? "Pausar"
-                      : amount === 250
-                        ? "Estándar"
-                        : "Prioridad"}
-                  </small>
-                </button>
+              {MANTA_NODES.map((zone) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.name}
+                </option>
               ))}
-            </div>
+            </select>
+            <small>
+              {format(local.S)} susceptibles ·{" "}
+              <b>{format(local.I)} infecciosos</b>
+            </small>
           </div>
-          <div className="orders-section">
-            <div className="section-title">
-              <span>PLAN DEL PRÓXIMO DÍA</span>
-              <b>{orders.length} BRIGADAS</b>
-            </div>
-            {orders.length ? (
-              <ul className="orders-list">
-                {orders.map((order, index) => {
-                  const Icon = ICONS[order.kind];
-                  return (
-                    <li key={`${order.nodeId}-${order.kind}`}>
-                      <Icon size={13} />
-                      <span>
-                        {INTERVENTIONS[order.kind].label}
-                        <small>{NODE_MAP[order.nodeId].name}</small>
-                      </span>
-                      <button
-                        aria-label={`Retirar ${INTERVENTIONS[order.kind].label} de ${NODE_MAP[order.nodeId].name}`}
-                        onClick={() =>
-                          setOrders((current) =>
-                            current.filter((_, i) => i !== index),
-                          )
-                        }
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="empty-orders">
-                Selecciona una intervención para desplegar tu primera brigada.
-              </p>
-            )}
-          </div>
-        </aside>
-      </main>
-      <footer className="turnbar">
-        <div className="cure-progress">
-          <span className="cure-icon">
-            <FlaskConical size={24} />
-          </span>
-          <div className="cure-track">
-            <div>
-              <span>DESARROLLO DE LA CURA</span>
-              <strong>
-                {game.research}
-                <small>%</small>
-              </strong>
-            </div>
+          <div className="cure-block">
+            <span>
+              DESARROLLO DE LA CURA <b>{game.research}%</b>
+            </span>
             <div className="cure-progress-line">
               <span style={{ width: `${game.research}%` }} />
               <i style={{ left: "25%" }} />
               <i style={{ left: "65%" }} />
             </div>
             <small>
-              {game.research === 100
-                ? "Antídoto validado"
-                : [
-                    "Fase 01 · Secuenciación del patógeno",
-                    "Fase 02 · Desarrollo del antídoto",
-                    "Fase 03 · Validación de la cura",
-                  ][stage]}
+              {game.research === 100 ? (
+                <b>Antídoto validado</b>
+              ) : (
+                <>
+                  Fase 0{stage + 1} · {PHASES[stage]}
+                </>
+              )}
             </small>
           </div>
+          <div className="day-block">
+            <span>DÍA</span>
+            <strong>{String(game.day).padStart(2, "0")}</strong>
+            <span>/ {MAX_DAYS}</span>
+          </div>
+          <button
+            className="advance-button"
+            onClick={nextDay}
+            disabled={!playing || dayTransition !== null}
+            aria-busy={dayTransition !== null}
+          >
+            {playing
+              ? "Avanzar un día"
+              : game.status === "won"
+                ? "Cura encontrada"
+                : "Misión finalizada"}
+            {playing ? <ArrowRight size={18} /> : <Check size={18} />}
+          </button>
         </div>
-        <div className="turn-instruction">
-          <Clock3 size={15} />
-          <span>
-            Sin prisa. Con estrategia.
-            <small>Las órdenes se ejecutan al avanzar.</small>
-          </span>
+
+        {orders.length > 0 && (
+          <div className="command-row plan-row">
+            <span>
+              PLAN DE HOY · {orders.length}{" "}
+              {orders.length === 1 ? "BRIGADA" : "BRIGADAS"}
+            </span>
+            <ul className="plan-chips">
+              {orders.map((order, index) => {
+                const Icon = ICONS[order.kind];
+                return (
+                  <li key={`${order.nodeId}-${order.kind}`}>
+                    <Icon size={11} />
+                    {INTERVENTIONS[order.kind].label} ·{" "}
+                    {NODE_MAP[order.nodeId].name}
+                    <button
+                      aria-label={`Retirar ${INTERVENTIONS[order.kind].label} de ${NODE_MAP[order.nodeId].name}`}
+                      onClick={() =>
+                        setOrders((current) =>
+                          current.filter((_, i) => i !== index),
+                        )
+                      }
+                    >
+                      <X size={11} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        <div className="command-row actions">
+          <div className="intervention-strip">
+            {(Object.keys(INTERVENTIONS) as Intervention[]).map((kind) => {
+              const Icon = ICONS[kind];
+              const action = INTERVENTIONS[kind];
+              const assigned = orders.some(
+                (order) =>
+                  order.nodeId === selectedNode && order.kind === kind,
+              );
+              return (
+                <button
+                  key={kind}
+                  className={`quick-action ${assigned ? "assigned" : ""}`}
+                  aria-pressed={assigned}
+                  aria-label={`${action.label} en ${node.name}: $${action.cost}`}
+                  onClick={() => queueOrder(kind)}
+                  disabled={
+                    !playing ||
+                    assigned ||
+                    remaining < action.cost ||
+                    (kind === "vaccine" && local.S === 0)
+                  }
+                >
+                  <span className={`qa-icon ${kind}`}>
+                    <Icon size={14} />
+                  </span>
+                  <span>
+                    <strong>{action.label}</strong>
+                    <small>{action.description}</small>
+                  </span>
+                  {assigned ? (
+                    <Check className="qa-check" size={14} />
+                  ) : (
+                    <b className="qa-cost">${format(action.cost)}</b>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div
+            className="research-select"
+            role="group"
+            aria-label="Inversión en la cura"
+          >
+            <span className="rs-label">
+              LABORATORIO
+              <b>{researchGain ? `+${researchGain} pp/día` : "pausado"}</b>
+            </span>
+            {RESEARCH_LEVELS.map((amount) => (
+              <button
+                key={amount}
+                className={funding === amount ? "active" : ""}
+                disabled={
+                  !playing ||
+                  getPlanCost(orders, amount) > game.params.dailyBudget
+                }
+                onClick={() => {
+                  setFunding(amount);
+                  setNotice(`Investigación: $${format(amount)} por día.`);
+                }}
+              >
+                ${format(amount)}
+                <small>{FUNDING_LABELS[amount]}</small>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="day-counter">
-          <span>DÍA</span>
-          <strong>{String(game.day).padStart(2, "0")}</strong>
-          <span>/ {MAX_DAYS}</span>
-        </div>
-        <button
-          className="advance-button"
-          onClick={nextDay}
-          disabled={!playing || dayTransition !== null}
-          aria-busy={dayTransition !== null}
-        >
-          {playing
-            ? "Avanzar un día"
-            : game.status === "won"
-              ? "Cura encontrada"
-              : "Misión finalizada"}
-          {playing ? <ArrowRight size={19} /> : <Check size={19} />}
-        </button>
       </footer>
+
       <div className="sr-only" role="status" aria-live="polite">
         {notice}
       </div>
@@ -865,11 +716,25 @@ export default function App({
 
       {modal === "logout" && (
         <Dialog title="¿Cerrar sesión?" onClose={closeModal}>
-          <p className="dialog-intro">La partida actual no se guarda. Podrás volver a entrar con el mismo código de invitación.</p>
-          <button className="primary-button" onClick={onLogout} disabled={loggingOut}>
-            {loggingOut ? "Cerrando sesión…" : "Salir de la operación"}<LogOut size={16} />
+          <p className="dialog-intro">
+            La partida actual no se guarda. Podrás volver a entrar con el mismo
+            código de invitación.
+          </p>
+          <button
+            className="primary-button"
+            onClick={onLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut ? "Cerrando sesión…" : "Salir de la operación"}
+            <LogOut size={16} />
           </button>
-          <button className="secondary-button" onClick={closeModal} disabled={loggingOut}>Seguir jugando</button>
+          <button
+            className="secondary-button"
+            onClick={closeModal}
+            disabled={loggingOut}
+          >
+            Seguir jugando
+          </button>
         </Dialog>
       )}
       {modal === "help" && (
@@ -883,22 +748,23 @@ export default function App({
               <MapPin />
               <span>
                 <b>01. Lee el mapa</b>Selecciona una de las 16 zonas. Coral
-                significa infección activa.
+                significa infección activa. La cámara se queda en Manta.
               </span>
             </div>
             <div>
               <ShieldPlus />
               <span>
                 <b>02. Construye tu plan</b>Vacuna susceptibles, fumiga el
-                vector o corta rutas por un día. Retira órdenes antes de
-                ejecutar.
+                vector o corta rutas por un día desde la barra inferior. Retira
+                brigadas antes de ejecutar.
               </span>
             </div>
             <div>
               <FlaskConical />
               <span>
-                <b>03. Financia la cura</b>$250 suma 3%; $500 suma 5% por día.
-                El presupuesto se renueva y no se acumula.
+                <b>03. Financia la cura</b>${format(RESEARCH_LEVELS[1])} suma 3
+                puntos diarios; ${format(RESEARCH_LEVELS[2])} suma 5. El
+                presupuesto se renueva y no se acumula.
               </span>
             </div>
             <div>
@@ -985,9 +851,11 @@ export default function App({
                   setDraft({ ...draft, dailyBudget: Number(e.target.value) })
                 }
               >
-                <option value={500}>$500 · recursos reducidos</option>
-                <option value={1000}>$1.000 · estándar</option>
-                <option value={1500}>$1.500 · refuerzo municipal</option>
+                {BUDGET_LEVELS.map((amount) => (
+                  <option value={amount} key={amount}>
+                    ${format(amount)} · {BUDGET_LABELS[amount]}
+                  </option>
+                ))}
               </select>
             </label>
           </div>

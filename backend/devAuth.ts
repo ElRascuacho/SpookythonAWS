@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { authorize, json } from "./auth";
+import { NEWS_BODY_LIMIT, NEWS_ROUTE, handleNewsRoute } from "./news";
 
 export function invitationAuth(env: Record<string, string>): Plugin {
   const middleware =
@@ -8,12 +9,15 @@ export function invitationAuth(env: Record<string, string>): Plugin {
     async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
       if (!req.url?.startsWith("/api/")) return next();
       const origin = env.INVITE_APP_ORIGIN || `http://localhost:${port}`;
+      const pathname = req.url.split("?")[0] ?? req.url;
+      // /api/news necesita un cuerpo algo mayor (estado de partida) que el resto.
+      const bodyLimit = pathname === NEWS_ROUTE ? NEWS_BODY_LIMIT : 4096;
       try {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {
           size += chunk.length;
-          if (size > 4096) {
+          if (size > bodyLimit) {
             res.writeHead(413, {
               "Content-Type": "application/json",
               "Cache-Control": "no-store",
@@ -35,11 +39,13 @@ export function invitationAuth(env: Record<string, string>): Plugin {
               ? undefined
               : Buffer.concat(chunks),
         });
-        const response =
-          (await authorize(request, req.socket.remoteAddress ?? "unknown", {
-            ...env,
-            INVITE_APP_ORIGIN: origin,
-          })) ?? json(404, { error: "Ruta no encontrada." });
+        const serverEnv = { ...env, INVITE_APP_ORIGIN: origin };
+        const clientIp = req.socket.remoteAddress ?? "unknown";
+        let response = await authorize(request, clientIp, serverEnv);
+        // Después de autorizar y antes del 404: boletín diario generado en servidor.
+        if (!response && pathname === NEWS_ROUTE)
+          response = await handleNewsRoute(request, clientIp, serverEnv);
+        response ??= json(404, { error: "Ruta no encontrada." });
         res.writeHead(
           response.status,
           Object.fromEntries(response.headers.entries()),
