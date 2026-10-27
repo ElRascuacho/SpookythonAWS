@@ -56,7 +56,7 @@ En el primer acceso aparece una **práctica interactiva de cuatro pasos**: elegi
 
 **Una estrategia ganadora verificada:** escenario estándar, semilla `20261030`, $7.500/día; invierte $2.200 en investigación y envía cada día un cordón y un lote de vacunación al nodo con más infecciosos (no vacunes si ya no quedan susceptibles). Completa la cura el día 20 con 13.552 contagios acumulados (5,0% de la población). No se garantiza victoria en todas las semillas/escenarios.
 
-**Nueva misión** permite cambiar semilla, origen, presupuesto ($4.000 austeridad / $7.500 emergencia municipal / $11.000 refuerzo COE) y escenario: estándar, doble contagio humano o escape de vacuna. Reiniciar o recargar descarta la partida: esta demo no guarda progreso.
+**Nueva misión** permite cambiar las dosis por lote (10–5.000, por defecto 850; atajo de mitad: 425), semilla, origen, presupuesto ($4.000 austeridad / $7.500 emergencia municipal / $11.000 refuerzo COE) y escenario: estándar, doble contagio humano o escape de vacuna. El costo de cada lote sigue en $2.400, incluso con 425 dosis: representa menor disponibilidad, no una rebaja de precio. Campaña y tutorial conservan 850 dosis. Reiniciar o recargar descarta la partida: esta demo no guarda progreso.
 
 ## Evaluación reproducible
 
@@ -75,7 +75,7 @@ La evaluación de tu plan repite el calendario ya elegido; no representa una pol
 - Aislamiento reduce 50% la presión infecciosa originada en la zona; prevención reduce 30% la transmisión humana recibida en la zona. Ambas duran un turno y sus efectos son supuestos de juego, no estimaciones clínicas.
 - Investigación lineal, costos, plazo de 40 días y umbral de 35% son **reglas de diseño del juego**, no predicciones científicas. Al validar la cura termina la misión; no se simula su distribución posterior.
 - PRNG Mulberry32 y transiciones binomiales (aproximación normal para grupos grandes). Misma configuración, semilla y decisiones producen la misma partida.
-- Fuente de los requisitos: [`Hackathon Track B - Guia Oficial y Requisitos.pdf`](./Hackathon%20Track%20B%20-%20Guia%20Oficial%20y%20Requisitos.pdf), documento local de tres páginas. No respalda una fecha límite de entrega ni una región AWS concreta.
+- Requisitos versionados: [`docs/00-especificacion-reto.md`](./docs/00-especificacion-reto.md), contrastados con `hackathon_track_b.md` local. La entrega indicada es el 28 de octubre a las 10:00 (Ecuador); la región figura por confirmar.
 
 ## Estructura
 
@@ -89,7 +89,7 @@ La evaluación de tu plan repite el calendario ya elegido; no representa una pol
 - `src/domain/monteCarlo.ts` — baselines y agregación; la demo calcula solo al pedir evaluación.
 - `src/domain/newsModel.ts` — contrato, prompt editorial y boletín determinista de respaldo.
 - `src/domain/newsClient.ts` — llamada a `/api/news` con reserva local ante cualquier fallo.
-- `src/domain/__tests__/`, `backend/__tests__/`, `tests/e2e/` — reproducibilidad, economía, conservación, victoria/derrota, esquemas Zod, agregador, workers, reconciliación y smoke tests (90 pruebas automatizadas pasando en verde).
+- `src/domain/__tests__/`, `backend/__tests__/`, `tests/e2e/` — reproducibilidad, economía, conservación, victoria/derrota, esquemas Zod, agregador, workers, reconciliación y smoke tests (pruebas automatizadas; ver el resultado actual de `bun test`).
 - `src/InvitationGate.tsx`, `src/access.css` — pantalla de acceso y ciclo de sesión.
 - `backend/auth.ts`, `backend/devAuth.ts` — validación compartida y adaptador local Vite con `/api/news`.
 - `backend/news.ts`, `backend/handler.ts`, `infra/template.yaml` — generación del boletín, endpoints protegidos y plantilla AWS SAM desplegada en producción.
@@ -97,7 +97,11 @@ La evaluación de tu plan repite el calendario ya elegido; no representa una pol
 
 ## Despliegue y Arquitectura Cloud en AWS (Producción)
 
-El proyecto cuenta con una arquitectura serverless 100% operativa y desplegada en la región **`us-east-1`**:
+La infraestructura registrada está en **`us-east-1`**. La partida y su evaluación se ejecutan en el navegador; los endpoints Lambda son síncronos. Los módulos experimentales de jobs no forman parte del despliegue.
+
+![Arquitectura actual](./docs/arquitectura.svg)
+
+[Fuente editable del diagrama](./docs/arquitectura.mmd) · [Plantilla SAM](./infra/template.yaml). DynamoDB está provisionado, pero el handler actual no lo usa. OpenAI es opcional para noticias; sin clave se utiliza el respaldo determinista. El informe ejecutivo no invoca Bedrock.
 
 - **URL Pública en Vivo (CloudFront):** [https://d1jqe51rtigrcl.cloudfront.net](https://d1jqe51rtigrcl.cloudfront.net)
 - **API Gateway Endpoint:** `https://n4n7yll0f4.execute-api.us-east-1.amazonaws.com/prod`
@@ -107,23 +111,118 @@ El proyecto cuenta con una arquitectura serverless 100% operativa y desplegada e
 
 ### Verificación en Vivo del Backend Cloud
 
-Para validar la salud y el determinismo de los endpoints desplegados en AWS:
+Prueba opt-in con tráfico real y pequeño costo potencial. Lee `.invite-code.local`; no imprime el código ni la cookie. Falla con salida distinta de cero si autenticación, flags de cookie, determinismo, informe o logout no cumplen. Comparar resultados numéricos excluye timestamps y duración. No reemplaza la prueba de navegador:
 
 ```bash
-bun run verify:cloud
+VERIFY_ENDPOINT="https://d1jqe51rtigrcl.cloudfront.net" \
+INVITE_APP_ORIGIN="https://d1jqe51rtigrcl.cloudfront.net" bun run verify:cloud
 ```
 
 ### Control de Presupuesto y Costos (AWS Budgets)
 
-Para garantizar que el costo del proyecto se mantenga estrictamente acotado y dentro de la capa gratuita (*Free Tier*), se configuró una alarma de presupuesto de **$5.00 USD** con alertas automáticas:
+Una alerta de AWS Budgets no corta el consumo ni garantiza gratuidad. La consulta de cuenta del 27 de octubre verificó un presupuesto mensual de **$1 USD**, alerta de gasto real superior a **$0,01 USD** y un suscriptor de correo. La captura histórica puede no reflejar esa configuración actual. Ver [costos, fuentes y mediciones](./docs/costos.md).
 
 ![Presupuesto AWS](./docs/images/aws-budget.png)
 
 ### Auto-deploy Continuo (CI/CD)
 
 Cada commit sobre la rama `main` dispara el flujo de GitHub Actions ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)):
-1. Ejecución de la suite completa de 90 pruebas con Bun (`bun test`).
+1. Ejecución de la suite completa de pruebas con Bun (`bun test`).
 2. Compilación del bundle de Lambda (`bun run build:lambda`) y assets web (`bun run build`).
 3. Empaquetado y despliegue de infraestructura con **AWS SAM CLI**.
 4. Sincronización de artefactos web en Amazon S3 (`aws s3 sync dist/`).
 5. Invalidación automática de la caché perimetral en Amazon CloudFront.
+
+## Desplegar y recuperar
+
+### Preparación
+
+Necesitas Bun 1.3.14, AWS CLI, SAM CLI y credenciales autorizadas en `us-east-1`.
+No publiques `.env.local`, códigos, claves de firma ni credenciales. Usa variables
+de entorno locales y secretos de GitHub; nunca valores literales en comandos compartidos.
+
+| Secreto de GitHub | Uso |
+| --- | --- |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Identidad de despliegue |
+| `INVITE_CODE_HASHES` | Hashes SHA-256 de invitaciones, separados por comas |
+| `INVITE_SESSION_SECRET` | Nueva clave aleatoria de 32 bytes, representada con 64 hexadecimales |
+| `INVITE_APP_ORIGIN` | Origen HTTPS exacto de CloudFront, sin barra final |
+
+Configura los mismos nombres en el entorno local. `bun run invite` prepara las
+invitaciones locales, pero **no** configura GitHub ni AWS. Nunca reutilices la
+antigua clave de respaldo publicada: rota la clave desplegada y el secreto de
+GitHub; todas las sesiones anteriores quedarán invalidadas. El pipeline falla
+antes de acceder a AWS si falta algún secreto o el formato/origen es inseguro.
+No acepta una distribución CloudFront ajena como origen.
+
+### Compilar y desplegar (Bash)
+
+Los siguientes comandos producen cambios en AWS: ejecútalos solo tras revisar
+el diff, las pruebas y el changeset. No incluyen eliminación del stack ni de datos.
+
+```bash
+bun install --frozen-lockfile
+bun test
+bun run build
+bun run build:lambda
+bun scripts/validate-deploy-env.ts
+sam validate --template-file infra/template.yaml --region us-east-1
+sam build --template-file infra/template.yaml
+sam deploy --stack-name spookython-manta-cero --region us-east-1 \
+  --capabilities CAPABILITY_IAM --resolve-s3 --confirm-changeset \
+  --parameter-overrides InviteCodeHashes="$INVITE_CODE_HASHES" \
+    InviteSessionSecret="$INVITE_SESSION_SECRET" InviteAppOrigin="$INVITE_APP_ORIGIN" \
+  --no-fail-on-empty-changeset
+```
+
+**Primer stack:** aún no conoces el dominio CloudFront. Usa temporalmente
+`INVITE_APP_ORIGIN=https://bootstrap.invalid` para crear el stack; el acceso de
+navegador real no estará habilitado. Obtén `CloudFrontUrl` en los outputs, cambia
+`INVITE_APP_ORIGIN` por ese origen exacto y repite `sam deploy` con todos los
+parámetros anteriores. Luego guarda el origen definitivo en GitHub. No dejes
+el origen provisional ni `localhost` en producción. En un stack existente usa
+desde el principio el origen real, no el provisional.
+
+```bash
+aws cloudformation describe-stacks --stack-name spookython-manta-cero \
+  --region us-east-1 --query 'Stacks[0].Outputs' --output table
+# Copia FrontendBucketName y el ID de la distribución (no son secretos).
+aws s3 sync dist/ "s3://$FRONTEND_BUCKET" --delete
+aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths '/*'
+VERIFY_ENDPOINT="$INVITE_APP_ORIGIN" bun run verify:cloud
+```
+
+La distribución y sus cambios tardan en propagarse: espera el estado `Deployed`
+antes del smoke. `--delete` elimina assets remotos ausentes de `dist/`: verifica
+el nombre del bucket antes de sincronizar. Para encontrar el ID, consulta
+`aws cloudfront list-distributions` y selecciona **solo** el dominio del output.
+Finalmente prueba en navegador: login, tutorial, partida, lote de 425 dosis,
+evaluación, noticia y logout, sin cookies/secretos en capturas o logs.
+
+OpenAI es opcional. La plantilla admite `OpenAiApiKey` y `OpenAiNewsModel`, pero
+el workflow actual no suministra la clave. Mantén el fallback sin clave o configura
+esos parámetros mediante el procedimiento seguro de despliegue de tu equipo;
+no añadas una clave al frontend ni supongas que Bedrock redacta el boletín.
+
+### Rollback
+
+Conserva el SHA y los artefactos de la última versión verificada antes de desplegar.
+Para recuperar código, recompila esa versión en un directorio limpio y vuelve a
+desplegar Lambda/SAM y sus assets S3 juntos; invalida CloudFront y repite el smoke.
+Conserva el origen y la **clave nueva segura**: nunca restaures el secreto publicado.
+Si CloudFormation falla, inspecciona su estado/eventos y espera a que finalice el
+rollback antes de otro despliegue. No borres DynamoDB, el bucket ni el stack como
+atajo de recuperación. Antes de rotar registra que el efecto esperado es cerrar
+todas las sesiones; no reintroduzcas una clave expuesta para conservarlas.
+
+### Evidencia y límites
+
+La suite incluye una matriz de tres semillas y cuatro condiciones (estándar,
+doble contagio, escape y 425 dosis), 20 corridas por estrategia durante 30 días.
+Verifica determinismo, conservación, presupuesto y percentiles ordenados; imprime
+medias y resultado comparativo sin exigir una victoria universal. No prueba todas
+las semillas, dispositivos ni AWS. Los smoke de `tests/e2e` son integración en memoria,
+no navegador ni Step Functions. `livesSaved*` y `costPerLifeSaved` son nombres legacy
+del JSON para contagios evitados: no se modelan muertes. El pitch queda fuera de
+este cambio. La publicación del repositorio y la entrega en plataforma son pasos
+separados que debe confirmar el equipo.

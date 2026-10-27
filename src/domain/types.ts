@@ -144,6 +144,7 @@ export interface StrategyMonteCarloSummary {
   meanPeakZombies: number;
   p10PeakZombies: number;
   p90PeakZombies: number;
+  /** Legacy wire names: these metrics count infections avoided, not lives or deaths. */
   meanLivesSavedVsBaseline: number;
   p10LivesSavedVsBaseline: number;
   p90LivesSavedVsBaseline: number;

@@ -60,6 +60,7 @@ export async function authorize(
   }
   const secure = appUrl.protocol === "https:";
   if (
+    (Boolean(env.AWS_LAMBDA_FUNCTION_NAME) && !secure) ||
     !/^[a-f0-9]{64}$/i.test(secret) ||
     !hashes.every((h) => /^[a-f0-9]{64}$/.test(h)) ||
     appUrl.origin !== origin ||
@@ -80,8 +81,7 @@ export async function authorize(
 
   if (request.method !== "GET") {
     const reqOrigin = request.headers.get("origin");
-    const isCloudFront = typeof reqOrigin === "string" && reqOrigin.startsWith("https://") && reqOrigin.endsWith(".cloudfront.net");
-    if (reqOrigin !== origin && !isCloudFront)
+    if (reqOrigin !== origin)
       return json(403, { error: "Origen no permitido." });
     if (request.method !== "POST")
       return json(

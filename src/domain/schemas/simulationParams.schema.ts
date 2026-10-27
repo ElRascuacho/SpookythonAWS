@@ -58,7 +58,7 @@ export const SimulationParamsSchema = z
       .number()
       .int("dailyBudget debe ser un entero")
       .min(100, "dailyBudget debe ser >= 100")
-      .max(10000, "dailyBudget debe ser <= 10000")
+      .max(11000, "dailyBudget debe ser <= 11000")
       .default(1000),
     vaccineCost: z
       .number()
@@ -93,7 +93,7 @@ export const SimulationParamsSchema = z
     seed: z
       .number()
       .int("seed debe ser un entero de 32 bits")
-      .min(1, "seed debe ser >= 1")
+      .min(0, "seed debe ser >= 0")
       .max(4294967295, "seed debe ser <= 4294967295")
       .default(20261030),
     monteCarloRuns: z

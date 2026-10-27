@@ -73,22 +73,22 @@ export const MayorReportModal: React.FC<MayorReportModalProps> = ({
               el contagio a <strong>{noInt.meanTotalInfected.toLocaleString()} ciudadanos</strong> en{' '}
               {result.params.days} días (rango P10–P90:{' '}
               {noInt.p10TotalInfected.toLocaleString()} – {noInt.p90TotalInfected.toLocaleString()}),
-              colapsando el <strong>Hospital Rodríguez Zambrano</strong> durante{' '}
+              superando el <strong>umbral hospitalario simulado</strong> durante{' '}
               <strong>{noInt.meanHospitalCollapseDays} días</strong>.
             </p>
             <p className="mt-2">
               Con el mismo presupuesto diario de{' '}
               <strong>${result.params.dailyBudget.toLocaleString()}/día</strong>, repartir recursos
-              al azar apenas salva a{' '}
-              <strong>{random.meanLivesSavedVsBaseline.toLocaleString()} personas</strong>. En
+              al azar evita{' '}
+              <strong>{random.meanLivesSavedVsBaseline.toLocaleString()} contagios</strong>. En
               cambio, nuestra estrategia matemática{' '}
-              <strong className="text-emerald-400">Smart Graph Cortafuegos (SGC)</strong> protege a{' '}
+              <strong className="text-emerald-400">Smart Graph Cortafuegos (SGC)</strong> registra{' '}
               <strong className="text-emerald-400">
-                {smart.meanLivesSavedVsBaseline.toLocaleString()} mantenses
+                {smart.meanLivesSavedVsBaseline.toLocaleString()} contagios evitados
               </strong>{' '}
-              (<strong>+{advantageOverRandom.toLocaleString()} vidas adicionales</strong> frente al
+              (<strong>+{advantageOverRandom.toLocaleString()} contagios adicionales evitados</strong> frente al
               azar), a un costo promedio de apenas{' '}
-              <strong>${smart.costPerLifeSaved} USD por vida salvada</strong>.
+              <strong>${smart.costPerLifeSaved} USD por contagio evitado</strong>.
             </p>
           </div>
 
@@ -100,8 +100,8 @@ export const MayorReportModal: React.FC<MayorReportModalProps> = ({
                   <th className="py-2 px-3">Estrategia Evaluada</th>
                   <th className="py-2 px-3">Contagios Totales (Media [P10–P90])</th>
                   <th className="py-2 px-3">Pico Zombies vs. Hospital</th>
-                  <th className="py-2 px-3">Ciudadanos Salvados</th>
-                  <th className="py-2 px-3">Días Colapso Hospital</th>
+                  <th className="py-2 px-3">Contagios Evitados</th>
+                  <th className="py-2 px-3">Días sobre Umbral Simulado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/70 font-mono">

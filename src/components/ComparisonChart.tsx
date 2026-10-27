@@ -272,7 +272,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
             </div>
           </div>
           <span className="text-[10px] font-mono text-amber-300/80">
-            Salvados: +{result.strategies.RANDOM.meanLivesSavedVsBaseline.toLocaleString()}
+            Contagios evitados: +{result.strategies.RANDOM.meanLivesSavedVsBaseline.toLocaleString()}
           </span>
         </div>
 
@@ -287,7 +287,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
             </div>
           </div>
           <span className="text-[10px] font-mono font-semibold text-emerald-300">
-            Salvados: +{result.strategies.SMART_CORTAFUEGOS.meanLivesSavedVsBaseline.toLocaleString()}
+            Contagios evitados: +{result.strategies.SMART_CORTAFUEGOS.meanLivesSavedVsBaseline.toLocaleString()}
           </span>
         </div>
       </div>

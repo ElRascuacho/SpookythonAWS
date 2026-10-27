@@ -17,6 +17,7 @@ export interface Order {
 }
 export interface GameConfig {
   campaignChapter?: CampaignChapter;
+  vaccineBatchSize?: number;
   seed: number;
   scenario: Scenario;
   patientZeroId: string;
@@ -71,6 +72,9 @@ export const INTERVENTIONS = {
 
 export function createGame(config: GameConfig): CureGame {
   if (
+    !Number.isInteger(config.vaccineBatchSize ?? ECONOMY.vaccineLotDoses) ||
+    (config.vaccineBatchSize ?? ECONOMY.vaccineLotDoses) < 10 ||
+    (config.vaccineBatchSize ?? ECONOMY.vaccineLotDoses) > 5000 ||
     !Number.isInteger(config.seed) ||
     config.seed < 0 ||
     config.seed > 4294967295 ||
@@ -83,6 +87,7 @@ export function createGame(config: GameConfig): CureGame {
   const params: SimulationParams = {
     ...DEFAULT_SIMULATION_PARAMS,
     seed: config.seed,
+    vaccineBatchSize: config.vaccineBatchSize ?? ECONOMY.vaccineLotDoses,
     dailyBudget: config.dailyBudget,
     patientZeroIds: [config.patientZeroId],
     betaHuman: config.scenario === "surprise" ? 0.6 : 0.3,

@@ -1,38 +1,75 @@
-# Declaración de Costos en AWS — Operación Manta Cero
+# Costos verificables de Operación Manta Cero
 
-Este documento detalla el cálculo de costos mensuales proyectados y el gasto real incurrido durante la Hackathon Spookython AWS en la región `us-east-1` (N. Virginia), cumpliendo el criterio de **Costos (10% + criterio de desempate)** de la rúbrica oficial.
+**No hay garantía de gratuidad ni de corte automático por presupuesto.** El costo
+depende del uso, tarifas, créditos y condiciones de la cuenta. Esta declaración
+separa evidencia provisional, supuestos y valores aún pendientes.
 
----
+## Evidencia de cuenta consultada el 27 de octubre de 2026
 
-## 1. Resumen Ejecutivo de Costos
+Consulta de solo lectura comunicada por el preflight del equipo:
 
-| Escenario | Costo con AWS Free Tier | Costo Tarifa Plena (Sin Free Tier) |
-| :--- | :---: | :---: |
-| **Gasto Real Durante la Hackathon (48h + Pitch)** | **$0.01 USD** | $0.03 USD |
-| **Operación Mensual Estimada (Comité de Salud de Manta)** | **$0.05 USD / mes** | **$1.43 USD / mes** |
+| Evidencia | Resultado y alcance |
+| --- | --- |
+| AWS Cost Explorer | `UnblendedCost=0 USD`, `NetUnblendedCost=0 USD`, `Estimated=true` |
+| Período de Cost Explorer | 2026-10-01 incluido a 2026-10-28 excluido; total de cuenta, no factura final del evento |
+| AWS Budgets | Presupuesto mensual de costo: **1 USD**; gasto real calculado **0 USD** |
+| Alerta | Gasto real mayor que **0,01 USD**, umbral absoluto; estado `OK`, un suscriptor de correo (sin publicar su dirección) |
+| Actualización de Budget | 2026-10-27 12:38:40 UTC |
+| Lambda | ARM64, Node.js 20, **512 MB**, timeout 15 s |
+| Métrica diaria Lambda consultada | 65 invocaciones; duración media 175,379846 ms, máxima 4148,11 ms (ventana del 27 de octubre) |
 
-> **Decisión de diseño clave:** Se descartó el uso de instancias EC2, RDS, NAT Gateways o clústeres ECS Fargate 24/7. Toda la arquitectura es **100% Serverless orientada a eventos**, por lo que el costo en reposo (*idle cost*) es exactamente **$0.00 USD**.
+El cero provisional no acredita costo final cero ni habilitación Free Tier. Falta
+actualizar el gasto al cerrar el evento y separar otros recursos de la cuenta.
+La [captura histórica del Budget](./images/aws-budget.png) puede no coincidir con
+el presupuesto actual consultado. No demuestra por sí sola que estuvo activo
+desde el primer día. La alerta notifica; no limita automáticamente invocaciones.
 
----
+## Estimación mensual con cálculo visible
 
-## 2. Desglose del Cálculo Mensual en Producción (`us-east-1`)
+Escenario ilustrativo, **no medición de demanda**: 30.000 solicitudes API/mes,
+una invocación Lambda por solicitud, 512 MB y duración media redondeada a 0,176 s
+del pequeño muestreo anterior. Ese promedio mezcla rutas; no es un benchmark de
+Monte Carlo de 500 corridas. Las noticias con proveedor pueden durar mucho más.
 
-**Supuesto de carga mensual:** El Comité de Operaciones de Emergencia (COE) de Manta ejecuta **1,000 lotes de simulación Monte Carlo por día** (`30,000 invocaciones/mes`, 200 corridas por lote) y solicita **1,000 boletines ejecutivos para el Alcalde** al mes.
+| Componente | Fórmula sin aplicar créditos ni capa gratuita |
+| --- | --- |
+| Lambda ARM64 cómputo | `30.000 × 0,176 s × 0,5 GB = 2.640 GB-s`; `2.640 × 0,0000133334 USD = 0,035200176 USD` |
+| Lambda solicitudes | `30.000 / 1.000.000 × 0,20 USD = 0,006 USD` |
+| API Gateway HTTP API | `30.000 / 1.000.000 × 1 USD = 0,03 USD` para el primer tramo, solicitudes pequeñas |
+| Subtotal API + Lambda | **0,071200176 USD/mes**, aproximadamente **0,0712 USD**; NO es el total de la solución |
+| S3 | `GB-mes almacenados × tarifa regional + PUT/GET × sus tarifas`; volumen y tarifa aplicable pendientes |
+| CloudFront | `GB transferidos × tarifa por geografía/plan + solicitudes × tarifa + invalidaciones facturables`; tráfico/plan pendientes |
+| CloudWatch | `GB ingeridos × tarifa + GB-mes retenidos × tarifa + métricas/consultas facturables`; volúmenes y retención pendientes |
+| DynamoDB provisionado | Handler actual: **0 lecturas/escrituras de aplicación previstas**; sumar almacenamiento/uso ajeno real si existe |
+| OpenAI opcional | `tokens de entrada / unidad × tarifa modelo + tokens de salida / unidad × tarifa modelo`; separar de factura AWS |
+| Otros | Incluir impuestos, transferencia aplicable y cualquier recurso de cuenta no enumerado antes de cerrar la declaración |
 
-| Servicio AWS | Fórmula de Cálculo Visible | Con AWS Free Tier | Sin Free Tier (Tarifa Plena) |
-| :--- | :--- | :---: | :---: |
-| **AWS Lambda (ARM64)** | $30,000 \text{ req} \times 1.0\text{ s} \times 1\text{ GB} = 30,000\text{ GB-s}$<br>Tarifa: $\$0.0000133334/\text{GB-s} + \$0.20/1\text{M req}$ | **$0.00 USD**<br>*(400,000 GB-s gratis/mes)* | **$0.41 USD** |
-| **Amazon API Gateway (HTTP API)** | $35,000 \text{ llamadas REST/mes}$<br>Tarifa: $\$1.00 / 1\text{M peticiones}$ | **$0.00 USD**<br>*(1M gratis por 12 meses)* | **$0.04 USD** |
-| **Amazon DynamoDB (On-Demand)** | $30,000 \text{ escrituras (WRU)} + 60,000 \text{ lecturas (RRU)}$<br>Almacenamiento $< 0.2\text{ GB}$ | **$0.00 USD**<br>*(25 GB gratis permanentes)* | **$0.08 USD** |
-| **Hosting Web 3D (S3 + CloudFront)** | $1\text{ GB almacenamiento S3} + 10\text{ GB transferencia CloudFront}$ | **$0.00 USD**<br>*(1 TB CloudFront gratis/mes)* | **$0.85 USD** |
-| **Amazon Bedrock (Nova Micro)** | $1,000 \text{ reportes} \times (800 \text{ in} + 400 \text{ out tokens})$<br>Tarifa: $\$0.000035/1\text{K in} + \$0.00014/1\text{K out}$ | **$0.05 USD** | **$0.05 USD** |
-| **AWS Budgets + CloudWatch** | $1 \text{ presupuesto con alerta} + < 500\text{ MB de logs}$ | **$0.00 USD**<br>*(5 GB logs gratis permanentes)* | **$0.00 USD** |
-| **TOTAL MENSUAL** | | **$0.05 USD / mes** | **$1.43 USD / mes** |
+**Total mensual estimado = 0,0712 USD + S3 + CloudFront + CloudWatch + demás uso
+facturable + OpenAI si se habilita.** Los términos pendientes impiden declarar un
+total mensual final fiable. Sustituye los volúmenes y tarifas en la tabla y adjunta
+la fecha/fuente antes de presentar una cifra cerrada al jurado.
 
----
+El motor de la partida y la evaluación de la UI corren en el navegador; no generan
+una invocación Lambda por réplica. `/simulate` y `/mayor-report` son síncronos.
+El handler empaquetado no invoca Bedrock ni persiste en DynamoDB. El preflight
+confirmó ausencia de `OPENAI_API_KEY`: noticias desplegadas en fallback, sin tokens
+de OpenAI atribuibles a esa configuración. No extrapolarlo a otros despliegues.
 
-## 3. Gasto Real Durante el Evento
+## Fuentes y cierre
 
-- **Presupuesto configurado en AWS Budgets:** `$5.00 USD / mes` con alerta temprana al `80%` (`$4.00 USD`).
-- **Evidencia del AWS Budget:** Ver captura oficial en `docs/budget.png`.
-- **Gasto acumulado en AWS Billing Console durante la hackathon:** **~$0.01 USD** (correspondiente únicamente a las invocaciones de prueba de Amazon Bedrock; el resto de servicios permaneció 100% dentro de la capa gratuita).
+Tarifas de ejemplo consultadas el 27 de octubre de 2026 para `us-east-1`:
+[Lambda ARM y solicitudes](https://aws.amazon.com/lambda/pricing/) y
+[API Gateway HTTP API](https://aws.amazon.com/api-gateway/pricing/).
+Los importes de Lambda y API anteriores usan esas tarifas de lista, no descuentos.
+Para completar los términos pendientes consulta
+[S3](https://aws.amazon.com/s3/pricing/),
+[CloudFront](https://aws.amazon.com/cloudfront/pricing/),
+[CloudWatch](https://aws.amazon.com/cloudwatch/pricing/),
+[DynamoDB](https://aws.amazon.com/dynamodb/pricing/) y
+[OpenAI](https://openai.com/api/pricing/). No asumir elegibilidad de créditos o
+franquicias sin comprobar las condiciones de la cuenta.
+
+- [ ] Sustituir gasto provisional por factura/export del período completo.
+- [ ] Completar almacenamiento, transferencia, logs y términos pendientes.
+- [ ] Renovar captura de Budget, ocultando identificadores y correo.
+- [ ] Reconciliar el total con Cost Explorer/Billing antes del pitch.

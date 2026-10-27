@@ -37,7 +37,7 @@ const RESPONSE_HEADERS: Record<string, string> = {
 
 /**
  * Generates an executive plain-language report for the Mayor of Manta.
- * Uses deterministic synthesis (and optionally Amazon Bedrock Nova Micro / Haiku when BEDROCK_ENABLED=true in AWS Lambda).
+ * Uses deterministic synthesis. Legacy audit keys describe infections avoided, not mortality.
  */
 export function buildMayorExecutiveBriefing(
   result: MonteCarloComparisonResult,
@@ -67,9 +67,9 @@ export function buildMayorExecutiveBriefing(
 
   const executiveSummary =
     `Alcaldía de Manta — Boletín de Comando Epidemiológico: Ante el brote originado en ${patientZeroNames}, ` +
-    `no intervenir provocaría ${noInt.meanTotalInfected.toLocaleString()} contagios acumulados y ${noInt.meanHospitalCollapseDays} días de colapso en el Hospital Rodríguez Zambrano. ` +
-    `Nuestra estrategia Smart Graph Cortafuegos (SGC) salva ${smart.meanLivesSavedVsBaseline.toLocaleString()} vidas frente a no hacer nada ` +
-    `y supera a la asignación al azar por +${livesSavedVsRandom.toLocaleString()} ciudadanos protegidos con el mismo presupuesto de $${result.params.dailyBudget}/día.`;
+    `no intervenir provocaría ${noInt.meanTotalInfected.toLocaleString()} contagios acumulados y ${noInt.meanHospitalCollapseDays} días sobre el umbral hospitalario simulado. ` +
+    `Nuestra estrategia Smart Graph Cortafuegos (SGC) evita ${smart.meanLivesSavedVsBaseline.toLocaleString()} contagios frente a no hacer nada ` +
+    `y supera a la asignación al azar por +${livesSavedVsRandom.toLocaleString()} contagios evitados con el mismo presupuesto de $${result.params.dailyBudget}/día.`;
 
   const bulletRecommendations = smart.representativeRun.timeline
     .slice(1, 6)

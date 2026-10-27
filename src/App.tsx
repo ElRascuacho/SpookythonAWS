@@ -66,6 +66,7 @@ const DEFAULT_CONFIG: GameConfig = {
   scenario: "standard",
   patientZeroId: "N01",
   dailyBudget: BUDGET_LEVELS[1],
+  vaccineBatchSize: 850,
 };
 const format = (value: number) => value.toLocaleString("es-EC");
 const ICONS: Record<Intervention, LucideIcon> = {
@@ -786,7 +787,7 @@ export default function App({
                   </span>
                   <span>
                     <strong>{action.label}</strong>
-                    <small>{action.description}</small>
+                    <small>{kind === "vaccine" ? `${game.params.vaccineBatchSize} dosis · solo población susceptible` : action.description}</small>
                   </span>
                   {assigned ? (
                     <Check className="qa-check" size={14} />
@@ -884,6 +885,16 @@ export default function App({
               </select>
             </label>
             <label>
+              Dosis por brigada · $2.400 por lote
+              <input type="number" min="10" max="5000" step="1"
+                value={Number.isNaN(draft.vaccineBatchSize) ? "" : (draft.vaccineBatchSize ?? 850)}
+                onChange={(e) => setDraft({ ...draft, vaccineBatchSize: e.target.value === "" ? NaN : Number(e.target.value) })}
+              />
+            </label>
+            <button className="secondary-button" type="button" onClick={() => setDraft({ ...draft, vaccineBatchSize: 425 })}>
+              Mitad de vacunas · 425 dosis por lote
+            </button>
+            <label>
               Presupuesto diario
               <select
                 value={draft.dailyBudget}
@@ -902,6 +913,9 @@ export default function App({
           <button
             className="primary-button"
             disabled={
+              !Number.isInteger(draft.vaccineBatchSize ?? 850) ||
+              (draft.vaccineBatchSize ?? 850) < 10 ||
+              (draft.vaccineBatchSize ?? 850) > 5000 ||
               !Number.isInteger(draft.seed) ||
               draft.seed < 0 ||
               draft.seed > 4294967295

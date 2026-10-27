@@ -1,0 +1,16 @@
+flowchart LR
+  browser["Navegador público: React y motor SEIR local"]
+  cloudfront["CloudFront HTTPS: assets y rutas API"]
+  web["S3 privado: assets web, OAC"]
+  api["API Gateway HTTP API: /prod"]
+  lambda["Lambda ARM64: auth, noticias, simulación síncrona e informe"]
+  openai["OpenAI opcional: solo noticias; fallback determinista"]
+  logs["CloudWatch: logs y métricas"]
+  table["DynamoDB provisionado: sin lecturas/escrituras del handler actual"]
+  browser --> cloudfront
+  cloudfront -->|assets| web
+  cloudfront -->|/api/*, /simulate, /mayor-report| api
+  api --> lambda
+  lambda --> openai
+  lambda --> logs
+  lambda -.->|TABLE_NAME configurado; persistencia no conectada| table

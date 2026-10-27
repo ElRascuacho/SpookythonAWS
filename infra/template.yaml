@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  Operación Manta Cero (Spookython AWS Track B) — Arquitectura Serverless 100% Free-Tier en us-east-1.
+  Operación Manta Cero (Spookython AWS Track B) — Arquitectura Serverless en us-east-1; costos según uso y cuenta.
   Motor Monte Carlo SEIR-V sobre Grafo Urbano de Manta + Informe Ejecutivo para el Alcalde.
 
 Parameters:
@@ -17,7 +17,7 @@ Parameters:
     Description: Clave aleatoria de 32 bytes en hexadecimal para firmar sesiones.
   InviteAppOrigin:
     Type: String
-    AllowedPattern: "https?://[^/]+"
+    AllowedPattern: "https://[^/]+"
     Description: Origen HTTPS del frontend sin barra final; servir API y frontend bajo el mismo origen.
   OpenAiApiKey:
     Type: String
