@@ -79,7 +79,9 @@ export async function authorize(
     `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${secure ? "; Secure" : ""}`;
 
   if (request.method !== "GET") {
-    if (request.headers.get("origin") !== origin)
+    const reqOrigin = request.headers.get("origin");
+    const isCloudFront = typeof reqOrigin === "string" && reqOrigin.startsWith("https://") && reqOrigin.endsWith(".cloudfront.net");
+    if (reqOrigin !== origin && !isCloudFront)
       return json(403, { error: "Origen no permitido." });
     if (request.method !== "POST")
       return json(
