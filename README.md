@@ -46,6 +46,8 @@ Cada **Avanzar un día** abre una tarjeta **Última transmisión** con un bolet�
 
 ## Cómo jugar
 
+En el primer acceso aparece una **práctica interactiva de cuatro pasos**: elegir zona, asignar prevención, financiar la cura y simular un día. Usa el motor real en una partida de práctica separada: no consume recursos ni altera tu misión. Se puede omitir, cerrar con Escape y repetir desde **Cómo jugar**. Solo se recuerda en este navegador que ya cerraste la guía; no se guarda la partida. Si el navegador bloquea el almacenamiento, la guía sigue funcionando, pero vuelve a ofrecerse al recargar.
+
 1. Selecciona una de las 16 zonas del mapa. El mapa 3D está acotado a Manta: no hay vista planeta.
 2. Selecciona una zona en el mapa para asignar o retirar vacunación ($2.400 por lote de 850 dosis), fumigación ($1.100), cordón sanitario ($1.900), aislamiento de casos ($1.300) o prevención comunitaria ($700). Las brigadas se reasignan cada día.
 3. Financia investigación: $1.200 suma 3 puntos porcentuales diarios; $2.200 suma 5; $0 pausa. La misma bolsa diaria financia investigación y brigadas.
