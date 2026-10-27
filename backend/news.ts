@@ -65,6 +65,8 @@ export function newsCacheKey(state: NewsState): string {
       state.decisions.vaccine,
       state.decisions.fumigate,
       state.decisions.cordon,
+      state.decisions.isolation ?? 0,
+      state.decisions.prevention ?? 0,
       state.zonesAffected,
       state.zonesTotal,
     ]),
@@ -113,6 +115,8 @@ export function readNewsState(value: unknown): NewsState | null {
   for (const key of numbers) if (!isFiniteNumber(record[key])) return null;
   for (const key of ["vaccine", "fumigate", "cordon"] as const)
     if (!isFiniteNumber(orders[key])) return null;
+  for (const key of ["isolation", "prevention"] as const)
+    if (orders[key] !== undefined && !isFiniteNumber(orders[key])) return null;
   if (!["playing", "won", "lost"].includes(record.status as string)) return null;
   if (!["standard", "surprise", "escape"].includes(record.scenario as string))
     return null;
@@ -136,6 +140,8 @@ export function readNewsState(value: unknown): NewsState | null {
       vaccine: orders.vaccine as number,
       fumigate: orders.fumigate as number,
       cordon: orders.cordon as number,
+      isolation: (orders.isolation as number | undefined) ?? 0,
+      prevention: (orders.prevention as number | undefined) ?? 0,
     },
     zonesAffected: record.zonesAffected as number,
     zonesTotal: record.zonesTotal as number,

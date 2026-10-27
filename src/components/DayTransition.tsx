@@ -17,7 +17,7 @@ const format = (value: number) => value.toLocaleString("es-EC");
 
 const STATUS_LABEL = {
   playing: "BROTE ACTIVO",
-  won: "CURA VALIDADA",
+  won: "OBJETIVO CUMPLIDO",
   lost: "MISIÓN TERMINADA",
 } as const;
 

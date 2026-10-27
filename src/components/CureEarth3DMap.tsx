@@ -1143,11 +1143,11 @@ export function CureEarth3DMap({
     const onMapRender = () => {
       syncScene(performance.now());
     };
-    map.on("render", onMapRender);
+    if (prefersReducedMotion) map.on("render", onMapRender);
 
     return () => {
       cancelAnimationFrame(rafId);
-      map.off("render", onMapRender);
+      if (prefersReducedMotion) map.off("render", onMapRender);
     };
   }, [mapReady]);
 

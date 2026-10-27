@@ -1,4 +1,5 @@
 import { BUDGET_LEVELS, ECONOMY } from "./economy";
+import { CHAPTERS, campaignStatus, type CampaignChapter } from "./campaign";
 import {
   DEFAULT_SIMULATION_PARAMS,
   MANTA_EDGES,
@@ -8,13 +9,14 @@ import {
 import { runSingleSeirSimulation } from "./seirEngine";
 import type { DailyAction, DailyCitySnapshot, SimulationParams } from "./types";
 
-export type Intervention = "vaccine" | "fumigate" | "cordon";
+export type Intervention = "vaccine" | "fumigate" | "cordon" | "isolation" | "prevention";
 export type Scenario = "standard" | "surprise" | "escape";
 export interface Order {
   nodeId: string;
   kind: Intervention;
 }
 export interface GameConfig {
+  campaignChapter?: CampaignChapter;
   seed: number;
   scenario: Scenario;
   patientZeroId: string;
@@ -55,6 +57,16 @@ export const INTERVENTIONS = {
     cost: ECONOMY.cordonUsd,
     description: "Reduce un 92% la movilidad · 1 día",
   },
+  isolation: {
+    label: "Aislamiento de casos",
+    cost: ECONOMY.isolationUsd,
+    description: "Reduce 50% la transmisión de casos de la zona · 1 día",
+  },
+  prevention: {
+    label: "Prevención comunitaria",
+    cost: ECONOMY.preventionUsd,
+    description: "Reduce 30% los contagios humanos en la zona · 1 día",
+  },
 };
 
 export function createGame(config: GameConfig): CureGame {
@@ -64,6 +76,7 @@ export function createGame(config: GameConfig): CureGame {
     config.seed > 4294967295 ||
     !NODE_MAP[config.patientZeroId] ||
     !["standard", "surprise", "escape"].includes(config.scenario) ||
+    (config.campaignChapter !== undefined && ![0, 1, 2].includes(config.campaignChapter)) ||
     !BUDGET_LEVELS.some((level) => level === config.dailyBudget)
   )
     throw new Error("Configuración de partida inválida.");
@@ -75,7 +88,7 @@ export function createGame(config: GameConfig): CureGame {
     betaHuman: config.scenario === "surprise" ? 0.6 : 0.3,
     betaVector: 0.045,
     vaccineEfficacy: config.scenario === "escape" ? 0.45 : 0.85,
-    days: MAX_DAYS,
+    days: config.campaignChapter === undefined ? MAX_DAYS : CHAPTERS[config.campaignChapter].days,
     monteCarloRuns: 20,
   };
   const initial = runSingleSeirSimulation(
@@ -134,6 +147,8 @@ export function advanceDay(
     fumigatedNodes: [],
     cordonedNodes: [],
     cordonedEdges: [],
+    isolatedNodes: [],
+    preventionNodes: [],
     budgetSpent: getPlanCost(orders, funding),
     summaryText: `${orders.length} brigadas · $${funding} en investigación`,
   };
@@ -150,7 +165,9 @@ export function advanceDay(
       );
     } else if (order.kind === "fumigate")
       action.fumigatedNodes.push(order.nodeId);
-    else action.cordonedNodes.push(order.nodeId);
+    else if (order.kind === "cordon") action.cordonedNodes.push(order.nodeId);
+    else if (order.kind === "isolation") action.isolatedNodes!.push(order.nodeId);
+    else action.preventionNodes!.push(order.nodeId);
   }
   action.cordonedEdges = MANTA_EDGES.filter(
     (e) =>
@@ -179,6 +196,8 @@ export function advanceDay(
     snapshot.cumulativeInfected >= TOTAL_MANTA_POPULATION * LOSS_THRESHOLD;
   const status = overwhelmed
     ? "lost"
+    : game.config.campaignChapter !== undefined
+      ? campaignStatus(game.config.campaignChapter, day, snapshot, research)
     : research >= 100
       ? "won"
       : day >= MAX_DAYS
@@ -186,7 +205,9 @@ export function advanceDay(
         : "playing";
   const newCases = snapshot.cumulativeInfected - previous.cumulativeInfected;
   const news =
-    status === "won"
+    status === "won" && game.config.campaignChapter !== undefined
+      ? CHAPTERS[game.config.campaignChapter].victory
+      : status === "won"
       ? "Cura validada. Manta vuelve a tener futuro."
       : status === "lost"
         ? "La emergencia superó la capacidad de respuesta. La misión termina."

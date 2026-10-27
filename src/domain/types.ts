@@ -66,6 +66,8 @@ export interface SimulationParams {
 }
 
 export interface DailyAction {
+  isolatedNodes?: string[];
+  preventionNodes?: string[];
   day: number;
   vaccinatedNodes: Record<string, number>; // nodeId -> doses administered ONLY to S
   fumigatedNodes: string[]; // nodeIds receiving vector brigade

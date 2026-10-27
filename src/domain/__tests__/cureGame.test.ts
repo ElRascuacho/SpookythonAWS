@@ -21,6 +21,28 @@ const config: GameConfig = {
 };
 
 describe("Cure game", () => {
+  test("isolation and prevention affect the selected zone for one day", () => {
+    const game = createGame(config);
+    const orders: Order[] = [
+      { nodeId: "N01", kind: "isolation" },
+      { nodeId: "N01", kind: "prevention" },
+    ];
+    const baseline = advanceDay(game, [], 0);
+    const treated = advanceDay(game, orders, 0);
+    expect(treated.actions[1].isolatedNodes).toEqual(["N01"]);
+    expect(treated.actions[1].preventionNodes).toEqual(["N01"]);
+    expect(treated.actions[1].budgetSpent).toBe(2000);
+    expect(treated.timeline[1].nodes.N01.S).toBeGreaterThan(baseline.timeline[1].nodes.N01.S);
+    for (const order of orders) {
+      expect(advanceDay(game, [order], 0).timeline[1].nodes.N01.S)
+        .toBeGreaterThan(baseline.timeline[1].nodes.N01.S);
+    }
+    expect(advanceDay(game, orders, 0)).toEqual(treated);
+    const next = advanceDay(treated, [], 0);
+    expect(next.actions[2].isolatedNodes).toEqual([]);
+    expect(next.actions[2].preventionNodes).toEqual([]);
+    expect(() => advanceDay(game, [orders[0], orders[0]], 0)).toThrow("brigada");
+  });
   test("starts before interventions; budget, duplicates and configuration are validated", () => {
     const game = createGame(config);
     expect(game.timeline[0].totalR).toBe(0);

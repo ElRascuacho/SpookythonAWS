@@ -77,6 +77,8 @@ export function runSingleSeirSimulation(
     const cordonedNodeSet = new Set(action.cordonedNodes);
     const cordonedEdgeSet = new Set(action.cordonedEdges);
     const fumigatedNodeSet = new Set(action.fumigatedNodes);
+    const isolatedNodeSet = new Set(action.isolatedNodes ?? []);
+    const preventionNodeSet = new Set(action.preventionNodes ?? []);
 
     // Phase A: Apply Interventions (Vaccines strictly on S, Fumigation on vectorIndex)
     const vaccinatedTodayByNode: Record<string, number> = {};
@@ -167,12 +169,14 @@ export function runSingleSeirSimulation(
           ? link.weight * (1 - CORDON_REDUCTION_ALPHA)
           : link.weight;
 
-        importedContagion += effectiveWeight * (iNeighbor / uNode.population);
+        importedContagion += effectiveWeight * (iNeighbor / uNode.population) *
+          (isolatedNodeSet.has(uId) ? 0.5 : 1);
       }
 
       const isLocallyCordoned = cordonedNodeSet.has(vId);
       const localContagion =
-        (iNow / nPop) * (isLocallyCordoned ? CORDON_LOCAL_LOCKDOWN_FACTOR : 1.0);
+        (iNow / nPop) * (isLocallyCordoned ? CORDON_LOCAL_LOCKDOWN_FACTOR : 1.0) *
+        (isolatedNodeSet.has(vId) ? 0.5 : 1);
 
       // Necro-Dengue environmental vector amplifies contagion proportional to local/imported pathogen reservoir
       const activePathogenPressure = localContagion + importedContagion;
@@ -182,7 +186,7 @@ export function runSingleSeirSimulation(
           : 0;
 
       const lambdaV =
-        params.betaHuman * (localContagion + importedContagion) +
+        params.betaHuman * (localContagion + importedContagion) * (preventionNodeSet.has(vId) ? 0.7 : 1) +
         params.betaVector * wNow * vectorActivation;
 
       const pInf = 1 - Math.exp(-Math.max(0, lambdaV));

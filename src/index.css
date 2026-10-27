@@ -2951,7 +2951,7 @@ svg {
   color: var(--coral);
   border-color: #553d37;
 }
-.hud-metric > span {
+.hud-metric > span:not(.hud-icon) {
   grid-area: label;
   font-size: 9px;
   color: #93a7ae;
@@ -3135,6 +3135,35 @@ svg {
   align-items: center;
   gap: 16px;
   min-width: 0;
+}
+.campaign-objective {
+  display: grid;
+  gap: 5px;
+  border-left: 2px solid var(--coral);
+  padding: 3px 10px;
+}
+.campaign-objective > span {
+  color: var(--coral);
+  font: 9px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.campaign-objective > strong { font-size: 12px; font-weight: 500; }
+.campaign-objective > small { color: var(--mint); font: 10px var(--mono); }
+.campaign-briefing {
+  margin-block: 20px;
+  padding: 24px;
+  background: linear-gradient(#08141c80, #08141ce8), url('/manta-outbreak.png') center / cover;
+  border: 1px solid #77908a55;
+  animation: fade-in .4s;
+}
+.campaign-briefing > p { margin-block: 18px; line-height: 1.7; }
+.campaign-briefing > strong { color: var(--mint); font-weight: 500; }
+.campaign-briefing ol { list-style: none; padding: 18px 0 0; margin: 0; }
+.campaign-briefing li { padding: 7px 0; color: #9cacae; font: 11px var(--mono); }
+.campaign-briefing li[aria-current] { color: var(--coral); }
+@media (prefers-reduced-motion: reduce) {
+  .campaign-briefing { animation: none; }
 }
 .command-row.primary {
   min-height: 50px;
@@ -3322,9 +3351,34 @@ svg {
 }
 .intervention-strip {
   display: flex;
+  flex-direction: column;
   gap: 7px;
   flex: 1;
   min-width: 0;
+}
+.game-dialog .intervention-strip {
+  margin-top: 16px;
+}
+.game-dialog .quick-action {
+  flex-direction: row;
+  align-items: center;
+  padding: 10px;
+}
+.game-dialog .quick-action strong {
+  font-size: 12px;
+}
+.game-dialog .quick-action small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: normal;
+}
+.game-dialog .quick-action .qa-cost {
+  margin-left: auto;
+}
+.game-dialog .quick-action .qa-check {
+  position: static;
+  margin-left: auto;
 }
 .quick-action {
   display: flex;

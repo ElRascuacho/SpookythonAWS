@@ -114,7 +114,11 @@ describe("Daily news model", () => {
   });
 
   test("state and model output are validated before use", () => {
-    expect(readNewsState(state())).toEqual(state());
+    expect(readNewsState(state())).toEqual({
+      ...state(),
+      decisions: { ...state().decisions, isolation: 0, prevention: 0 },
+    });
+    expect(readNewsState({ ...state(), decisions: { ...state().decisions, isolation: "bad" } })).toBeNull();
     expect(readNewsState({ ...state(), decisions: undefined })).toBeNull();
     expect(readNewsState({ ...state(), day: "7" })).toBeNull();
     expect(readNewsState({ ...state(), status: "paused" })).toBeNull();

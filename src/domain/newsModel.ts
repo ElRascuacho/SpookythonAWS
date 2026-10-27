@@ -23,7 +23,7 @@ export interface NewsState {
   activeInfections: number;
   infectionsGrowthPct: number;
   hospitalLoadPct: number;
-  decisions: { vaccine: number; fumigate: number; cordon: number };
+  decisions: { vaccine: number; fumigate: number; cordon: number; isolation?: number; prevention?: number };
   zonesAffected: number;
   zonesTotal: number;
 }
@@ -162,9 +162,9 @@ const HOSPITAL = [
 ] as const;
 
 const DECISIONS = [
-  "Decisiones del día: {v} brigadas de vacunación, {f} de fumigación y {c} de cordón sanitario, con {spent} dólares ejecutados sobre {d} disponibles.",
-  "El plan desplegó {v} brigadas de vacunación, {f} de fumigación y {c} de cordón sanitario, con un gasto de {spent} dólares dentro del techo diario de {d}.",
-  "Se asignaron {v} brigadas de vacunación, {f} de fumigación y {c} de cordón sanitario, equivalentes a {spent} dólares del presupuesto diario de {d}.",
+  "Decisiones del día: {v} brigadas de vacunación, {f} de fumigación, {c} de cordón, {i} de aislamiento y {p} de prevención, con {spent} dólares ejecutados.",
+  "El plan desplegó {v} brigadas de vacunación, {f} de fumigación, {c} de cordón, {i} de aislamiento y {p} de prevención, con un gasto de {spent} dólares.",
+  "Se asignaron {v} brigadas de vacunación, {f} de fumigación, {c} de cordón, {i} de aislamiento y {p} de prevención, con {spent} dólares ejecutados.",
 ] as const;
 
 const TRENDS = [
@@ -216,6 +216,8 @@ export function fallbackNews(state: NewsState): GameNews {
     v: formatNumber(state.decisions?.vaccine ?? 0),
     f: formatNumber(state.decisions?.fumigate ?? 0),
     c: formatNumber(state.decisions?.cordon ?? 0),
+    i: formatNumber(state.decisions?.isolation ?? 0),
+    p: formatNumber(state.decisions?.prevention ?? 0),
     d: formatNumber(state.dailyBudget),
     spent: formatNumber(state.budgetSpent),
     fund: formatNumber(state.funding),
@@ -257,7 +259,7 @@ export const NEWS_SYSTEM_PROMPT = [
   "Tono: parte operativo, preciso, sobrio, sin sensacionalismo, sin especulación política y sin atribuir culpas.",
   "Escribe siempre en español de Ecuador, en texto plano (sin markdown, sin viñetas, sin emojis).",
   "Contexto territorial obligatorio: Manta es una economía dolarizada (USD), sede del segundo puerto atunero del Ecuador, en recuperación desde el terremoto de 2016; las lluvias de El Niño y el vector del dengue condicionan el riesgo; la respuesta se coordina con el MSP y el COE Nacional; el Hospital Rodríguez Zambrano es la referencia de capacidad; la ULEAM apoya con vigilancia y personal; las remesas y el turismo sostienen la economía local y son vulnerables a una crisis sanitaria.",
-  "Reglas de contenido: usa únicamente las cifras entregadas en el JSON del usuario, sin inventar números ni fechas; menciona las decisiones del día (vacunación, fumigación, cercos), el financiamiento y las tendencias (casos nuevos, crecimiento, carga hospitalaria, investigación).",
+  "Reglas de contenido: usa únicamente las cifras entregadas en el JSON del usuario, sin inventar números ni fechas; menciona las decisiones del día (vacunación, fumigación, cercos, aislamiento y prevención), el financiamiento y las tendencias (casos nuevos, crecimiento, carga hospitalaria, investigación).",
   "No escribas cifras numéricas en el titular ni en el cuerpo: describe las tendencias de forma cualitativa (aumento, descenso, presión hospitalaria, avance científico) y las decisiones del día. Las cifras exactas las publica el tablero oficial por separado.",
   "Responde SOLO con un objeto JSON válido, sin texto adicional, con esta forma exacta:",
   '{"headline": string (máximo 90 caracteres), "body": string (entre 60 y 110 palabras), "severity": "calm" | "alert" | "critical" | "victory"}',

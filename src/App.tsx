@@ -7,13 +7,16 @@ import {
   Dna,
   FlaskConical,
   HeartPulse,
+  House,
   LogOut,
+  Clapperboard,
   MapPin,
   Microscope,
   RotateCcw,
   Settings2,
   ShieldCheck,
   ShieldPlus,
+  HandHeart,
   SprayCan,
   TrendingDown,
   Users,
@@ -44,6 +47,7 @@ import {
   type ResearchFunding,
 } from "./domain/cureGame";
 import { BUDGET_LEVELS } from "./domain/economy";
+import { CHAPTERS, campaignReadout, type CampaignChapter } from "./domain/campaign";
 import {
   MANTA_NODES,
   NODE_MAP,
@@ -66,6 +70,8 @@ const ICONS: Record<Intervention, LucideIcon> = {
   vaccine: ShieldPlus,
   fumigate: SprayCan,
   cordon: ShieldCheck,
+  isolation: House,
+  prevention: HandHeart,
 };
 const PHASES = [
   "Secuenciación del patógeno",
@@ -82,7 +88,7 @@ const FUNDING_LABELS: Record<number, string> = {
   1200: "Estándar",
   2200: "Prioridad",
 };
-type Modal = "help" | "settings" | "analysis" | "result" | "logout" | null;
+type Modal = "help" | "settings" | "analysis" | "result" | "logout" | "zone" | "campaign" | null;
 interface Evaluation {
   comparison: MonteCarloComparisonResult;
   playerMean: number;
@@ -107,7 +113,7 @@ function buildNewsState(
   const newCases = after.cumulativeInfected - before.cumulativeInfected;
   return {
     day: next.day,
-    totalDays: MAX_DAYS,
+    totalDays: next.params.days,
     status: next.status,
     scenario: next.config.scenario,
     seed: next.config.seed,
@@ -130,6 +136,8 @@ function buildNewsState(
       vaccine: orders.filter((order) => order.kind === "vaccine").length,
       fumigate: orders.filter((order) => order.kind === "fumigate").length,
       cordon: orders.filter((order) => order.kind === "cordon").length,
+      isolation: orders.filter((order) => order.kind === "isolation").length,
+      prevention: orders.filter((order) => order.kind === "prevention").length,
     },
     zonesAffected: Object.values(after.nodes).filter((zone) => zone.I > 0)
       .length,
@@ -235,6 +243,7 @@ export default function App({
   const [orders, setOrders] = useState<Order[]>([]);
   const [funding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
   const [modal, setModal] = useState<Modal>(null);
+  const [briefingChapter, setBriefingChapter] = useState<CampaignChapter>(0);
   const [draft, setDraft] = useState<GameConfig>(DEFAULT_CONFIG);
   const [notice, setNotice] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
@@ -271,6 +280,13 @@ export default function App({
   const stage = game.research < 25 ? 0 : game.research < 65 ? 1 : 2;
   const researchGain = researchGainFor(funding);
   const playing = game.status === "playing";
+  const chapterId = game.config.campaignChapter;
+  const chapter = chapterId === undefined ? null : CHAPTERS[chapterId];
+
+  const selectZone = (id: string) => {
+    setSelectedNode(id);
+    setModal("zone");
+  };
 
   const queueOrder = (kind: Intervention) => {
     setOrders((current) => [...current, { nodeId: selectedNode, kind }]);
@@ -300,7 +316,7 @@ export default function App({
       const next = advanceDay(game, orders, funding);
       const report: DayTransitionReport = {
         day: next.day,
-        totalDays: MAX_DAYS,
+        totalDays: next.params.days,
         research: next.research,
         newCases:
           next.timeline[next.day].cumulativeInfected -
@@ -309,7 +325,17 @@ export default function App({
         funding,
         status: next.status,
       };
-      startNews(buildNewsState(game, next, orders, funding));
+      if (chapterId !== undefined) {
+        newsRequestId.current++;
+        setNewsLoading(false);
+        setNewsFacts(campaignReadout(chapterId, next.timeline[next.day], next.research));
+        setNews({
+          headline: next.status === "won" ? "Objetivo cumplido" : next.status === "lost" ? "Operación interrumpida" : CHAPTERS[chapterId].title,
+          body: next.status === "won" ? CHAPTERS[chapterId].victory : next.status === "lost" ? "No se alcanzó el objetivo. Revisa los datos y adapta tu plan." : `Día ${next.day}/${next.params.days}. ${campaignReadout(chapterId, next.timeline[next.day], next.research)}. ${CHAPTERS[chapterId].objective}`,
+          severity: next.status === "won" ? "victory" : next.status === "lost" ? "critical" : "alert",
+          source: "fallback",
+        });
+      } else startNews(buildNewsState(game, next, orders, funding));
       setGame(next);
       setOrders([]);
       setEvaluation(null);
@@ -334,7 +360,7 @@ export default function App({
       setNotice(error instanceof Error ? error.message : "No se pudo avanzar.");
     }
   };
-  const newGame = () => {
+  const newGame = (config: GameConfig = draft) => {
     try {
       if (transitionTimer.current !== null) {
         window.clearTimeout(transitionTimer.current);
@@ -346,8 +372,8 @@ export default function App({
       setNews(null);
       setNewsFacts("");
       setNewsLoading(false);
-      setGame(createGame(draft));
-      setSelectedNode(draft.patientZeroId);
+      setGame(createGame(config));
+      setSelectedNode(config.patientZeroId);
       setOrders([]);
       setFunding(RESEARCH_LEVELS[1]);
       setEvaluation(null);
@@ -395,7 +421,7 @@ export default function App({
     }, 60);
   };
   const openSettings = () => {
-    setDraft({ ...game.config });
+    setDraft({ ...game.config, campaignChapter: undefined });
     setModal("settings");
   };
 
@@ -417,6 +443,10 @@ export default function App({
           <b>DEMO JUGABLE</b>
         </div>
         <nav className="header-actions" aria-label="Opciones de misión">
+          <button aria-label="Campaña cinematográfica" onClick={() => { setBriefingChapter(0); setModal("campaign"); }}>
+            <Clapperboard size={16} />
+            <span>Campaña</span>
+          </button>
           <button aria-label="Evaluar mi estrategia" onClick={openAnalysis}>
             <TrendingDown size={16} />
             <span>Evaluar</span>
@@ -448,7 +478,7 @@ export default function App({
           <CureEarth3DMap
             snapshot={snapshot}
             selectedNode={selectedNode}
-            onSelect={setSelectedNode}
+            onSelect={selectZone}
             orders={orders}
             patientZeroId={game.config.patientZeroId}
             styleMode={styleMode}
@@ -459,7 +489,7 @@ export default function App({
           <CureCityMap
             snapshot={snapshot}
             selectedNode={selectedNode}
-            onSelect={setSelectedNode}
+            onSelect={selectZone}
             orders={orders}
             onSwitchTo3D={(mode) => {
               setStyleMode(mode);
@@ -526,6 +556,14 @@ export default function App({
       )}
 
       <footer className="command-bar">
+        {chapter && chapterId !== undefined && (
+          <div className="campaign-objective" aria-label="Objetivo del capítulo">
+            <span>CAPÍTULO {chapterId + 1}/3 · {chapter.title}</span>
+            <strong>{chapter.objective}</strong>
+            <small>{campaignReadout(chapterId, snapshot, game.research)}</small>
+            {!playing && <button className="secondary-button" onClick={() => setModal("result")}>Ver resultado del capítulo</button>}
+          </div>
+        )}
         <div className="command-row primary">
           <div className="cash-block">
             <span>
@@ -557,7 +595,7 @@ export default function App({
               className="mobile-zone-select"
               aria-label="Seleccionar zona de intervención"
               value={selectedNode}
-              onChange={(event) => setSelectedNode(event.target.value)}
+              onChange={(event) => selectZone(event.target.value)}
             >
               {MANTA_NODES.map((zone) => (
                 <option key={zone.id} value={zone.id}>
@@ -592,7 +630,7 @@ export default function App({
           <div className="day-block">
             <span>DÍA</span>
             <strong>{String(game.day).padStart(2, "0")}</strong>
-            <span>/ {MAX_DAYS}</span>
+            <span>/ {game.params.days}</span>
           </div>
           <button
             className="advance-button"
@@ -603,7 +641,7 @@ export default function App({
             {playing
               ? "Avanzar un día"
               : game.status === "won"
-                ? "Cura encontrada"
+                ? chapter ? "Capítulo completado" : "Cura encontrada"
                 : "Misión finalizada"}
             {playing ? <ArrowRight size={18} /> : <Check size={18} />}
           </button>
@@ -641,44 +679,6 @@ export default function App({
         )}
 
         <div className="command-row actions">
-          <div className="intervention-strip">
-            {(Object.keys(INTERVENTIONS) as Intervention[]).map((kind) => {
-              const Icon = ICONS[kind];
-              const action = INTERVENTIONS[kind];
-              const assigned = orders.some(
-                (order) =>
-                  order.nodeId === selectedNode && order.kind === kind,
-              );
-              return (
-                <button
-                  key={kind}
-                  className={`quick-action ${assigned ? "assigned" : ""}`}
-                  aria-pressed={assigned}
-                  aria-label={`${action.label} en ${node.name}: $${action.cost}`}
-                  onClick={() => queueOrder(kind)}
-                  disabled={
-                    !playing ||
-                    assigned ||
-                    remaining < action.cost ||
-                    (kind === "vaccine" && local.S === 0)
-                  }
-                >
-                  <span className={`qa-icon ${kind}`}>
-                    <Icon size={14} />
-                  </span>
-                  <span>
-                    <strong>{action.label}</strong>
-                    <small>{action.description}</small>
-                  </span>
-                  {assigned ? (
-                    <Check className="qa-check" size={14} />
-                  ) : (
-                    <b className="qa-cost">${format(action.cost)}</b>
-                  )}
-                </button>
-              );
-            })}
-          </div>
           <div
             className="research-select"
             role="group"
@@ -714,6 +714,75 @@ export default function App({
       </div>
       {dayTransition && <DayTransition report={dayTransition} />}
 
+      {modal === "campaign" && (
+        <Dialog title={CHAPTERS[briefingChapter].title} onClose={closeModal}>
+          <div className="campaign-briefing">
+            <span className="eyebrow">CAPÍTULO {briefingChapter + 1} / 3 · {CHAPTERS[briefingChapter].location}</span>
+            <p>{CHAPTERS[briefingChapter].briefing}</p>
+            <strong>{CHAPTERS[briefingChapter].objective}</strong>
+            <ol>
+              {CHAPTERS.map((item, index) => <li key={item.title} aria-current={index === briefingChapter ? "step" : undefined}>{String(index + 1).padStart(2, "0")} / {item.title}</li>)}
+            </ol>
+          </div>
+          <p className="model-disclaimer">Cada capítulo es una operación independiente con semilla fija y $7.500 diarios. Iniciar descarta la partida actual. El progreso no se guarda al recargar.</p>
+          <button className="primary-button" onClick={() => newGame({ ...DEFAULT_CONFIG, campaignChapter: briefingChapter, patientZeroId: CHAPTERS[briefingChapter].nodeId })}>
+            Iniciar capítulo {briefingChapter + 1} <ArrowRight size={17} />
+          </button>
+        </Dialog>
+      )}
+
+      {modal === "zone" && (
+        <Dialog title={node.name} onClose={closeModal}>
+          <p className="dialog-intro">
+            {format(local.S)} susceptibles · {format(local.I)} infecciosos · ${format(remaining)} disponibles
+          </p>
+          <div className="intervention-strip">
+            {(Object.keys(INTERVENTIONS) as Intervention[]).map((kind) => {
+              const Icon = ICONS[kind];
+              const action = INTERVENTIONS[kind];
+              const assigned = orders.some(
+                (order) =>
+                  order.nodeId === selectedNode && order.kind === kind,
+              );
+              return (
+                <button
+                  key={kind}
+                  className={`quick-action ${assigned ? "assigned" : ""}`}
+                  aria-pressed={assigned}
+                  aria-label={`${action.label} en ${node.name}: $${action.cost}`}
+                  onClick={() => {
+                    if (assigned) {
+                      setOrders((current) => current.filter(
+                        (order) => order.nodeId !== selectedNode || order.kind !== kind,
+                      ));
+                      setNotice(`${action.label} retirada de ${node.name}.`);
+                    } else queueOrder(kind);
+                  }}
+                  disabled={
+                    !playing ||
+                    (!assigned && (remaining < action.cost ||
+                      (kind === "vaccine" && local.S === 0)))
+                  }
+                >
+                  <span className={`qa-icon ${kind}`}>
+                    <Icon size={14} />
+                  </span>
+                  <span>
+                    <strong>{action.label}</strong>
+                    <small>{action.description}</small>
+                  </span>
+                  {assigned ? (
+                    <Check className="qa-check" size={14} />
+                  ) : (
+                    <b className="qa-cost">${format(action.cost)}</b>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="dialog-intro">Selecciona una intervención para asignarla o retirarla del plan.</p>
+        </Dialog>
+      )}
       {modal === "logout" && (
         <Dialog title="¿Cerrar sesión?" onClose={closeModal}>
           <p className="dialog-intro">
@@ -755,7 +824,7 @@ export default function App({
               <ShieldPlus />
               <span>
                 <b>02. Construye tu plan</b>Vacuna susceptibles, fumiga el
-                vector o corta rutas por un día desde la barra inferior. Retira
+                vector o corta rutas al seleccionar una zona. Retira
                 brigadas antes de ejecutar.
               </span>
             </div>
@@ -866,7 +935,7 @@ export default function App({
               draft.seed < 0 ||
               draft.seed > 4294967295
             }
-            onClick={newGame}
+            onClick={() => newGame()}
           >
             Iniciar nueva misión
             <ArrowRight size={17} />
@@ -877,7 +946,7 @@ export default function App({
         <Dialog
           title={
             game.status === "won"
-              ? "Manta tiene una nueva oportunidad."
+              ? chapter ? chapter.title : "Manta tiene una nueva oportunidad."
               : "No toda misión termina aquí."
           }
           onClose={closeModal}
@@ -887,11 +956,11 @@ export default function App({
           </div>
           <p className="result-kicker">
             {game.status === "won"
-              ? "CURA VALIDADA · MISIÓN CUMPLIDA"
+              ? chapter ? "CAPÍTULO COMPLETADO" : "CURA VALIDADA · MISIÓN CUMPLIDA"
               : "MISIÓN FINALIZADA · VUELVE A INTENTARLO"}
           </p>
           <p className="dialog-intro">
-            {game.status === "won"
+            {chapter && chapterId !== undefined ? (game.status === "won" ? chapter.victory : `Objetivo no alcanzado. ${chapter.objective}`) : game.status === "won"
               ? `En ${game.day} días tu equipo completó el antídoto. El ${((1 - snapshot.cumulativeInfected / TOTAL_MANTA_POPULATION) * 100).toFixed(1)}% de la población no contrajo la infección.`
               : `La cura llegó al ${game.research}%. ${snapshot.cumulativeInfected >= TOTAL_MANTA_POPULATION * LOSS_THRESHOLD ? "El brote alcanzó al 35% de la población." : "Se agotaron los 40 días de la misión."} Revisa tu estrategia y prueba otra distribución de recursos.`}
           </p>
@@ -905,6 +974,16 @@ export default function App({
               <strong>{format(snapshot.totalR)}</strong>
             </div>
           </div>
+          {chapter && chapterId !== undefined && (
+            <button className="primary-button" onClick={() => {
+              if (game.status === "won" && chapterId < 2) {
+                setBriefingChapter((chapterId + 1) as CampaignChapter);
+                setModal("campaign");
+              } else newGame(game.config);
+            }}>
+              {game.status === "won" && chapterId < 2 ? "Siguiente capítulo" : "Repetir capítulo"} <ArrowRight size={17} />
+            </button>
+          )}
           <button className="primary-button" onClick={openAnalysis}>
             Comparar mi estrategia
             <TrendingDown size={17} />

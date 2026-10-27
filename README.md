@@ -30,6 +30,10 @@ Los códigos son **compartidos y reutilizables**: autorizan acceso a la demo, no
 
 **Despliegue:** un hosting estático por sí solo no sirve el login. El handler Lambda comparte el mismo control y protege `/api/news`, `/simulate` y `/mayor-report`. `bun run build:lambda` genera únicamente `build/lambda/handler.mjs`: SAM empaqueta ese directorio, nunca la raíz con los secretos locales. La plantilla recibe hashes, clave de sesión, origen y opcionalmente la clave de OpenAI como parámetros `NoEcho` (vacía = boletín determinista). Requiere enrutar frontend y API bajo el mismo origen HTTPS, reenviar `Cookie`, `Origin` y `Set-Cookie`, y no cachear respuestas de autenticación. No se configuró ni desplegó esa distribución en AWS.
 
+## Campaña cinematográfica
+
+El botón **Campaña** abre tres operaciones independientes: hospital (6 días, red operativa, hasta 100 infecciosos en su zona y 15% de investigación), puerto (8 días, 1.800 inmunes y un máximo de 500 infecciosos allí) y cura (100% en 20 días). Cada capítulo usa semilla fija y $7.500 diarios; superar el objetivo permite iniciar el siguiente. La campaña conserva la derrota por 35% de contagios acumulados en toda la ciudad. Incluye presentaciones animadas, objetivos visibles y transmisiones deterministas basadas en los datos reales de cada turno. No guarda progreso y no transfiere recursos entre capítulos. **Nueva misión** vuelve al modo libre.
+
 ## Noticias diarias
 
 Cada **Avanzar un día** abre una tarjeta **Última transmisión** con un boletín del COE de Manta. El texto lo redacta un modelo de OpenAI a partir del estado real de la partida: decisiones del día, dinero ejecutado, contagios nuevos y acumulados, crecimiento, carga hospitalaria, avance de la cura, zonas afectadas, escenario y semilla.
@@ -43,7 +47,7 @@ Cada **Avanzar un día** abre una tarjeta **Última transmisión** con un bolet�
 ## Cómo jugar
 
 1. Selecciona una de las 16 zonas del mapa. El mapa 3D está acotado a Manta: no hay vista planeta.
-2. Desde la barra inferior asigna vacunación ($2.400 por lote de 850 dosis), fumigación ($1.100) o cordón sanitario ($1.900). Las brigadas se pueden retirar antes de ejecutar y se reasignan cada día.
+2. Selecciona una zona en el mapa para asignar o retirar vacunación ($2.400 por lote de 850 dosis), fumigación ($1.100), cordón sanitario ($1.900), aislamiento de casos ($1.300) o prevención comunitaria ($700). Las brigadas se reasignan cada día.
 3. Financia investigación: $1.200 suma 3 puntos porcentuales diarios; $2.200 suma 5; $0 pausa. La misma bolsa diaria financia investigación y brigadas.
 4. Pulsa **Avanzar un día**. El presupuesto se renueva sin acumular sobrantes; el mapa y la barra muestran el resultado y llega la noticia del día.
 5. Ganas al completar el 100% de investigación. Pierdes si los contagios acumulados alcanzan el 35% de la población, o al terminar el día 40 sin cura. El umbral de contagios tiene prioridad si coincide con la validación de la cura.
@@ -66,6 +70,7 @@ La evaluación de tu plan repite el calendario ya elegido; no representa una pol
 - Juego estándar: `betaHuman=0.30`, `betaVector=0.045`, `sigma=0.33`, `gamma=0.10`, eficacia vacuna `0.85`, capacidad hospitalaria `2500`, lote `850`, $7.500/día, origen `N01`, 35 infecciosos y 50 expuestos iniciales, semilla `20261030`.
 - Doble contagio: `betaHuman=0.60`; escape inmune: eficacia `0.45`. Las demás condiciones permanecen iguales.
 - Fumigación reduce el vector ambiental 80% (luego puede recuperarse); cordón reduce transporte 92% y contacto local 55% durante ese turno.
+- Aislamiento reduce 50% la presión infecciosa originada en la zona; prevención reduce 30% la transmisión humana recibida en la zona. Ambas duran un turno y sus efectos son supuestos de juego, no estimaciones clínicas.
 - Investigación lineal, costos, plazo de 40 días y umbral de 35% son **reglas de diseño del juego**, no predicciones científicas. Al validar la cura termina la misión; no se simula su distribución posterior.
 - PRNG Mulberry32 y transiciones binomiales (aproximación normal para grupos grandes). Misma configuración, semilla y decisiones producen la misma partida.
 - Fuente de los requisitos: [`Hackathon Track B - Guia Oficial y Requisitos.pdf`](./Hackathon%20Track%20B%20-%20Guia%20Oficial%20y%20Requisitos.pdf), documento local de tres páginas. No respalda una fecha límite de entrega ni una región AWS concreta.

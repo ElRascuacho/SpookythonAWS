@@ -183,6 +183,10 @@ export default function InvitationGate() {
 
   return (
     <main className="access-page">
+      <div className="access-cinematic" aria-hidden="true">
+        <div className="access-cinematic-image" />
+        <div className="access-cinematic-shade" />
+      </div>
       <header className="access-header">
         <a className="access-brand" href="/" aria-label="Manta Cero, inicio">
           <span className="access-brand-icon">
@@ -199,19 +203,19 @@ export default function InvitationGate() {
       <div className="access-layout">
         <section className="access-story" aria-labelledby="mission-title">
           <p className="access-eyebrow">
-            <Radio size={14} /> MANTA, ECUADOR <span>/</span> EC—04
+            <Radio size={14} /> TRANSMISIÓN DE EMERGENCIA <span>/</span> MANTA, ECUADOR
           </p>
           <h1 id="mission-title">
-            No propagues
+            La ciudad
             <br />
-            el miedo.
+            aún respira.
             <br />
             <em>Encuentra la cura.</em>
           </h1>
           <p className="access-lead">
-            Una ciudad en riesgo. Recursos limitados.
+            El brote llegó a Manta. El tiempo se agota.
             <br />
-            Tu estrategia puede cambiar el curso del brote.
+            Cada decisión puede cambiar lo que viene.
           </p>
           <div className="access-radar" aria-hidden="true">
             <svg viewBox="0 0 600 230" fill="none">
