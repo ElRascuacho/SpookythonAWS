@@ -1,5 +1,7 @@
 .access-page {
-  min-height: 100svh;
+  height: 100svh;
+  box-sizing: border-box;
+  overflow: hidden;
   padding: 32px clamp(24px, 5vw, 80px) 22px;
   background:
     radial-gradient(ellipse at 28% 46%, #19313866, transparent 53%), var(--ink);
@@ -60,7 +62,7 @@
   width: 100%;
   max-width: 1200px;
   margin: auto;
-  padding: 64px 0 56px;
+  padding: clamp(12px, 4svh, 64px) 0;
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(350px, 0.9fr);
   gap: clamp(40px, 7vw, 112px);
@@ -540,7 +542,7 @@
   .access-cinematic-shade {
     background: linear-gradient(180deg, #071014a8, #071014ac 30%, #071014f5 66%);
   }
-  .access-layout { padding: 28px 0 24px; gap: 22px; }
+  .access-layout { padding: clamp(10px, 3svh, 28px) 0; gap: clamp(10px, 2.5svh, 22px); }
   .access-story h1 { font-size: clamp(42px, 11vw, 58px); letter-spacing: .01em; }
   .access-lead { line-height: 1.5; margin-top: 12px; }
   .access-card-body { padding: 20px 22px; }
@@ -549,4 +551,16 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .access-page *, .access-page *::before, .access-page *::after { animation: none !important; }
+}
+
+@media (max-height: 700px) {
+  .access-story h1 { font-size: clamp(38px, 5.5vw, 58px); }
+  .access-story > .access-eyebrow { margin-bottom: 10px; }
+  .access-lead { margin-top: 10px; }
+  .access-mission { margin-top: 18px; padding-top: 10px; }
+  .access-card-body { padding-block: 16px; }
+  .access-description { margin-block: 8px 12px; }
+  .access-help { margin-top: 10px; }
+  .access-card-footer { padding-block: 10px; }
+  .access-footer { padding-top: 10px; }
 }
