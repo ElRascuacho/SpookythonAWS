@@ -70,7 +70,7 @@ export function createApiHandler(deps: ApiHandlerDependencies) {
           const parsed = CreateSessionRequestSchema.safeParse(jsonBody);
           if (!parsed.success) {
             return errorResponse(
-              parsed.error.errors[0]?.message || "Código de invitación no válido.",
+              (parsed.error.issues?.[0]?.message || (parsed.error as unknown as { errors?: Array<{ message?: string }> }).errors?.[0]?.message) || "Código de invitación no válido.",
               400,
             );
           }
@@ -181,7 +181,7 @@ export function createApiHandler(deps: ApiHandlerDependencies) {
           const parsed = CreateJobRequestSchema.safeParse(jsonBody);
           if (!parsed.success) {
             return errorResponse(
-              parsed.error.errors[0]?.message || "Parámetros de trabajo inválidos.",
+              (parsed.error.issues?.[0]?.message || (parsed.error as unknown as { errors?: Array<{ message?: string }> }).errors?.[0]?.message) || "Parámetros de trabajo inválidos.",
               400,
             );
           }

@@ -77,7 +77,7 @@ describe("Task 05: Aggregator & Exactly-Once Finalizer", () => {
 
       const job = await jobAdmissionService.admitJob({
         invitationId: inv.invitationId,
-        params,
+        params: params as any,
       });
 
       const strategies = ["NO_INTERVENTION", "RANDOM", "SMART_CORTAFUEGOS"] as const;
@@ -92,7 +92,7 @@ describe("Task 05: Aggregator & Exactly-Once Finalizer", () => {
             batchIndex: 0,
             startRunIndex: 0,
             runsCount: 25,
-            params,
+            params: params as any,
           },
           { db, s3 },
         );
@@ -106,7 +106,7 @@ describe("Task 05: Aggregator & Exactly-Once Finalizer", () => {
           strategies: [...strategies],
           batchesPerStrategy: 1,
           runsPerBatch: 25,
-          params,
+          params: params as any,
         },
         { db, s3 },
       );

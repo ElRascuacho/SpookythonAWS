@@ -101,13 +101,13 @@ export class InvitationService {
       return null;
     }
 
-    return inv as InvitationRecord;
+    return inv as unknown as InvitationRecord;
   }
 
   async getInvitationById(invitationId: string): Promise<InvitationRecord | null> {
     const inv = await this.db.getItem(`INV#${invitationId}`, "METADATA");
     if (!inv) return null;
-    return inv as InvitationRecord;
+    return inv as unknown as InvitationRecord;
   }
 
   async revokeInvitation(invitationId: string): Promise<boolean> {
