@@ -4,6 +4,7 @@ import {
   MonteCarloComparisonResult,
   SimulationParams,
 } from "../src/domain/types";
+import { PartialSimulationParamsSchema } from "../src/domain/schemas/simulationParams.schema";
 import { authorize } from "./auth";
 import { NEWS_ROUTE, handleNewsRoute } from "./news";
 
@@ -153,7 +154,8 @@ export async function handler(
         headers: { ...RESPONSE_HEADERS, Allow: "POST" },
         body: JSON.stringify({ error: "Método no permitido." }),
       };
-    const payload: Partial<SimulationParams> = body ? JSON.parse(body) : {};
+    const rawPayload = body ? JSON.parse(body) : {};
+    const payload = PartialSimulationParamsSchema.parse(rawPayload);
     const simulationResult = runMonteCarloComparison(payload);
 
     if (path.endsWith("/mayor-report")) {

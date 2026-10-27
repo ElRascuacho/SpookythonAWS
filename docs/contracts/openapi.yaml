@@ -1,0 +1,472 @@
+openapi: 3.1.0
+info:
+  title: Operación Manta Cero — API de Simulación Epidemiológica Asíncrona
+  description: >
+    API REST Serverless de Simulación Epidemiológica SEIR-V en Grafo Urbano (Spookython AWS Track B).
+    Permite la autenticación por invitación de alta entropía, admisión transaccional de trabajos
+    Monte Carlo (500 corridas por estrategia) y consulta de resultados agregados P10/Media/P90.
+  version: 1.0.0
+  contact:
+    name: Equipo Operación Manta Cero
+servers:
+  - url: /api/v1
+    description: Servidor API Gateway relativo
+
+paths:
+  /auth/session:
+    post:
+      summary: Iniciar sesión mediante código de invitación
+      description: Valida el código de alta entropía (>=128 bits), emite token de sesión opaco de 256 bits y asigna cookie HttpOnly.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '200':
+          description: Sesión iniciada con éxito
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: spk_session=ses_...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1; Max-Age=43200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  invitationId:
+                    type: string
+                    format: uuid
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+    get:
+      summary: Verificar estado de sesión activa
+      responses:
+        '200':
+          description: Sesión válida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  invitationId:
+                    type: string
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      summary: Cerrar sesión
+      responses:
+        '200':
+          description: Sesión invalidada y cookie revocada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+
+  /jobs:
+    post:
+      summary: Crear nuevo trabajo de simulación Monte Carlo
+      description: Admisión atómica verificando cuota global (<100/día), cuota por invitación (<20/día) y slot activo (máx 1 concurrente).
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJobRequest'
+      responses:
+        '202':
+          description: Trabajo aceptado para procesamiento asíncrono
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  jobId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: PENDING
+                  estimatedTimeSeconds:
+                    type: integer
+                    example: 45
+        '409':
+          description: Conflicto de idempotencia o carrera de concurrencia
+          $ref: '#/components/responses/ConflictError'
+        '429':
+          description: Cuota diaria excedida (global o por invitación)
+          $ref: '#/components/responses/RateLimitError'
+
+    get:
+      summary: Listar trabajos propios de la invitación
+      responses:
+        '200':
+          description: Lista de trabajos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobListResponse'
+
+  /jobs/shared:
+    get:
+      summary: Listar trabajos compartidos por otros invitados
+      description: Consulta GSI2 con verificación fuerte de base para descartar jobs revocados o expirados.
+      responses:
+        '200':
+          description: Lista de trabajos compartidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobListResponse'
+
+  /jobs/{id}:
+    get:
+      summary: Consultar estado de un trabajo de simulación
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Estado del trabajo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    patch:
+      summary: Actualizar visibilidad de un trabajo propio
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [visibility]
+              properties:
+                visibility:
+                  type: string
+                  enum: [PRIVATE, SHARED_INVITEES]
+      responses:
+        '200':
+          description: Visibilidad actualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  visibility:
+                    type: string
+                    example: SHARED_INVITEES
+
+  /jobs/{id}/results:
+    get:
+      summary: Obtener resultados detallados de la simulación
+      description: Proxy autenticado que extrae el JSON agregado de S3 con soporte para compresión gzip.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Resultados completos agregados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResultsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: El trabajo aún no ha finalizado (PENDING o RUNNING)
+          $ref: '#/components/responses/ConflictError'
+
+components:
+  schemas:
+    CreateSessionRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 16
+          maxLength: 128
+          example: MC-98060-B646E-2E482-BCE1F
+
+    SimulationParams:
+      type: object
+      properties:
+        betaHuman:
+          type: number
+          minimum: 0.01
+          maximum: 1.0
+          default: 0.35
+        betaVector:
+          type: number
+          minimum: 0.01
+          maximum: 1.0
+          default: 0.12
+        sigma:
+          type: number
+          minimum: 0.01
+          maximum: 1.0
+          default: 0.33
+        gamma:
+          type: number
+          minimum: 0.01
+          maximum: 1.0
+          default: 0.10
+        hospitalCapacity:
+          type: integer
+          minimum: 100
+          maximum: 10000
+          default: 2500
+        vaccineEfficacy:
+          type: number
+          minimum: 0.10
+          maximum: 1.0
+          default: 0.85
+        dailyBudget:
+          type: integer
+          minimum: 100
+          maximum: 10000
+          default: 1000
+        vaccineCost:
+          type: integer
+          minimum: 1
+          maximum: 5000
+          default: 200
+        vaccineBatchSize:
+          type: integer
+          minimum: 10
+          maximum: 5000
+          default: 500
+        fumigationCost:
+          type: integer
+          minimum: 1
+          maximum: 5000
+          default: 250
+        cordonCost:
+          type: integer
+          minimum: 1
+          maximum: 5000
+          default: 300
+        days:
+          type: integer
+          minimum: 1
+          maximum: 60
+          default: 60
+        seed:
+          type: integer
+          minimum: 1
+          maximum: 4294967295
+          default: 20261030
+        monteCarloRuns:
+          type: integer
+          minimum: 10
+          maximum: 500
+          default: 60
+        patientZeroIds:
+          type: array
+          items:
+            type: string
+            enum: [N01, N02, N03, N04, N05, N06, N07, N08, N09, N10, N11, N12, N13, N14, N15, N16]
+          default: [N01]
+        initialInfectedPerNode:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 35
+        initialExposedPerNode:
+          type: integer
+          minimum: 0
+          maximum: 500
+          default: 50
+
+    CreateJobRequest:
+      type: object
+      properties:
+        params:
+          $ref: '#/components/schemas/SimulationParams'
+        enableAiStrategy:
+          type: boolean
+          default: false
+        visibility:
+          type: string
+          enum: [PRIVATE, SHARED_INVITEES]
+          default: PRIVATE
+
+    JobSummaryItem:
+      type: object
+      required: [jobId, status, createdAt, totalRuns, strategies, visibility]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, RUNNING, COMPLETED, FAILED, TIMED_OUT]
+        createdAt:
+          type: string
+          format: date-time
+        totalRuns:
+          type: integer
+        strategies:
+          type: array
+          items:
+            type: string
+        visibility:
+          type: string
+          enum: [PRIVATE, SHARED_INVITEES]
+        attempt:
+          type: integer
+          default: 1
+        completedAt:
+          type: string
+          format: date-time
+        dueTimeIso:
+          type: string
+          format: date-time
+
+    JobListResponse:
+      type: object
+      required: [ok, jobs]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobSummaryItem'
+
+    JobStatusResponse:
+      type: object
+      required: [ok, job]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        job:
+          $ref: '#/components/schemas/JobSummaryItem'
+
+    JobResultsResponse:
+      type: object
+      required: [ok, jobId, status, result]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [COMPLETED]
+        result:
+          type: object
+        aiSummary:
+          type: string
+
+    ApiError:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+  responses:
+    UnauthorizedError:
+      description: Credenciales no válidas o expiradas
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            ok: false
+            error: "Credenciales de acceso no válidas o sesión caducada."
+            code: "UNAUTHORIZED"
+
+    NotFoundError:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            ok: false
+            error: "Trabajo no encontrado."
+            code: "NOT_FOUND"
+
+    ConflictError:
+      description: Conflicto en el estado del recurso
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            ok: false
+            error: "Ya existe un trabajo en ejecución para esta invitación."
+            code: "CONCURRENCY_SLOT_BUSY"
+
+    RateLimitError:
+      description: Límite de tasa o cuota diaria superado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            ok: false
+            error: "Cuota diaria de simulaciones alcanzada."
+            code: "QUOTA_EXCEEDED"
