@@ -13,7 +13,8 @@
     "test": "bun test",
     "ingest": "bun scripts/ingest-fixtures.ts",
     "openapi": "bun scripts/generate-openapi.ts",
-    "admin": "bun scripts/admin-invitations.ts"
+    "admin": "bun scripts/admin-invitations.ts",
+    "verify:cloud": "bun scripts/verify-cloud.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1157.0",
