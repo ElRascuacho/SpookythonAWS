@@ -32,6 +32,8 @@ import {
   type DayTransitionReport,
 } from "./components/DayTransition";
 import { NewsFlash } from "./components/NewsFlash";
+import { GameTutorial } from "./components/GameTutorial";
+import { TUTORIAL_SEEN_KEY } from "./domain/tutorial";
 import {
   advanceDay,
   createGame,
@@ -242,7 +244,13 @@ export default function App({
   const [selectedNode, setSelectedNode] = useState("N01");
   const [orders, setOrders] = useState<Order[]>([]);
   const [funding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
-  const [modal, setModal] = useState<Modal>(null);
+  const [modal, setModal] = useState<Modal>(() => {
+    try {
+      return localStorage.getItem(TUTORIAL_SEEN_KEY) === "1" ? null : "help";
+    } catch {
+      return "help";
+    }
+  });
   const [briefingChapter, setBriefingChapter] = useState<CampaignChapter>(0);
   const [draft, setDraft] = useState<GameConfig>(DEFAULT_CONFIG);
   const [notice, setNotice] = useState("");
@@ -266,7 +274,16 @@ export default function App({
     },
     [],
   );
-  const closeModal = () => setModal(null);
+  const closeModal = () => {
+    if (modal === "help") {
+      try {
+        localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
+      } catch {
+        // Storage can be blocked; dismissing the tutorial must still work.
+      }
+    }
+    setModal(null);
+  };
   const snapshot = game.timeline[game.day];
   const node = NODE_MAP[selectedNode];
   const local = snapshot.nodes[selectedNode];
@@ -807,54 +824,8 @@ export default function App({
         </Dialog>
       )}
       {modal === "help" && (
-        <Dialog title="La misión es encontrar la cura." onClose={closeModal}>
-          <p className="dialog-intro">
-            Eres el comité de respuesta de Manta. No controlas el virus:
-            proteges a la ciudad mientras la ciencia encuentra una salida.
-          </p>
-          <div className="help-steps">
-            <div>
-              <MapPin />
-              <span>
-                <b>01. Lee el mapa</b>Selecciona una de las 16 zonas. Coral
-                significa infección activa. La cámara se queda en Manta.
-              </span>
-            </div>
-            <div>
-              <ShieldPlus />
-              <span>
-                <b>02. Construye tu plan</b>Vacuna susceptibles, fumiga el
-                vector o corta rutas al seleccionar una zona. Retira
-                brigadas antes de ejecutar.
-              </span>
-            </div>
-            <div>
-              <FlaskConical />
-              <span>
-                <b>03. Financia la cura</b>${format(RESEARCH_LEVELS[1])} suma 3
-                puntos diarios; ${format(RESEARCH_LEVELS[2])} suma 5. El
-                presupuesto se renueva y no se acumula.
-              </span>
-            </div>
-            <div>
-              <ArrowRight />
-              <span>
-                <b>04. Avanza y adapta</b>Ganas con la cura al 100%. Pierdes al
-                alcanzar 35% de contagios acumulados o al terminar el día 40 sin
-                cura.
-              </span>
-            </div>
-          </div>
-          <p className="model-disclaimer">
-            Simulación educativa ficticia, no herramienta clínica. R combina
-            recuperados e inmunizados. Los contagios evitados no equivalen a
-            muertes evitadas. La semilla y tus decisiones hacen la partida
-            reproducible.
-          </p>
-          <button className="primary-button" onClick={closeModal}>
-            Entendido. Vamos a salvar Manta.
-            <ArrowRight size={17} />
-          </button>
+        <Dialog title="Aprende a jugar." onClose={closeModal}>
+          <GameTutorial config={DEFAULT_CONFIG} onClose={closeModal} />
         </Dialog>
       )}
       {modal === "settings" && (

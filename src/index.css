@@ -1289,32 +1289,6 @@ svg {
   line-height: 1.9;
   margin: 21px 0;
 }
-.help-steps {
-  display: grid;
-  gap: 20px;
-  margin: 26px 0;
-}
-.help-steps > div {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  color: var(--mint);
-}
-.help-steps > div > svg {
-  width: 21px;
-}
-.help-steps span {
-  font-size: 11px;
-  line-height: 1.8;
-  color: #8fa9b3;
-}
-.help-steps b {
-  display: block;
-  color: #d5dfd8;
-  font-size: 12px;
-  font-weight: 500;
-  margin-bottom: 3px;
-}
 .model-disclaimer {
   font-size: 9px;
   line-height: 1.8;
@@ -1990,12 +1964,6 @@ svg {
   }
   .result-stats strong {
     font-size: 21px;
-  }
-  .game-dialog .help-steps {
-    gap: 17px;
-  }
-  .game-dialog .help-steps span {
-    font-size: 10px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
