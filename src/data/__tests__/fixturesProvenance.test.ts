@@ -85,13 +85,13 @@ describe("Task 03: Provenance Manifest & SHA-256 Integrity", () => {
     expect(manifest.totalPopulation).toBe(264281);
     expect(manifest.sources.length).toBeGreaterThanOrEqual(4);
 
-    // Verify SHA-256 for manta-nodes.json
-    const nodesRaw = readFileSync(NODES_PATH);
+    // Verify SHA-256 for manta-nodes.json (normalize line endings for cross-platform deterministic hashing)
+    const nodesRaw = readFileSync(NODES_PATH, "utf-8").replace(/\r\n/g, "\n");
     const expectedNodesSha = createHash("sha256").update(nodesRaw).digest("hex");
     expect(manifest.files["manta-nodes.json"].sha256).toBe(expectedNodesSha);
 
-    // Verify SHA-256 for climate-manta.json
-    const climateRaw = readFileSync(CLIMATE_PATH);
+    // Verify SHA-256 for climate-manta.json (normalize line endings for cross-platform deterministic hashing)
+    const climateRaw = readFileSync(CLIMATE_PATH, "utf-8").replace(/\r\n/g, "\n");
     const expectedClimateSha = createHash("sha256").update(climateRaw).digest("hex");
     expect(manifest.files["climate-manta.json"].sha256).toBe(expectedClimateSha);
   });
