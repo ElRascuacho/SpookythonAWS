@@ -1,0 +1,97 @@
+name: Deploy Serverless & Frontend to AWS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  test-and-deploy:
+    name: Test, Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun Runtime
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Node/Bun Dependencies
+        run: bun install
+
+      - name: Run Test Suite (90 Gates)
+        run: bun test
+
+      - name: Build Lambda Handler Bundle
+        run: bun run build:lambda
+
+      - name: Build Production Frontend (Vite + React)
+        run: bun run build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: SAM Build
+        run: sam build --template-file infra/template.yaml
+
+      - name: SAM Deploy (CloudFormation + Lambda + DynamoDB + CloudFront)
+        env:
+          INVITE_CODE_HASHES: ${{ secrets.INVITE_CODE_HASHES || '6a683604ca99b1324e78af1fe443ec6df86801df2aa3e69022d2b27b29190a0e' }}
+          INVITE_SESSION_SECRET: ${{ secrets.INVITE_SESSION_SECRET || 'd92d21fe9820b3b431052b3de35f7f62ac97a655d147d7d2deb29d1430443175' }}
+          INVITE_APP_ORIGIN: ${{ secrets.INVITE_APP_ORIGIN || 'http://localhost:5173' }}
+        run: |
+          sam deploy \
+            --stack-name spookython-manta-cero \
+            --region us-east-1 \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --parameter-overrides \
+              InviteCodeHashes="$INVITE_CODE_HASHES" \
+              InviteSessionSecret="$INVITE_SESSION_SECRET" \
+              InviteAppOrigin="$INVITE_APP_ORIGIN" \
+            --no-fail-on-empty-changeset
+
+      - name: Sync Frontend Assets to S3
+        run: |
+          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name spookython-manta-cero \
+            --region us-east-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
+            --output text)
+          echo "Desplegando en bucket: $FRONTEND_BUCKET"
+          aws s3 sync dist/ "s3://$FRONTEND_BUCKET" --delete
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          CF_URL=$(aws cloudformation describe-stacks \
+            --stack-name spookython-manta-cero \
+            --region us-east-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontUrl'].OutputValue" \
+            --output text)
+          CF_DOMAIN=$(echo "$CF_URL" | sed 's|https://||')
+          echo "CloudFront Domain: $CF_DOMAIN"
+          DIST_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?DomainName=='$CF_DOMAIN'].Id" \
+            --output text)
+          echo "Invalidando distribucion CloudFront: $DIST_ID"
+          aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
