@@ -23,13 +23,13 @@ const ModeContext = createContext<{
   switchMode: (mode: Mode) => void;
 } | null>(null);
 
-export function ModeTabs({ onSelect }: { onSelect?: () => void }) {
+export function ModeTabs({ onSelect }: { onSelect?: (mode: Mode) => void }) {
   const ctx = useContext(ModeContext);
   if (!ctx) return null;
   const { mode, switchMode } = ctx;
   const select = (next: Mode) => {
     switchMode(next);
-    onSelect?.();
+    onSelect?.(next);
   };
   return (
     <nav className="mode-shell-nav" role="tablist" aria-label="Selector de modo">
@@ -276,7 +276,7 @@ export default function ModeShell({
           role="tabpanel"
           aria-label="Comité de Aprendizaje"
         >
-          <header className="hub-topbar">
+          <header className="hub-topbar committee-topbar">
             <nav className="header-actions" aria-label="Modos">
               <ModeTabs />
             </nav>

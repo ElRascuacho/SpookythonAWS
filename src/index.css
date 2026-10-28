@@ -3833,6 +3833,15 @@ svg {
 
 /* Readable command UI: grow controls, not the whole map canvas. */
 .hub-topbar { height: 76px; padding-inline: 24px; background: #08141cf5; }
+.game-shell > .hub-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.hub-identity { grid-column: 1; display: flex; align-items: center; gap: 20px; min-width: 0; }
+.hub-identity .brand, .hub-identity .mission-badge { flex-shrink: 0; white-space: nowrap; }
+.game-shell > .hub-topbar > .mode-shell-nav { grid-column: 2; }
+.game-shell > .hub-topbar > .header-actions { grid-column: 3; justify-self: end; align-items: center; }
+.committee-topbar { justify-content: center; }
 .hub-topbar .brand { font-size: 22px; }
 .hub-topbar .brand small { letter-spacing: .5px; }
 .hub-topbar .header-actions { gap: 8px; }
@@ -3883,7 +3892,10 @@ svg {
 .game-dialog .quick-action small { font-size: 14px; color: #bdced4; }
 .game-dialog .quick-action .qa-icon { width: 36px; height: 36px; }
 .settings-fields input, .settings-fields select, .mobile-zone-select { min-height: 44px; font-size: 16px; }
-@media (max-width: 1600px) { .hub-topbar .mission-badge { display: none; } }
+@media (max-width: 1919px) {
+  .game-shell > .hub-topbar > .header-actions button span { display: none; }
+}
+@media (max-width: 1250px) { .hub-topbar .mission-badge { display: none; } }
 @media (max-width: 1400px) {
   .hub-topbar {
     gap: 12px;
@@ -3918,6 +3930,8 @@ svg {
   }
 }
 @media (max-width: 1180px) {
+  .hub-topbar .mode-shell-tab { min-width: 40px; min-height: 40px; justify-content: center; padding-inline: 8px; }
+  .hub-topbar .mode-shell-tab span { display: none; }
   .hub-topbar .header-actions button { padding-inline: 7px; }
   .command-row.primary { gap: 12px; }
   .cure-block { width: 190px; }
@@ -3930,6 +3944,14 @@ svg {
 }
 @media (max-width: 680px) {
   .hub-topbar { height: auto; min-height: 72px; padding: 8px 10px; flex-wrap: wrap; gap: 6px; }
+  .game-shell > .hub-topbar { display: flex; }
+  .game-shell > .hub-topbar .hub-identity { min-height: 48px; }
+  .game-shell > .hub-topbar > .mode-shell-nav {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
   .hub-topbar .brand { font-size: 20px; }
   .hub-topbar .header-actions { width: 100%; justify-content: space-between; gap: 0; }
   .hub-topbar .header-actions button { width: 44px; height: 44px; }

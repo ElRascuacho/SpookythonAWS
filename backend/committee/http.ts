@@ -3,7 +3,13 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { PolicyRegistry, type RegisteredPolicy } from "./policyRegistry";
 import { json, ownerHash } from "../auth";
-import { cancelCommitteeJob, readCommitteeJob, startCommitteeJob } from "./jobStore";
+import {
+  cancelCommitteeJob,
+  clearPolicyLibrary,
+  getPolicyLibrary,
+  readCommitteeJob,
+  startCommitteeJob,
+} from "./jobStore";
 import { loadCommitteeResult } from "./resultStore";
 import { CommitteeAdmissionService } from "./admissionService";
 import { EvaluationJobService } from "./evaluationJobService";
@@ -41,7 +47,7 @@ export async function handleCommitteeRoute(
 
   const parts = url.pathname.split("/").filter(Boolean);
 
-  // 1. Policy registry
+  // 1. Policy registry & Local Policy Library
   if (request.method === "GET" && url.pathname === "/api/committee/policies/latest") {
     const bucket = env.COMMITTEE_RESULTS_BUCKET;
     if (!policyReader && !bucket) return json(503, { code: "committee.policy_unavailable", message: "Policy registry unavailable" });
@@ -50,6 +56,17 @@ export async function handleCommitteeRoute(
       return policy ? json(200, policy) : json(404, { code: "committee.not_found", message: "No published policy" });
     } catch {
       return json(503, { code: "committee.policy_unavailable", message: "Policy registry unavailable" });
+    }
+  }
+
+  if (url.pathname === "/api/committee/library") {
+    if (request.method === "DELETE") {
+      clearPolicyLibrary();
+      return json(200, { librarySize: 0 });
+    }
+    if (request.method === "GET") {
+      const entries = getPolicyLibrary();
+      return json(200, { librarySize: entries.length, entries });
     }
   }
 
@@ -98,7 +115,7 @@ export async function handleCommitteeRoute(
           await new LambdaClient({}).send(new InvokeCommand({
             FunctionName: workerName,
             InvocationType: "Event",
-            Payload: Buffer.from(JSON.stringify({ type: "training", jobId: admitted.jobId, ownerHash: owner, horizonDays, baseSeed })),
+            Payload: Buffer.from(JSON.stringify({ type: "training", jobId: admitted.jobId, ownerHash: owner, horizonDays, baseSeed, audit })),
           }));
         } catch {
           return json(503, { code: "committee.worker_unavailable", message: "Worker invocation failed" });
@@ -370,6 +387,12 @@ export async function handleCommitteeRoute(
       candidateMean: started.result.candidateMean,
       note: started.result.note,
       trajectories: started.result.trajectories,
+      seedUsed: started.baseSeed,
+      weights: started.result.weights,
+      promoted: started.result.promoted ?? false,
+      warmStartsCount: started.result.warmStartsCount ?? 0,
+      generationsRun: started.result.generationsRun ?? 1,
+      librarySize: started.result.librarySize ?? getPolicyLibrary().length,
     });
   }
 
@@ -437,5 +460,11 @@ function publicJob(job: ReturnType<typeof readCommitteeJob> & object) {
     candidateMean: job.result.candidateMean,
     note: job.result.note,
     trajectories: job.result.trajectories,
+    seedUsed: job.baseSeed,
+    weights: job.result.weights,
+    promoted: job.result.promoted ?? false,
+    warmStartsCount: job.result.warmStartsCount ?? 0,
+    generationsRun: job.result.generationsRun ?? 1,
+    librarySize: job.result.librarySize ?? getPolicyLibrary().length,
   };
 }

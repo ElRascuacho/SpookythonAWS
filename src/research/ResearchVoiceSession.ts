@@ -393,7 +393,7 @@ export class ResearchVoiceSession {
           parsed.message,
           AbortSignal.any([signal, this.turnController.signal]),
         );
-        output = { reply, requires_manual_confirmation: true, applied: false };
+        output = { reply };
       } else
         throw Error(
           "Herramienta no permitida. No existen herramientas para confirmar, aplicar o avanzar días.",

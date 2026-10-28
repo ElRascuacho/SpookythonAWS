@@ -55,7 +55,9 @@ describe("research voice session boundary", () => {
             t.parameters.additionalProperties === false,
         ),
       ).toBe(true);
-      expect(payload.session.instructions).toContain("NUNCA confirmes");
+      expect(payload.session.instructions).toContain("sí puede crear y activar una medida editable");
+      expect(payload.session.instructions).toContain("botón para ofrecer reproducir una simulación");
+      expect(payload.session.instructions).toContain("No afirmes haber confirmado o simulado hasta recibir éxito");
       expect(payload.session.instructions).toContain(
         "¿Quieres que genere un reporte en vivo de este experimento?",
       );
@@ -69,7 +71,8 @@ describe("research voice session boundary", () => {
         interrupt_response: true,
       });
       expect(payload.session.audio.input.transcription.language).toBe("es");
-      expect(payload.session.audio.output.voice).toBe("alloy");
+      expect(payload.session.audio.output.voice).toBe("coral");
+      expect(payload.session.instructions).toContain("Eres Trinity");
       return Response.json({
         value: "ek_test_only",
         expires_at: Math.floor(Date.now() / 1000) + 60,

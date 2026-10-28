@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { archiveValidatedPolicy } from "../../src/domain/committee/library";
 import {
   runCommitteePreview,
+  type CommitteeRunLimits,
   type CommitteeRunRequest,
   type CommitteeRunResult,
 } from "../../src/domain/committee/runner";
+import type { PolicyLibraryEntry } from "../../src/domain/committee/types";
 
 export interface CommitteeJob {
   id: string;
@@ -18,11 +21,21 @@ export interface CommitteeJob {
 
 const jobs = new Map<string, CommitteeJob>();
 const idempotency = new Map<string, string>();
+let policyLibrary: PolicyLibraryEntry[] = [];
 let active = false;
+
+export function getPolicyLibrary(): readonly PolicyLibraryEntry[] {
+  return policyLibrary;
+}
+
+export function clearPolicyLibrary(): void {
+  policyLibrary = [];
+}
 
 export function resetCommitteeJobs(): void {
   jobs.clear();
   idempotency.clear();
+  policyLibrary = [];
   active = false;
 }
 
@@ -32,6 +45,7 @@ export function startCommitteeJob(input: {
   horizonDays: number;
   baseSeed: number;
   audit?: boolean;
+  continuousLearning?: boolean;
   run?: (request: CommitteeRunRequest) => CommitteeRunResult;
 }): CommitteeJob | { error: "slot" | "invalid" } {
   const horizonDays = Math.round(input.horizonDays);
@@ -63,18 +77,50 @@ export function startCommitteeJob(input: {
       trajectories: 0,
       playback: [],
       note: "",
+      seedUsed: input.baseSeed,
+      promoted: false,
+      warmStartsCount: 0,
+      generationsRun: 0,
+      librarySize: policyLibrary.length,
     },
   };
   jobs.set(id, job);
   idempotency.set(idemKey, id);
   try {
-    const result = (input.run ?? runCommitteePreview)({
+    let limits: CommitteeRunLimits | undefined;
+    if (input.audit) {
+      limits = { generations: 2, includePromotion: true, includeFinalAudit: true };
+    } else if (!input.run && input.continuousLearning !== false) {
+      limits = { generations: 2, includePromotion: true, includeFinalAudit: false };
+    }
+
+    const rawResult = (input.run ?? runCommitteePreview)({
       jobId: id,
       baseSeed: input.baseSeed,
       horizonDays,
-      limits: input.audit ? { includePromotion: true, includeFinalAudit: true } : undefined,
+      librarySnapshot: policyLibrary,
+      limits,
       shouldCancel: () => jobs.get(id)?.status === "cancelled",
     });
+
+    const shouldArchive =
+      ((rawResult.promoted && rawResult.finalAudit !== "failed") || rawResult.finalAudit === "passed") &&
+      rawResult.candidateMean != null;
+
+    if (shouldArchive) {
+      policyLibrary = archiveValidatedPolicy(policyLibrary, {
+        weights: rawResult.weights,
+        horizonDays,
+        scoreHint: rawResult.candidateMean!,
+      });
+    }
+
+    const result: CommitteeRunResult = {
+      ...rawResult,
+      seedUsed: rawResult.seedUsed ?? input.baseSeed,
+      librarySize: policyLibrary.length,
+    };
+
     job.result = result;
     job.status = result.status;
     job.stateRevision = result.stateRevision;

@@ -568,14 +568,68 @@
   .access-page *, .access-page *::before, .access-page *::after { animation: none !important; }
 }
 
-@media (max-height: 700px) {
-  .access-story h1 { font-size: clamp(38px, 5.5vw, 58px); }
+/* Keep the sign-in screen compact without clipping errors or keyboard focus
+   when the viewport is exceptionally short or text is enlarged. */
+.access-page { padding-block: clamp(12px, 2.5svh, 24px); }
+.access-layout { padding-block: clamp(8px, 2svh, 24px); }
+.access-card-body { padding-block: clamp(16px, 3svh, 28px); }
+.access-fingerprint { margin-bottom: clamp(12px, 2svh, 20px); }
+.access-description { margin-block: 10px 18px; }
+.access-card-footer { padding-block: 12px; }
+.access-footer { padding-top: 10px; }
+
+@media (max-height: 800px) {
+  .access-story h1 { font-size: clamp(38px, 5.5vw, 68px); }
   .access-story > .access-eyebrow { margin-bottom: 10px; }
   .access-lead { margin-top: 10px; }
   .access-mission { margin-top: 18px; padding-top: 10px; }
+  .access-fingerprint { display: none; }
+  .access-card-top { padding-block: 10px; }
   .access-card-body { padding-block: 16px; }
   .access-description { margin-block: 8px 12px; }
-  .access-help { margin-top: 10px; }
-  .access-card-footer { padding-block: 10px; }
-  .access-footer { padding-top: 10px; }
+  .access-guest { margin-block: 8px 12px; }
+  .access-card-footer { padding-block: 8px; }
+}
+@media (max-width: 660px) and (max-height: 800px) {
+  .access-layout { gap: 12px; }
+  .access-story h1 { font-size: clamp(34px, 9vw, 44px); }
+  .access-story > .access-eyebrow { font-size: 11px; margin-bottom: 6px; }
+  .access-lead { font-size: 14px; line-height: 1.4; margin-top: 8px; }
+  .access-card-body { padding: 14px 20px; }
+  .access-card h2 { font-size: 23px; }
+  .access-card label { margin-bottom: 5px; }
+  .access-password-label { margin-top: 10px; }
+  .access-input { min-height: 44px; }
+  .access-input input { padding-block: 9px; font-size: 16px; }
+  .access-submit { min-height: 44px; padding-block: 10px; }
+}
+@media (max-height: 750px) {
+  .access-page { padding-block: 10px; }
+  .access-layout { padding-block: 8px; }
+  .access-footer { display: none; }
+}
+@media (max-height: 650px) {
+  .access-page { padding-block: 6px; }
+  .access-layout { padding-block: 4px; }
+  .access-mission, .access-card-footer { display: none; }
+}
+/* On phones, prioritize the complete form over decorative copy and footers. */
+@media (max-width: 660px) {
+  .access-private, .access-story .access-lead, .access-story > .access-eyebrow,
+  .access-fingerprint, .access-description, .access-card-footer, .access-footer { display: none; }
+  .access-layout { gap: 12px; padding-block: 8px; }
+  .access-story h1 { font-size: clamp(28px, 8vw, 40px); }
+  .access-card-top { padding-block: 10px; }
+  .access-card-body { padding: 14px 20px; }
+  .access-card h2 { font-size: 23px; }
+  .access-card label { margin-bottom: 5px; }
+  .access-password-label { margin-top: 10px; }
+  .access-input { min-height: 44px; }
+  .access-input input { padding-block: 9px; font-size: 16px; }
+  .access-guest { margin-block: 8px 12px; }
+  .access-submit { min-height: 44px; padding-block: 10px; }
+}
+@media (max-width: 660px) and (max-height: 650px) {
+  .access-layout { padding-block: 4px; }
+  .access-story h1 { font-size: 28px; }
 }

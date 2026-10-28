@@ -61,6 +61,8 @@ describe("research agent server boundary (provider doubles only in tests)", () =
     expect(payload.model).toBe("gpt-6.1-terra");
     expect(payload.store).toBe(false);
     expect(payload.text.format.strict).toBe(true);
+    expect(payload.tools).toBeUndefined();
+    expect(payload.instructions).toContain("gráficos dinámicos inline");
     expect(payload.text.format.schema.required).toContain("scope");
     expect(payload.text.format.schema.properties.scope.enum).toEqual([
       "research",
@@ -75,6 +77,49 @@ describe("research agent server boundary (provider doubles only in tests)", () =
     const body = AgentResponseSchema.parse(await response.json());
     expect(body.model).toBe("gpt-6.1-terra");
     expect(body.proposal?.name).toBe(researchMeasure.name);
+  });
+  test("renders dynamic chart specs from validated context when requested", async () => {
+    const fetcher = (async (_url: any, options: any) => {
+      const payload = JSON.parse(options.body);
+      expect(payload.tools).toBeUndefined();
+      return Response.json({
+        status: "completed",
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({
+                  scope: "research",
+                  reply: "Aquí tienes la curva observada.",
+                  proposal: null,
+                }),
+              },
+            ],
+          },
+        ],
+      });
+    }) as typeof fetch;
+    const response = await handleResearchAgent(
+      request({
+        message: "Grafica la curva de infectados",
+        current: null,
+        chartContext: {
+          observedDays: [
+            { day: 0, activeInfected: 10, exposed: 4, recovered: 0, cumulativeInfected: 14, hospitalCollapsed: false },
+            { day: 1, activeInfected: 18, exposed: 7, recovered: 1, cumulativeInfected: 26, hospitalCollapsed: false },
+          ],
+          zones: [],
+        },
+      }),
+      "chart-tool",
+      env,
+      fetcher,
+    );
+    expect(response.status).toBe(200);
+    const body = AgentResponseSchema.parse(await response.json());
+    expect(body.charts?.[0]?.title).toBe("Curva epidemiológica observada");
+    expect(body.charts?.[0]?.series[0].points.map((p) => p.y)).toEqual([10, 18]);
   });
   test("honors an explicit server model override without changing the response contract", async () => {
     const fetcher = (async (

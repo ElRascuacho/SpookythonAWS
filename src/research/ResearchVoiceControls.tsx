@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "./researchVoice.css";
+import { acquireVoiceAudioFocus } from "../audio/voiceAudioFocus";
 import { Mic, PhoneOff, VolumeX } from "lucide-react";
 import {
   ResearchVoiceSession,
@@ -22,6 +23,7 @@ export function ResearchVoiceControls({
   getContext,
   onTranscript,
   onReport,
+  toolsSlot,
 }: {
   active: boolean;
   processing: boolean;
@@ -29,6 +31,7 @@ export function ResearchVoiceControls({
   getContext: () => unknown;
   onTranscript: (turn: VoiceTurn) => void;
   onReport: () => unknown;
+  toolsSlot?: ReactNode;
 }) {
   const [state, setState] = useState<VoiceState>("idle");
   const [message, setMessage] = useState("");
@@ -58,8 +61,15 @@ export function ResearchVoiceControls({
     );
   }
   useEffect(() => {
+    let releaseAudioFocus: (() => void) | null = null;
     const transport = new ResearchVoiceSession({
       status: (s, m) => {
+        if (s === "idle" || s === "error") {
+          releaseAudioFocus?.();
+          releaseAudioFocus = null;
+        } else {
+          releaseAudioFocus ??= acquireVoiceAudioFocus();
+        }
         setState(s);
         setMessage(m ?? "");
       },
@@ -85,6 +95,8 @@ export function ResearchVoiceControls({
     return () => {
       document.removeEventListener("visibilitychange", hidden);
       transport.stop();
+      releaseAudioFocus?.();
+      releaseAudioFocus = null;
       session.current = null;
       if (closingTimer.current) clearTimeout(closingTimer.current);
     };
@@ -136,7 +148,8 @@ export function ResearchVoiceControls({
           >
             <Mic size={15} /> Hablar
           </button>
-          <span className="rw-voice-indicator">Voz con IA · consume API</span>
+          {toolsSlot}
+          <span className="rw-voice-indicator">Voz con Trinity</span>
         </div>
       ) : (
         <div

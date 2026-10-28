@@ -1,5 +1,43 @@
 .research-workspace .header-actions .rw-research-info {
+  position: relative;
+  isolation: isolate;
   color: var(--research-accent, #f5a623);
+}
+/* A restrained sonar pulse draws attention to the onboarding/help entry without
+   changing its hit target or competing with the primary navigation. */
+.research-workspace .header-actions .rw-research-info::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 3px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: rw-info-sonar 1.65s ease-out infinite;
+}
+.research-workspace .header-actions .rw-research-info > svg {
+  position: relative;
+  z-index: 1;
+}
+.research-workspace .header-actions .rw-research-info:hover::after,
+.research-workspace .header-actions .rw-research-info:focus-visible::after {
+  animation-play-state: paused;
+  opacity: 0.65;
+  transform: scale(1.15);
+}
+@keyframes rw-info-sonar {
+  0%, 12% { opacity: 0; transform: scale(0.9); }
+  20% { opacity: 0.7; }
+  76% { opacity: 0; transform: scale(2.05); }
+  100% { opacity: 0; transform: scale(2.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .research-workspace .header-actions .rw-research-info::after {
+    animation: none;
+    opacity: 0.45;
+    transform: scale(1.12);
+  }
 }
 .rw-welcome {
   position: fixed;
