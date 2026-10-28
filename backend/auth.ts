@@ -137,6 +137,22 @@ function equal(a: string, b: string) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
+/** Same-port alias for local HTTP dev origins (localhost <-> 127.0.0.1). */
+function loopbackOriginAlias(origin: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:") return null;
+  if (url.hostname === "localhost") url.hostname = "127.0.0.1";
+  else if (url.hostname === "127.0.0.1") url.hostname = "localhost";
+  else return null;
+  return url.origin;
+}
+
+
 /** Handles auth routes; null means an authenticated API request may continue. */
 export async function authorize(
   request: Request,
@@ -182,19 +198,24 @@ export async function authorize(
   const cookie = (token: string, age: number) =>
     `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${secure ? "; Secure" : ""}`;
 
+  const allowedOrigins = new Set([origin]);
+  const loopbackAlias = loopbackOriginAlias(origin);
+  if (loopbackAlias) allowedOrigins.add(loopbackAlias);
+
   if (request.method !== "GET") {
-    const reqOrigin = request.headers.get("origin");
-    if (reqOrigin !== origin)
+    const reqOrigin = request.headers.get("origin") ?? "";
+    if (!allowedOrigins.has(reqOrigin))
       return json(403, { error: "Origen no permitido." });
-    if (request.method !== "POST")
+    if (request.method !== "POST" && request.method !== "DELETE")
       return json(
         405,
         { error: "Método no permitido." },
-        { Allow: "GET, POST" },
+        { Allow: "GET, POST, DELETE" },
       );
     if (
+      request.method === "POST" &&
       request.headers.get("content-type")?.split(";")[0].trim() !==
-      "application/json"
+        "application/json"
     ) {
       return json(415, { error: "Se requiere JSON." });
     }

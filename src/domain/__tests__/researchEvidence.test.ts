@@ -30,7 +30,9 @@ describe("research evidence and shared context", () => {
   test("canonical identity is stable, hashes all scientific inputs and excludes confirmation bookkeeping", async () => {
     const w = fixture(),
       hash = await configurationHash(w);
+    expect(hash).not.toBeNull();
     expect(hash).toHaveLength(64);
+    expect(typeof configurationIdentity(w)).toBe("string");
     expect(await configurationHash(structuredClone(w))).toBe(hash);
     const changed = structuredClone(w);
     changed.params.gamma += 0.01;
@@ -44,6 +46,36 @@ describe("research evidence and shared context", () => {
     const policy = structuredClone(w);
     policy.strategy = "SMART_CORTAFUEGOS";
     expect(await configurationHash(policy)).not.toBe(hash);
+  });
+  test("invalid configuration returns null identity/hash without throwing during render", async () => {
+    const invalid: ReturnType<typeof fixture>[] = [];
+    const dayZero = fixture();
+    dayZero.params.days = 0;
+    invalid.push(dayZero);
+    const noOrigins = fixture();
+    noOrigins.params.patientZeroIds = [];
+    invalid.push(noOrigins);
+    const nanBeta = fixture();
+    nanBeta.params.betaHuman = Number.NaN;
+    invalid.push(nanBeta);
+    const outOfRangeBudget = fixture();
+    outOfRangeBudget.params.dailyBudget = 99;
+    invalid.push(outOfRangeBudget);
+    for (const w of invalid) {
+      expect(configurationIdentity(w)).toBeNull();
+      expect(await configurationHash(w)).toBeNull();
+      let error: unknown;
+      try {
+        confirmedMeasures(w);
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/no es válida/i);
+      expect((error as Error).name).not.toBe("ZodError");
+    }
+    expect(configurationIdentity(fixture())).toEqual(expect.any(String));
+    expect(await configurationHash(fixture())).toEqual(expect.any(String));
   });
   test("rejects missing, stale or mismatched confirmations and unsupported replication counts", () => {
     const w = fixture();

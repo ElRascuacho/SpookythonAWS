@@ -3858,6 +3858,39 @@ svg {
 .game-dialog .quick-action .qa-icon { width: 36px; height: 36px; }
 .settings-fields input, .settings-fields select, .mobile-zone-select { min-height: 44px; font-size: 16px; }
 @media (max-width: 1600px) { .hub-topbar .mission-badge { display: none; } }
+@media (max-width: 1400px) {
+  .hub-topbar {
+    gap: 12px;
+    padding-inline: 16px;
+  }
+  .hub-topbar .brand {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .hub-topbar .brand > span {
+    white-space: nowrap;
+  }
+  .hub-topbar .mode-shell-nav {
+    flex-shrink: 0;
+    gap: 2px;
+    padding: 3px;
+  }
+  .hub-topbar .mode-shell-tab {
+    gap: 0;
+  }
+  .hub-topbar .header-actions {
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .hub-topbar .header-actions button {
+    gap: 0;
+    padding-inline: 8px;
+  }
+  .hub-topbar .header-actions button span {
+    display: none;
+  }
+}
 @media (max-width: 1180px) {
   .hub-topbar .header-actions button { padding-inline: 7px; }
   .command-row.primary { gap: 12px; }
