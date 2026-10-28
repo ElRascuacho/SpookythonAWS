@@ -1,11 +1,60 @@
 export type TrafficPoint = { x: number; y: number };
+import roadData from "../data/manta-osm-routes.json";
+import { NODE_MAP } from "./mantaGraph";
+import { shortestRoadRoute, type RoadGraph } from "./roadRouting";
 
-export const TRAFFIC_VEHICLES = [
-  { type: "car", route: 0, edge: "E01", duration: 42, delay: 0 },
-  { type: "bus", route: 1, edge: "E03", duration: 52, delay: 16 },
-  { type: "car", route: 2, edge: "E06", duration: 38, delay: 23 },
-  { type: "bus", route: 3, edge: "E08", duration: 56, delay: 31 },
-] as const;
+// Fixed road geometries generated from OpenStreetMap via OSRM, not official bus itineraries.
+function prepareRoute<T extends { coordinates: number[][] }>(route: T) {
+  const cumulative = [0];
+  for (let i = 1; i < route.coordinates.length; i++) {
+    const [a, b] = [route.coordinates[i - 1], route.coordinates[i]];
+    cumulative.push(cumulative[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]));
+  }
+  return { ...route, cumulative };
+}
+export const ROAD_ROUTES = roadData.routes.map(prepareRoute);
+
+const nodeIds = [...new Set(ROAD_ROUTES.flatMap((route) => [route.from, route.to]))];
+const roadGraph: RoadGraph = {
+  nodes: nodeIds.map((id) => ({ id, lat: NODE_MAP[id].lat, lng: NODE_MAP[id].lng })),
+  edges: ROAD_ROUTES.map(({ from, to, distanceMeters }) => ({ from, to, distanceMeters })),
+};
+
+function buildTrafficRoute(from: string, to: string) {
+  const selected = shortestRoadRoute(roadGraph, from, to);
+  if (!selected) throw new Error(`No hay corredor vial entre ${from} y ${to}`);
+  const parts = selected.path.slice(1).map((id, index) => {
+    const road = ROAD_ROUTES.filter((route) => route.from === selected.path[index] && route.to === id).sort((a, b) => a.distanceMeters - b.distanceMeters)[0];
+    if (!road) throw new Error("Tramo vial no disponible");
+    return road;
+  });
+  return prepareRoute({ from, to, distanceMeters: selected.distanceMeters, edges: parts.map((part) => part.edge), coordinates: parts.flatMap((part) => part.coordinates) });
+}
+
+// Routing is shortest only over the cached district corridors, not the whole city road graph.
+export const TRAFFIC_ROUTES = [buildTrafficRoute("N08", "N02"), buildTrafficRoute("N01", "N07"), buildTrafficRoute("N02", "N08"), buildTrafficRoute("N02", "N01"), ...ROAD_ROUTES.map((route) => ({ ...route, edges: [route.edge] }))];
+
+export function pointOnRoad(route: { coordinates: number[][]; cumulative: number[] }, progress: number): [number, number] {
+  const distance = Math.max(0, Math.min(1, progress)) * route.cumulative[route.cumulative.length - 1];
+  let low = 1, high = route.cumulative.length - 1;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    if (route.cumulative[mid] < distance) low = mid + 1;
+    else high = mid;
+  }
+  const i = low;
+  const span = route.cumulative[i] - route.cumulative[i - 1];
+  const t = span ? (distance - route.cumulative[i - 1]) / span : 0;
+  const a = route.coordinates[i - 1], b = route.coordinates[i];
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
+export const TRAFFIC_VEHICLES = Array.from({ length: 216 }, (_, id) => {
+  const route = id % TRAFFIC_ROUTES.length;
+  const duration = Math.max(42, Math.min(180, TRAFFIC_ROUTES[route].distanceMeters / 32));
+  const slot = Math.floor(id / TRAFFIC_ROUTES.length);
+  return { id, type: (route + slot) % 5 === 0 ? "bus" as const : "car" as const, route, duration, delay: slot * duration / Math.ceil(216 / TRAFFIC_ROUTES.length) };
+});
 
 export function quadraticRoutePoint(
   start: TrafficPoint,

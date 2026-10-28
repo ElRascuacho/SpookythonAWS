@@ -2,6 +2,7 @@ import {
   createHash,
   createHmac,
   randomBytes,
+  scryptSync,
   timingSafeEqual,
 } from "node:crypto";
 
@@ -47,15 +48,21 @@ export async function authorize(
   now = Date.now(),
 ): Promise<Response | null> {
   const secret = env.INVITE_SESSION_SECRET ?? "";
-  const hashes = (env.INVITE_CODE_HASHES ?? "").split(",").map((h) => h.trim());
+  // La cuenta demo es pública; desactívala si el despliegue requiere acceso privado.
+  const demoEnabled = env.DEMO_LOGIN_ENABLED !== "false";
+  const demoId = createHash("sha256").update("demo:manta-cero").digest("hex");
+  const email = (env.LOGIN_EMAIL ?? "").trim().toLowerCase();
+  const passwordHash = env.LOGIN_PASSWORD_SCRYPT ?? "";
+  const accountConfigured = !!email && /^[a-f0-9]{32}:[a-f0-9]{128}$/i.test(passwordHash);
+  const accountId = createHash("sha256").update(`account:${email}:${passwordHash}`).digest("hex");
+  const hashes = (env.INVITE_CODE_HASHES ?? "").split(",").map((h) => h.trim()).filter(Boolean);
   const origin = env.INVITE_APP_ORIGIN ?? "";
   let appUrl: URL;
   try {
     appUrl = new URL(origin);
   } catch {
     return json(503, {
-      error:
-        "El acceso todavía no está configurado. Contacta a quien te invitó.",
+      error: "El acceso todavía no está configurado. Contacta al administrador.",
     });
   }
   const secure = appUrl.protocol === "https:";
@@ -69,8 +76,7 @@ export async function authorize(
         !["localhost", "127.0.0.1"].includes(appUrl.hostname)))
   ) {
     return json(503, {
-      error:
-        "El acceso todavía no está configurado. Contacta a quien te invitó.",
+      error: "El acceso todavía no está configurado. Contacta al administrador.",
     });
   }
   const path = new URL(request.url).pathname;
@@ -121,26 +127,30 @@ export async function authorize(
     const body = await request.text();
     if (Buffer.byteLength(body) > 4096)
       return json(413, { error: "Solicitud demasiado grande." });
-    let code: unknown;
+    let credentials: { email?: unknown; password?: unknown; code?: unknown };
     try {
-      code = JSON.parse(body)?.code;
+      credentials = JSON.parse(body) ?? {};
     } catch {
       return json(400, { error: "Solicitud inválida." });
     }
-    if (
-      typeof code !== "string" ||
-      code.length > 100 ||
-      !/^MC[0-9A-F]{20}$/.test(code.replace(/[\s-]/g, "").toUpperCase())
-    ) {
-      return json(401, {
-        error: "Código no válido. Revisa la invitación e inténtalo de nuevo.",
-      });
+    let hash = "";
+    if (typeof credentials.email === "string" && typeof credentials.password === "string" &&
+        credentials.email.length <= 254 && credentials.password.length <= 256) {
+      const suppliedEmail = credentials.email.trim().toLowerCase();
+      if (demoEnabled && equal(suppliedEmail, "demo@mantacero.com") && equal(credentials.password, "Demo2026!")) {
+        hash = demoId;
+      } else if (accountConfigured && equal(suppliedEmail, email)) {
+        const [salt, expected] = passwordHash.split(":");
+        const actual = scryptSync(credentials.password, Buffer.from(salt, "hex"), 64).toString("hex");
+        if (equal(actual, expected.toLowerCase())) hash = accountId;
+      }
+    } else if (typeof credentials.code === "string" && credentials.code.length <= 100 &&
+        /^MC[0-9A-F]{20}$/.test(credentials.code.replace(/[\s-]/g, "").toUpperCase())) {
+      // Compatibilidad con integraciones anteriores; la pantalla ya no solicita invitaciones.
+      const legacyHash = hashInvitation(credentials.code);
+      if (hashes.some((h) => equal(h, legacyHash))) hash = legacyHash;
     }
-    const hash = hashInvitation(code);
-    if (!hashes.some((h) => equal(h, hash)))
-      return json(401, {
-        error: "Código no válido. Revisa la invitación e inténtalo de nuevo.",
-      });
+    if (!hash) return json(401, { error: "Correo o contraseña incorrectos." });
     const expiresAt = now + SESSION_SECONDS * 1000;
     const payload = `${hash}.${expiresAt}.${randomBytes(16).toString("hex")}`;
     return json(
@@ -174,12 +184,12 @@ export async function authorize(
     !Number.isSafeInteger(expiresAt) ||
     expiresAt <= now ||
     expiresAt > now + SESSION_SECONDS * 1000 ||
-    !hashes.includes(hash) ||
+    (!hashes.includes(hash) && !(demoEnabled && equal(hash, demoId)) && !(accountConfigured && equal(hash, accountId))) ||
     !equal(sign(`${hash}.${expiry}.${nonce}`), signature)
   ) {
     return json(
       401,
-      { error: "Tu sesión terminó. Ingresa el código para volver a entrar." },
+      { error: "Tu sesión terminó. Inicia sesión para volver a entrar." },
       { "Set-Cookie": cookie("", 0) },
     );
   }

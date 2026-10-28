@@ -1,4 +1,5 @@
-import { ADJACENCY_LIST, MANTA_NODES, NODE_MAP } from './mantaGraph';
+import { ADJACENCY_LIST as DEFAULT_ADJACENCY_LIST, MANTA_NODES as DEFAULT_NODES, NODE_MAP as DEFAULT_NODE_MAP } from './mantaGraph';
+import type { DifficultyGraph } from './difficultyGraph';
 import { createSeededRng, RngFunction, sampleBinomial } from './prng';
 import { decideDailyAction } from './strategies';
 import {
@@ -24,7 +25,11 @@ export function runSingleSeirSimulation(
   strategy: StrategyType,
   runIndex: number,
   manualActions?: Record<number, DailyAction>,
+  graph?: DifficultyGraph,
 ): SingleSimulationRunResult {
+  const MANTA_NODES = graph?.nodes ?? DEFAULT_NODES;
+  const NODE_MAP = graph?.nodeMap ?? DEFAULT_NODE_MAP;
+  const ADJACENCY_LIST = graph?.adjacencyList ?? DEFAULT_ADJACENCY_LIST;
   const rng: RngFunction = createSeededRng(params.seed, strategy, runIndex);
   const strategyRng: RngFunction = createSeededRng(
     params.seed ^ 0x13579bdf,
@@ -71,7 +76,7 @@ export function runSingleSeirSimulation(
           day, vaccinatedNodes: {}, fumigatedNodes: [], cordonedNodes: [],
           cordonedEdges: [], budgetSpent: 0, summaryText: 'Sin intervención.',
         }
-      : decideDailyAction(day, state, params, strategy, strategyRng);
+      : decideDailyAction(day, state, params, strategy, strategyRng, graph);
     totalBudgetSpent += action.budgetSpent;
 
     const cordonedNodeSet = new Set(action.cordonedNodes);

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { scryptSync } from "node:crypto";
 import { authorize, hashInvitation, SESSION_SECONDS } from "../auth";
 
 const code = "MC-01234-56789-ABCDE-F0123";
@@ -30,6 +31,33 @@ async function login(ip: string, body?: string) {
     cookie: response.headers.get("set-cookie")!.split(";")[0],
   };
 }
+
+describe("Email authentication", () => {
+  test("demo credentials create a session and disabling demo revokes it", async () => {
+    const demoEnv = { ...env, INVITE_CODE_HASHES: "" };
+    const credentials = JSON.stringify({ email: "demo@mantacero.com", password: "Demo2026!" });
+    const response = (await authorize(request("login", post(credentials)), "demo-login", demoEnv, now))!;
+    expect(response.status).toBe(200);
+    const cookie = response.headers.get("set-cookie")!.split(";")[0];
+    expect((await authorize(request("session", { headers: { cookie } }), "demo-login", demoEnv, now))!.status).toBe(200);
+    const disabled = { ...demoEnv, DEMO_LOGIN_ENABLED: "false" };
+    expect((await authorize(request("session", { headers: { cookie } }), "demo-login", disabled, now))!.status).toBe(401);
+    expect((await authorize(request("login", post(credentials)), "demo-disabled", disabled, now))!.status).toBe(401);
+  });
+
+  test("configured account checks password and revokes sessions when changed", async () => {
+    const salt = "12".repeat(16);
+    const passwordHash = `${salt}:${scryptSync("strong-password", Buffer.from(salt, "hex"), 64).toString("hex")}`;
+    const accountEnv = { ...env, LOGIN_EMAIL: "user@example.com", LOGIN_PASSWORD_SCRYPT: passwordHash };
+    const body = (password: string) => JSON.stringify({ email: "USER@example.com", password });
+    expect((await authorize(request("login", post(body("wrong"))), "account", accountEnv, now))!.status).toBe(401);
+    const response = (await authorize(request("login", post(body("strong-password"))), "account", accountEnv, now))!;
+    expect(response.status).toBe(200);
+    const cookie = response.headers.get("set-cookie")!.split(";")[0];
+    expect((await authorize(request("session", { headers: { cookie } }), "account", accountEnv, now))!.status).toBe(200);
+    expect((await authorize(request("session", { headers: { cookie } }), "account", { ...accountEnv, LOGIN_PASSWORD_SCRYPT: "" }, now))!.status).toBe(401);
+  });
+});
 
 describe("Invitation authentication", () => {
   test("shared codes are reusable, normalized, and produce independent secure sessions", async () => {
@@ -185,7 +213,6 @@ describe("Invitation authentication", () => {
       { ...env, INVITE_SESSION_SECRET: "short" },
       { ...env, INVITE_APP_ORIGIN: "http://manta.example" },
       { ...env, INVITE_APP_ORIGIN: "ftp://localhost" },
-      { ...env, INVITE_CODE_HASHES: "" },
     ]) {
       expect(
         (await authorize(request("session"), "config", config, now))!.status,
