@@ -16,7 +16,7 @@ export interface ModeShellProps {
   renderCommittee?: () => ReactNode;
 }
 
-const DefaultApp = lazy(() => import("./App"));
+const DefaultWorkspace = lazy(() => import("./WorkspaceShell"));
 
 const ModeContext = createContext<{
   mode: Mode;
@@ -58,6 +58,7 @@ export default function ModeShell({
   const [arcade, setArcade] = useState(false);
   const [showMenu, setShowMenu] = useState(initialMode === undefined);
   const [initialSetup, setInitialSetup] = useState(false);
+  const [initialResearch, setInitialResearch] = useState(false);
 
   const switchMode = (newMode: Mode) => {
     setMode(newMode);
@@ -66,14 +67,20 @@ export default function ModeShell({
 
   if (arcade) return <ArcadeSandbox onBack={() => { setArcade(false); setShowMenu(true); }} />;
 
-  if (showMenu) return <GameMenu onArcade={() => setArcade(true)} onSelect={(next) => {
+  if (showMenu) return <GameMenu onArcade={() => setArcade(true)} onResearch={() => {
     setInitialSetup(true);
+    setInitialResearch(true);
+    switchMode("game");
+    setShowMenu(false);
+  }} onSelect={(next) => {
+    setInitialSetup(true);
+    setInitialResearch(false);
     switchMode(next);
     setShowMenu(false);
   }} onLogout={onLogout} loggingOut={loggingOut} />;
 
   const appElement = renderApp ? (
-    renderApp({ onLogout, loggingOut, activeMode: mode, onModeChange: switchMode, inactive: mode === "committee", initialSetup })
+    renderApp({ onLogout, loggingOut, activeMode: mode, onModeChange: switchMode, inactive: mode === "committee", initialSetup, initialResearch })
   ) : (
     <Suspense
       fallback={
@@ -82,9 +89,10 @@ export default function ModeShell({
         </div>
       }
     >
-      <DefaultApp
+      <DefaultWorkspace
         onLogout={onLogout}
         initialSetup={initialSetup}
+        initialResearch={initialResearch}
         loggingOut={loggingOut}
         activeMode={mode}
         inactive={mode === "committee"}

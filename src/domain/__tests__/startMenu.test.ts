@@ -14,7 +14,8 @@ test("default entry shows mode selection without mounting gameplay or committee"
   expect(html).toContain("Crear partida");
   expect(html).toContain("Modo Arcade");
   expect(html).toContain("recursos ilimitados");
-  expect(html).toContain("sin afectar la partida principal.");
+  expect(html).toContain("Laboratorio");
+  expect(html).toContain("Entrar al laboratorio");
   for (const label of ["JUEGO LIBRE", "Campa\u00f1a", "Comit\u00e9"]) expect(html).toContain(label);
 });
 
@@ -22,6 +23,12 @@ test("menu game entry opens setup even without tutorial completion", () => {
   const html = renderToStaticMarkup(createElement<AppProps>(App, { initialSetup: true, activeMode: "game" }));
   expect(html).toContain('role="dialog" aria-modal="true" aria-label="Prepara una nueva misi\u00f3n."');
   expect(html).toContain("Iniciar nueva misi\u00f3n");
+  expect(html).not.toContain('class="game-shell is-training');
+});
+
+test("direct laboratory entry does not open a hidden setup dialog", () => {
+  const html = renderToStaticMarkup(createElement<AppProps>(App, { initialSetup: true, initialResearch: true, activeMode: "game" }));
+  expect(html).not.toContain('role="dialog"');
   expect(html).not.toContain('class="game-shell is-training');
 });
 

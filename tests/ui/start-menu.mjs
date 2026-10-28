@@ -8,11 +8,22 @@ try {
   await page.goto(url);
   await page.getByTestId('game-menu').waitFor();
   assert.equal(await page.locator('.game-shell').count(), 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight), false);
   await page.getByRole('button', { name: /Configurar partida/ }).click();
   await page.getByRole('dialog', { name: /Prepara una nueva/ }).waitFor();
+  // Leave setup open longer than the reveal: it must not finish behind the dialog.
+  await page.waitForTimeout(7000);
+  const firstMarker = page.locator('.game-shell .earth-marker-host').first();
+  assert.equal(await firstMarker.evaluate(el => el.style.opacity), '0');
   await page.getByRole('button', { name: /Iniciar nueva/ }).click();
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.querySelector('.game-shell .earth-marker-host')?.style.opacity === '1', null, { timeout: 30000 });
   assert.equal(await page.locator('.game-shell.is-training').count(), 0);
+  const guide = page.getByRole('button', { name: 'Cómo jugar' });
+  assert.equal(await guide.locator('.game-guide-radar').evaluate(el => getComputedStyle(el, '::after').animationName), 'game-guide-sonar');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  assert.equal(await guide.locator('.game-guide-radar').evaluate(el => getComputedStyle(el, '::after').animationName), 'none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   console.log('PASS session -> menu -> setup -> playable game');
   await page.reload();
   await page.getByRole('button', { name: /Elegir misi/ }).click();
@@ -23,9 +34,23 @@ try {
   await page.getByTestId('committee-shell').waitFor();
   console.log('PASS committee selection');
   await page.reload();
+  await page.getByRole('button', { name: /Entrar al laboratorio/ }).click();
+  const research = page.locator('.research-workspace.is-active');
+  await research.waitFor();
+  assert.equal(await research.getAttribute('inert'), null);
+  const welcome = page.locator('.rw-welcome[open]');
+  if (await welcome.count()) await welcome.getByRole('button', { name: 'Cerrar bienvenida de Investigación' }).click();
+  await research.getByRole('button', { name: 'Volver al juego' }).click();
+  await page.getByRole('button', { name: 'Cómo jugar' }).waitFor();
+  console.log('PASS laboratory opens directly and returns to the game');
+  await page.reload();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByTestId('game-menu').waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  await page.getByRole('button', { name: /Abrir Comit/ }).scrollIntoViewIfNeeded();
-  console.log('PASS mobile menu has no horizontal overflow and all modes reachable');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight), false);
+  await page.setViewportSize({ width: 375, height: 667 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight), false);
+  await page.getByRole('button', { name: /Abrir Comit/ }).click();
+  await page.getByTestId('committee-shell').waitFor();
+  console.log('PASS mobile menu fits the viewport and modes remain usable');
 } finally { await browser.close(); }

@@ -7,6 +7,7 @@ import { FIELD_MISSIONS, PIPE_PATH, PIPE_SOLUTION, connectedPipes, createPipePuz
 import { createParkour, createShooter, reloadShooter, shoot, stepParkour, stepShooter, VIEW_H, VIEW_W } from '../domain/fieldArcade';
 import { NODE_MAP } from '../domain/mantaGraph';
 import { drawParkour, drawShooter } from './fieldScenes';
+import { playGameSound, unlockGameSounds } from '../audio/gameSounds';
 import './FieldOperations.css';
 
 type Phase = 'ready' | 'playing' | 'paused' | 'won' | 'lost';
@@ -68,8 +69,12 @@ export function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'par
         s.aimY = Math.max(18, Math.min(460, s.aimY + (Number(k.has('ArrowDown')) - Number(k.has('ArrowUp'))) * 300 * dt));
         stepShooter(s, dt);
       } else {
-        const k = keys.current;
-        stepParkour(parkour.current, dt, Number(k.has('KeyD') || k.has('ArrowRight')) - Number(k.has('KeyA') || k.has('ArrowLeft')), jump.current);
+        const k = keys.current, s = parkour.current;
+        const previousVy = s.vy, previousSupplies = s.supplies.filter(Boolean).length, previousHealth = s.health;
+        stepParkour(s, dt, Number(k.has('KeyD') || k.has('ArrowRight')) - Number(k.has('KeyA') || k.has('ArrowLeft')), jump.current);
+        if (previousVy >= -400 && s.vy < -400) playGameSound('jump');
+        if (s.supplies.filter(Boolean).length > previousSupplies) playGameSound('pickup');
+        if (s.health < previousHealth) playGameSound('error');
         jump.current = false;
       }
       paint();
@@ -77,13 +82,25 @@ export function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'par
       if (now - lastHud > 100 || s.result !== 'playing') {
         setHud({ progress: kind === 'shooter' ? shooter.current.kills : parkour.current.supplies.filter(Boolean).length, health: s.health, ammo: shooter.current.ammo, reloading: !!shooter.current.reloadUntil, checkpoint: parkour.current.checkpoint > 75, distance: Math.min(100, Math.round((parkour.current.x - 75) / 2045 * 100)) }); lastHud = now;
       }
-      if (s.result !== 'playing') { setPhase(s.result); if (s.result === 'won' && !claimed.current) { claimed.current = true; updateProgress(rewardWin(progressRef.current)); callback.current(); } return; }
+      if (s.result !== 'playing') { playGameSound(s.result === 'won' ? 'win' : 'error'); setPhase(s.result); if (s.result === 'won' && !claimed.current) { claimed.current = true; updateProgress(rewardWin(progressRef.current)); callback.current(); } return; }
       frame = requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop);
     return () => { stopped = true; cancelAnimationFrame(frame); };
   }, [kind, phase, artVersion]);
-  const restart = () => { shooter.current = createShooter(); parkour.current = createParkour(); jump.current = false; keys.current.clear(); setHud({ progress: 0, health: 3, ammo: 6, reloading: false, checkpoint: false, distance: 0 }); setPhase('playing'); };
+  const restart = () => { unlockGameSounds(); shooter.current = createShooter(); parkour.current = createParkour(); jump.current = false; keys.current.clear(); setHud({ progress: 0, health: 3, ammo: 6, reloading: false, checkpoint: false, distance: 0 }); setPhase('playing'); };
+  const fire = () => {
+    const s = shooter.current, ammo = s.ammo, kills = s.kills, reloading = s.reloadUntil;
+    shoot(s);
+    if (s.ammo < ammo) playGameSound('shoot');
+    if (s.kills > kills) playGameSound('hit');
+    if (!reloading && s.reloadUntil) playGameSound('reload');
+  };
+  const reload = () => {
+    const before = shooter.current.reloadUntil;
+    reloadShooter(shooter.current);
+    if (!before && shooter.current.reloadUntil) playGameSound('reload');
+  };
   const aimAt = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const b = e.currentTarget.getBoundingClientRect(), scale = Math.min(b.width / VIEW_W, b.height / VIEW_H);
     shooter.current.aimX = (e.clientX - b.left - (b.width - VIEW_W * scale) / 2) / scale;
@@ -106,16 +123,17 @@ export function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'par
     <div style={{ border: `3px solid ${COSMETICS.find(c => c.id === progress.equipped)!.color}` }} className={`field-viewport field-${kind}`}>
       <canvas ref={canvas} width={VIEW_W} height={VIEW_H} tabIndex={phase === 'playing' ? 0 : -1} aria-label={kind === 'shooter' ? 'Shooter en primera persona. Apunta con el ratón o flechas; dispara con clic o espacio; R recarga; P pausa.' : 'Parkour. A D o flechas para moverte, espacio o flecha arriba para saltar, P pausa.'}
         onPointerMove={e => { if (kind === 'shooter') aimAt(e); }}
-        onPointerDown={e => { if (phase !== 'playing') return; e.currentTarget.focus(); if (kind === 'shooter') { aimAt(e); shoot(shooter.current); } }}
+        onPointerDown={e => { if (phase !== 'playing') return; unlockGameSounds(); e.currentTarget.focus(); if (kind === 'shooter') { aimAt(e); fire(); } }}
         onKeyDown={e => {
           const handled = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', 'KeyR', 'KeyP'];
           if (!handled.includes(e.code)) return;
           e.preventDefault();
           if (e.code === 'KeyP' && !e.repeat) { setPhase(p => p === 'playing' ? 'paused' : p === 'paused' ? 'playing' : p); return; }
           if (phase !== 'playing') return;
+          unlockGameSounds();
           keys.current.add(e.code);
-          if (kind === 'shooter' && e.code === 'KeyR') reloadShooter(shooter.current);
-          if (!e.repeat && (e.code === 'Space' || (kind === 'parkour' && e.code === 'ArrowUp'))) { if (kind === 'shooter') shoot(shooter.current); else jump.current = true; }
+          if (kind === 'shooter' && e.code === 'KeyR') reload();
+          if (!e.repeat && (e.code === 'Space' || (kind === 'parkour' && e.code === 'ArrowUp'))) { if (kind === 'shooter') fire(); else jump.current = true; }
         }} onKeyUp={e => keys.current.delete(e.code)} />
       {(phase !== 'playing' || canvasError) && <div className="field-overlay">
         <span className="field-kicker">{phase === 'won' ? 'OPERACIÓN COMPLETADA' : phase === 'lost' ? 'SEÑAL PERDIDA' : phase === 'paused' ? 'OPERACIÓN EN PAUSA' : 'ENLACE DE CAMPO ESTABLECIDO'}</span>
@@ -126,9 +144,9 @@ export function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'par
     </div>
     {kind === 'parkour' && <div className="field-touch-controls" role="group" aria-label="Controles de parkour">
       {([['ArrowLeft', 'Mover a la izquierda', '←'], ['ArrowRight', 'Mover a la derecha', '→'], ['Space', 'Saltar', 'Saltar']] as const).map(([code, label, text]) => <button key={code} type="button" aria-label={label} disabled={phase !== 'playing'}
-        onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); keys.current.add(code); if (code === 'Space') jump.current = true; }}
+        onPointerDown={e => { e.preventDefault(); unlockGameSounds(); e.currentTarget.setPointerCapture(e.pointerId); keys.current.add(code); if (code === 'Space') jump.current = true; }}
         onPointerUp={() => keys.current.delete(code)} onPointerCancel={() => keys.current.delete(code)} onLostPointerCapture={() => keys.current.delete(code)}
-        onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); keys.current.add(code); if (code === 'Space' && !e.repeat) jump.current = true; } }}
+        onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); unlockGameSounds(); keys.current.add(code); if (code === 'Space' && !e.repeat) jump.current = true; } }}
         onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); keys.current.delete(code); } }} onBlur={() => keys.current.delete(code)}>{text}</button>)}
     </div>}
     <p className="field-controls">{FIELD_MISSIONS[kind].controls} <span>P para pausar. Cambiar de pestaña también pausa.</span></p>
@@ -143,15 +161,15 @@ function LabPuzzle({ seed, day, onWin, receipt }: { seed: number; day: number; o
   const resultMessage = useRef<HTMLParagraphElement>(null);
   useEffect(() => { if (won) resultMessage.current?.focus(); }, [won]);
   const reached = connectedPipes(pieces), solved = reached.has(11) && !!(pieces[11] & 2);
-  const hint = () => { const cell = PIPE_PATH.find(i => pieces[i] !== PIPE_SOLUTION[i]); if (cell === undefined) return; setPieces(p => p.map((mask, i) => i === cell ? PIPE_SOLUTION[i] : mask)); setMoves(n => n + 1); setMessage(`Conducto ${cell + 1} calibrado. Sigue la luz desde la entrada.`); };
+  const hint = () => { const cell = PIPE_PATH.find(i => pieces[i] !== PIPE_SOLUTION[i]); if (cell === undefined) return; playGameSound('rotate'); setPieces(p => p.map((mask, i) => i === cell ? PIPE_SOLUTION[i] : mask)); setMoves(n => n + 1); setMessage(`Conducto ${cell + 1} calibrado. Sigue la luz desde la entrada.`); };
   return <div className="field-lab">
     <div className="field-lab-notes"><span className="field-kicker">SINTETIZADOR / LÁZARO</span><h3>Reconstruye el circuito.</h3><p>La muestra entra por la izquierda de la segunda fila. Conduce la luz hasta la salida derecha de la tercera fila.</p><div className="field-lab-telemetry"><span>Giros realizados <b>{moves}</b></span><span>Circuito <b>{won ? 'Estabilizado' : solved ? 'Conectado' : 'Sin conexión'}</b></span></div><p className="field-lab-hint">Cada pieza gira 90°. Las conexiones activas se iluminan. No hay cronómetro ni penalización por pedir una pista.</p></div>
     <div className="field-puzzle-wrap"><span className="field-port field-port-in">ENTRADA →</span><div className="field-pipes" aria-label="Circuito de laboratorio de cuatro filas y cuatro columnas">
-      {pieces.map((mask, i) => <button key={i} disabled={won} className={`field-pipe ${reached.has(i) ? 'energized' : ''}`} aria-label={`Conducto ${i + 1}, fila ${Math.floor(i / 4) + 1}, columna ${i % 4 + 1}. Conecta ${['arriba', 'derecha', 'abajo', 'izquierda'].filter((_, n) => mask & (1 << n)).join(' y ')}. Girar 90 grados.`} onClick={() => { setPieces(p => p.map((m, n) => n === i ? rotatePipe(m) : m)); setMoves(n => n + 1); setMessage(''); }}>
+      {pieces.map((mask, i) => <button key={i} disabled={won} className={`field-pipe ${reached.has(i) ? 'energized' : ''}`} aria-label={`Conducto ${i + 1}, fila ${Math.floor(i / 4) + 1}, columna ${i % 4 + 1}. Conecta ${['arriba', 'derecha', 'abajo', 'izquierda'].filter((_, n) => mask & (1 << n)).join(' y ')}. Girar 90 grados.`} onClick={() => { playGameSound('rotate'); setPieces(p => p.map((m, n) => n === i ? rotatePipe(m) : m)); setMoves(n => n + 1); setMessage(''); }}>
         <svg viewBox="0 0 100 100" aria-hidden="true"><path d={[[50, 0], [100, 50], [50, 100], [0, 50]].map(([x, y], n) => mask & (1 << n) ? `M50 50 L${x} ${y}` : '').join(' ')} /><circle cx="50" cy="50" r="8" /></svg><span>{String(i + 1).padStart(2, '0')}</span>
       </button>)}
     </div><span className="field-port field-port-out">→ CURA</span></div>
-    <div className="field-puzzle-footer"><p ref={resultMessage} tabIndex={-1} role="status">{won ? receipt : message || 'Gira los conductos y verifica la conexión.'}</p>{!won && <><button className="field-secondary" onClick={hint}>Pedir pista</button><button className="field-primary" onClick={() => { if (claimed.current) return; if (!solved) { setMessage('El flujo no llega a la salida. Revisa las conexiones iluminadas.'); return; } claimed.current = true; setWon(true); onWin(); }}><FlaskConical size={18} /> Sintetizar cura</button></>}</div>
+    <div className="field-puzzle-footer"><p ref={resultMessage} tabIndex={-1} role="status">{won ? receipt : message || 'Gira los conductos y verifica la conexión.'}</p>{!won && <><button className="field-secondary" onClick={hint}>Pedir pista</button><button className="field-primary" onClick={() => { if (claimed.current) return; if (!solved) { playGameSound('error'); setMessage('El flujo no llega a la salida. Revisa las conexiones iluminadas.'); return; } playGameSound('win'); claimed.current = true; setWon(true); onWin(); }}><FlaskConical size={18} /> Sintetizar cura</button></>}</div>
   </div>;
 }
 

@@ -6,10 +6,12 @@ import type { SimulationParams } from "./domain/types";
 import "./research/research.css";
 
 export default function WorkspaceShell(props: AppProps) {
-  const [mode, setMode] = useState<"game" | "research">("game");
+  const [mode, setMode] = useState<"game" | "research">(() => props.initialResearch ? "research" : "game");
   const [params, setParams] = useState<SimulationParams | null>(null);
+  const previousActiveMode = useRef(props.activeMode);
   useEffect(() => {
-    if (props.activeMode === "game" || props.activeMode === "campaign") setMode("game");
+    if (previousActiveMode.current !== props.activeMode && (props.activeMode === "game" || props.activeMode === "campaign")) setMode("game");
+    previousActiveMode.current = props.activeMode;
   }, [props.activeMode]);
   const returnFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {

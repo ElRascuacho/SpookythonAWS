@@ -256,6 +256,7 @@ export type Mode = "game" | "campaign" | "committee";
 
 export interface AppProps {
   initialSetup?: boolean;
+  initialResearch?: boolean;
   onLogout?: () => void;
   loggingOut?: boolean;
   activeMode?: Mode;
@@ -268,6 +269,7 @@ export interface AppProps {
 
 export default function App({
   initialSetup = false,
+  initialResearch = false,
   onLogout,
   loggingOut = false,
   inactive = false,
@@ -290,7 +292,7 @@ export default function App({
   const orders: Order[] = tutorial ? tutorial.step < 4 && tutorial.protection && tutorial.nodeId ? [{ nodeId: tutorial.nodeId, kind: "prevention" }] : [] : playerOrders;
   const funding = tutorial ? tutorial.funding : playerFunding;
   const [tutorialRequired, setTutorialRequired] = useState(() => !initialSetup && !hasCompletedTutorial());
-  const [modal, setModal] = useState<Modal>(() => initialSetup && activeMode === "game" ? "settings" : tutorialRequired ? "help" : null);
+  const [modal, setModal] = useState<Modal>(() => initialResearch ? null : initialSetup && activeMode === "game" ? "settings" : tutorialRequired ? "help" : null);
   const [tourStep,setTourStep]=useState<GameTourStep|null>(null);
   useEffect(() => { if (!tutorial&&tourStep===null) onScenarioChange?.(structuredClone(game.params)); }, [game.params, onScenarioChange, tutorial,tourStep]);
   const tourBackup=useRef<{game:typeof game;orders:Order[];funding:ResearchFunding;selectedNode:string;required:boolean;operation:FieldOperation|null;tutorial:TutorialState|null}|null>(null);
@@ -307,9 +309,24 @@ export default function App({
   const [bgmPlaying, setBgmPlaying] = useState(false);
   const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
   const bgmUserToggledRef = useRef(false);
+  const bgmResumeAfterOperation = useRef(false);
+  const bgmBlockedRef = useRef(false);
+  const operationOpen = modal === "operations" && fieldOperation !== null;
+  bgmBlockedRef.current = operationOpen;
+  useEffect(() => {
+    const audio = bgmAudioRef.current;
+    if (!audio) return;
+    if (operationOpen) {
+      bgmResumeAfterOperation.current = bgmPlaying || !audio.paused;
+      audio.pause();
+    } else if (bgmResumeAfterOperation.current) {
+      bgmResumeAfterOperation.current = false;
+      void audio.play().catch(() => setBgmPlaying(false));
+    }
+  }, [operationOpen]);
   useEffect(() => {
     const startOnFirstGesture = (event: Event) => {
-      if (bgmUserToggledRef.current) return;
+      if (bgmUserToggledRef.current || bgmBlockedRef.current) return;
       const target = event.target as HTMLElement | null;
       if (target?.closest('[data-bgm-toggle="true"]')) return;
       const audio = bgmAudioRef.current;
@@ -320,6 +337,10 @@ export default function App({
         .then(() => {
           bgmUserToggledRef.current = true;
           setBgmPlaying(true);
+          if (bgmBlockedRef.current) {
+            bgmResumeAfterOperation.current = true;
+            audio.pause();
+          }
         })
         .catch(() => {});
     };
@@ -342,7 +363,13 @@ export default function App({
     audio.volume = 0.35;
     audio
       .play()
-      .then(() => setBgmPlaying(true))
+      .then(() => {
+        setBgmPlaying(true);
+        if (bgmBlockedRef.current) {
+          bgmResumeAfterOperation.current = true;
+          audio.pause();
+        }
+      })
       .catch(() => {
         setBgmPlaying(false);
         setNotice("No se pudo reproducir la música de fondo.");
@@ -653,8 +680,8 @@ export default function App({
             <TrendingDown size={16} />
             <span>Evaluar</span>
           </button>
-          <button aria-label="Cómo jugar" title="Abrir la guía del juego" data-tooltip="Abrir la guía del juego" onClick={() => { setTutorial(createTutorial(DEFAULT_CONFIG)); setModal("help"); }}>
-            <CircleHelp size={16} />
+          <button className="game-guide-entry" aria-label="Cómo jugar" title="Abrir la guía del juego" data-tooltip="Abrir la guía del juego" onClick={() => { setTutorial(createTutorial(DEFAULT_CONFIG)); setModal("help"); }}>
+            <i className="game-guide-radar" aria-hidden="true"><CircleHelp size={16} /></i>
             <span>Cómo jugar</span>
           </button>
           </>}
@@ -694,7 +721,7 @@ export default function App({
 
       <main className="map-stage">
         <CureEarth3DMap
-          paused={inactive || modal === "operations"}
+          paused={inactive || modal === "operations" || modal === "settings"}
           operation={!modal && !dayTransition && !news ? availableOperation : null}
           onOperation={openFieldOperation}
           cameraBridge={cameraBridge}

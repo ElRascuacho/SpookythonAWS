@@ -512,7 +512,9 @@ export function CureEarth3DMap({
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
   const introRunningRef = useRef(false);
+  const introPendingRef = useRef(false);
   const networkIntroStartRef = useRef<number | null>(null);
+  const networkIntroPausedAtRef = useRef<number | null>(null);
   const networkIntroDoneRef = useRef(false);
   const networkEdgesDoneRef = useRef(false);
 
@@ -709,9 +711,11 @@ export function CureEarth3DMap({
     // suppress the original first-load fly-in.
     const initialCamera = cameraBridge?.current;
     const revealNetwork = !prefersReducedMotion && !initialCamera;
+    introPendingRef.current = revealNetwork;
     networkIntroDoneRef.current = !revealNetwork;
     networkEdgesDoneRef.current = !revealNetwork;
     networkIntroStartRef.current = null;
+    networkIntroPausedAtRef.current = null;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: EARTH_3D_STYLE,
@@ -832,18 +836,6 @@ export function CureEarth3DMap({
       setMapReady(true);
       map.on("pitchend", () => setIsPitched(map.getPitch() > 1));
 
-      if (!prefersReducedMotion && !pausedRef.current && !initialCamera) {
-        introRunningRef.current = true;
-        map.once('moveend', () => { introRunningRef.current = false; });
-        map.flyTo({
-          center: MANTA_CENTER,
-          zoom: 13.15,
-          pitch: 58,
-          bearing: -18,
-          duration: 1500,
-          essential: true,
-        });
-      }
     });
 
     mapRef.current = map;
@@ -878,8 +870,22 @@ export function CureEarth3DMap({
       introRunningRef.current = false;
       return;
     }
-    // mapReady changes immediately after flyTo starts. A jumpTo here would
-    // cancel the intro in its first frame, even with the load guard fixed.
+    // A first-load fly-in waits until the map is visible, including when the
+    // initial setup dialog was already open when MapLibre finished loading.
+    if (introPendingRef.current) {
+      introPendingRef.current = false;
+      introRunningRef.current = true;
+      map.once('moveend', () => { introRunningRef.current = false; });
+      map.flyTo({
+        center: MANTA_CENTER,
+        zoom: 13.15,
+        pitch: 58,
+        bearing: -18,
+        duration: 1500,
+        essential: true,
+      });
+      return;
+    }
     if (introRunningRef.current) return;
     // resize emits moveend: capture the incoming camera before the newly active
     // map can publish its stale viewport back into the bridge.
@@ -918,6 +924,7 @@ export function CureEarth3DMap({
       isFirstSelectionRef.current = false;
       return;
     }
+    if (paused || introPendingRef.current || introRunningRef.current) return;
     const target = NODE_MAP[selectedNode];
     if (!target) return;
 
@@ -957,8 +964,13 @@ export function CureEarth3DMap({
 
     let rafId = 0;
     const startTime = performance.now();
-    if (!networkIntroDoneRef.current && networkIntroStartRef.current === null) {
-      networkIntroStartRef.current = startTime;
+    if (!networkIntroDoneRef.current) {
+      if (networkIntroStartRef.current === null) {
+        networkIntroStartRef.current = startTime;
+      } else if (networkIntroPausedAtRef.current !== null) {
+        networkIntroStartRef.current += startTime - networkIntroPausedAtRef.current;
+      }
+      networkIntroPausedAtRef.current = null;
     }
     let lastNetworkUpdate = -Infinity;
 
@@ -1286,6 +1298,7 @@ export function CureEarth3DMap({
 
     return () => {
       cancelAnimationFrame(rafId);
+      if (!networkIntroDoneRef.current) networkIntroPausedAtRef.current = performance.now();
       if (prefersReducedMotion) map.off("render", onMapRender);
     };
   }, [mapReady, paused]);
