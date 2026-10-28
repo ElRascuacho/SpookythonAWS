@@ -154,6 +154,12 @@ Resources:
             ApiId: !Ref SpookythonHttpApi
             Path: /mayor-report
             Method: POST
+        CommitteeRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /api/committee/{proxy+}
+            Method: ANY
 
   CommitteeWorkerFunction:
     Type: AWS::Serverless::Function

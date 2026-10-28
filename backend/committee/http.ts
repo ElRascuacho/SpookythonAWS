@@ -1,5 +1,7 @@
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { json, ownerHash } from "../auth";
 import { cancelCommitteeJob, readCommitteeJob, startCommitteeJob } from "./jobStore";
+import { loadCommitteeResult } from "./resultStore";
 import type { CommitteeRunRequest, CommitteeRunResult } from "../../src/domain/committee/runner";
 
 const forbidden = ["pools", "weights", "candidates", "quotas", "trainIndices"];
@@ -29,11 +31,32 @@ export async function handleCommitteeRoute(
     if (idempotencyKey.length < 8) {
       return json(400, { code: "committee.invalid_request", message: "Idempotency-Key is required" });
     }
+    const horizonDays = Number(body.horizonDays ?? 40);
+    const baseSeed = Number(body.seed ?? 20261030);
+    const workerName = env.COMMITTEE_WORKER_FUNCTION_NAME;
+    if (workerName && !run) {
+      const jobId = crypto.randomUUID();
+      await new LambdaClient({}).send(new InvokeCommand({
+        FunctionName: workerName,
+        InvocationType: "Event",
+        Payload: Buffer.from(JSON.stringify({ jobId, ownerHash: owner, horizonDays, baseSeed })),
+      }));
+      return json(202, {
+        jobId,
+        status: "queued",
+        stateRevision: 1,
+        recommendedPolicyVersion: 0,
+        finalAudit: "not-run",
+        baselineMean: null,
+        candidateMean: null,
+        note: "El worker de Comité recibió la búsqueda. El entrenamiento global sigue apagado; esta corrida es la vista previa.",
+      });
+    }
     const started = startCommitteeJob({
       ownerHash: owner,
       idempotencyKey,
-      horizonDays: Number(body.horizonDays ?? 40),
-      baseSeed: Number(body.seed ?? 20261030),
+      horizonDays,
+      baseSeed,
       run,
     });
     if ("error" in started) {
@@ -54,6 +77,25 @@ export async function handleCommitteeRoute(
 
   const jobId = parts[3];
   if (!jobId) return json(404, { code: "committee.not_found", message: "Not found" });
+  const stored = await loadCommitteeResult(owner, jobId);
+  if (stored && parts[4] === "playback") {
+    const day = Number(parts[5]);
+    const snapshot = stored.result.playback[day];
+    if (!snapshot) return json(404, { code: "committee.not_found", message: "Not found" });
+    return json(200, { day, snapshot, policyVersion: stored.result.recommendedPolicyVersion });
+  }
+  if (stored && request.method === "GET") {
+    return json(200, {
+      jobId: stored.jobId,
+      status: stored.result.status,
+      stateRevision: stored.result.stateRevision,
+      recommendedPolicyVersion: stored.result.recommendedPolicyVersion,
+      finalAudit: stored.result.finalAudit,
+      baselineMean: stored.result.baselineMean,
+      candidateMean: stored.result.candidateMean,
+      note: stored.result.note,
+    });
+  }
   if (parts[4] === "playback") {
     const day = Number(parts[5]);
     const job = readCommitteeJob(owner, jobId);
