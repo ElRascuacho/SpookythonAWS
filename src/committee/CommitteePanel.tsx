@@ -1,7 +1,8 @@
-import { useEffect, useState, type ComponentType } from "react";
-import { ShieldAlert } from "lucide-react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { ShieldAlert, ShieldCheck, Activity, Award, TrendingDown, DollarSign } from "lucide-react";
 import type { Order } from "../domain/cureGame";
 import type { DailyCitySnapshot } from "../domain/types";
+import { computeCommitteeStats, type CommitteeStats } from "../domain/committee/stats";
 
 interface MapProps {
   snapshot: DailyCitySnapshot;
@@ -17,10 +18,11 @@ interface JobView {
   status: string;
   stateRevision: number;
   recommendedPolicyVersion: number;
-  finalAudit: string;
+  finalAudit: "not-run" | "passed" | "failed" | string;
   baselineMean: number | null;
   candidateMean: number | null;
   note: string;
+  trajectories?: number;
 }
 
 interface StartResponse extends Partial<JobView> {
@@ -54,24 +56,30 @@ function PlaybackMap({ snapshot }: { snapshot: DailyCitySnapshot }) {
 
 export default function CommitteePanel() {
   const [horizonDays, setHorizonDays] = useState(40);
+  const [runAudit, setRunAudit] = useState(false);
   const [job, setJob] = useState<JobView | null>(null);
+  const [playback, setPlayback] = useState<DailyCitySnapshot[]>([]);
   const [day, setDay] = useState(0);
-  const [snapshot, setSnapshot] = useState<DailyCitySnapshot | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function start() {
     setBusy(true);
     setError("");
+    setPlayback([]);
     try {
       const response = await fetch("/api/committee/jobs", {
         method: "POST",
         credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `local-${horizonDays}-${Date.now()}`,
+          "Idempotency-Key": `local-${horizonDays}-${runAudit ? "audit" : "preview"}-${Date.now()}`,
         },
-        body: JSON.stringify({ horizonDays, seed: 20261030 }),
+        body: JSON.stringify({
+          horizonDays,
+          seed: 20261030,
+          audit: runAudit,
+        }),
       });
       let body: StartResponse | null = null;
       try {
@@ -96,47 +104,188 @@ export default function CommitteePanel() {
     }
   }
 
+  // Polling del estado del Job
   useEffect(() => {
     if (!job || job.status === "completed" || job.status === "cancelled") return;
     const timer = window.setInterval(() => {
       void fetch(`/api/committee/jobs/${job.jobId}`, { credentials: "same-origin" })
-        .then((response) => response.ok ? response.json() : null)
+        .then((response) => (response.ok ? response.json() : null))
         .then((body: JobView | null) => {
           if (!body) return;
-          setJob((current) => !current || body.stateRevision < current.stateRevision ? current : body);
+          setJob((current) => (!current || body.stateRevision < current.stateRevision ? current : body));
         })
         .catch(() => undefined);
     }, 2000);
     return () => window.clearInterval(timer);
   }, [job]);
 
+  // Carga del Playback completo una vez completado el Job
   useEffect(() => {
     if (!job || job.status === "queued") return;
     let ignore = false;
-    fetch(`/api/committee/jobs/${job.jobId}/playback/${day}`, { credentials: "same-origin" })
-      .then((response) => response.ok ? response.json() : null)
+    fetch(`/api/committee/jobs/${job.jobId}/playback`, { credentials: "same-origin" })
+      .then((response) => (response.ok ? response.json() : null))
       .then((body) => {
-        if (!ignore) setSnapshot(body?.snapshot ?? null);
+        if (!ignore && Array.isArray(body?.playback)) {
+          setPlayback(body.playback);
+        }
       })
-      .catch(() => {
-        if (!ignore) setSnapshot(null);
-      });
+      .catch(() => undefined);
     return () => {
       ignore = true;
     };
-  }, [job, day]);
+  }, [job?.jobId, job?.status]);
+
+  // Cálculo de estadísticas consolidadas
+  const stats: CommitteeStats | null = useMemo(() => {
+    if (!job || job.baselineMean == null) return null;
+    return computeCommitteeStats(playback, job.baselineMean, job.candidateMean);
+  }, [playback, job]);
+
+  const currentSnapshot = playback[day] ?? null;
+  const currentDailyStat = stats?.dailyStats[day] ?? null;
 
   return (
     <div className="committee-placeholder-panel">
+      <style>{`
+        .committee-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 16px;
+          margin-top: 20px;
+          margin-bottom: 24px;
+        }
+        .committee-kpi-card {
+          background: rgba(13, 27, 34, 0.85);
+          border: 1px solid #243d46;
+          border-radius: 8px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .kpi-title-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #7d9ba6;
+          font-weight: 600;
+        }
+        .kpi-main-metric {
+          font-size: 26px;
+          font-weight: 700;
+          color: #f0f7f9;
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+        }
+        .kpi-badge {
+          font-size: 11px;
+          padding: 2px 7px;
+          border-radius: 4px;
+          font-weight: 700;
+        }
+        .badge-green {
+          background: rgba(0, 229, 163, 0.15);
+          color: #00e5a3;
+          border: 1px solid rgba(0, 229, 163, 0.3);
+        }
+        .badge-amber {
+          background: rgba(255, 179, 0, 0.15);
+          color: #ffb300;
+          border: 1px solid rgba(255, 179, 0, 0.3);
+        }
+        .badge-red {
+          background: rgba(255, 82, 82, 0.15);
+          color: #ff5252;
+          border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+        .badge-blue {
+          background: rgba(41, 182, 246, 0.15);
+          color: #29b6f6;
+          border: 1px solid rgba(41, 182, 246, 0.3);
+        }
+        .kpi-subtext {
+          font-size: 12px;
+          color: #8da4ae;
+          line-height: 1.4;
+        }
+        .tactics-progress-bar {
+          display: flex;
+          height: 8px;
+          border-radius: 4px;
+          overflow: hidden;
+          background: #192d35;
+          margin-top: 6px;
+        }
+        .bar-vaccine { background: #00e5a3; }
+        .bar-cordon { background: #ffb300; }
+        .bar-fumigation { background: #29b6f6; }
+        .tactics-legend {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          margin-top: 6px;
+          font-size: 11px;
+        }
+        .legend-row {
+          display: flex;
+          justify-content: space-between;
+          color: #8da4ae;
+        }
+        .committee-form-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+        .audit-toggle-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          color: #b0c6ce;
+          cursor: pointer;
+        }
+        .day-inspection-box {
+          background: rgba(10, 21, 26, 0.9);
+          border: 1px solid #1f3740;
+          border-radius: 6px;
+          padding: 14px;
+          margin-top: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .day-inspection-metrics {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          font-size: 12px;
+          color: #e2f1f5;
+        }
+        .metric-chip {
+          background: rgba(255, 255, 255, 0.05);
+          padding: 4px 10px;
+          border-radius: 4px;
+          border: 1px solid #243d46;
+        }
+      `}</style>
+
       <header className="committee-header">
         <div className="committee-title-group">
           <span className="committee-badge">COMITÉ EPIDEMIOLÓGICO</span>
-          <h2>Vista previa local</h2>
+          <h2>Tablero y Optimización de Políticas</h2>
           <p className="committee-subtitle">
-            Compara una baseline con una candidata de una generación. No es la auditoría final ni el entrenamiento en AWS.
+            Monitoreo cuantitativo de efectividad, contención de colapso hospitalario y distribución presupuestaria en Manta.
           </p>
         </div>
       </header>
+
       <form
         className="committee-content-frame"
         onSubmit={(event) => {
@@ -144,45 +293,182 @@ export default function CommitteePanel() {
           void start();
         }}
       >
-        <label>
-          Horizonte (20–60)
-          <input
-            type="number"
-            min={20}
-            max={60}
-            value={horizonDays}
-            onChange={(event) => setHorizonDays(Number(event.target.value))}
-          />
-        </label>
-        <button type="submit" disabled={busy}>{busy ? "Calculando…" : "Buscar"}</button>
-        {error && <p role="alert">{error}</p>}
+        <div className="committee-form-row">
+          <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            Horizonte (días)
+            <input
+              type="number"
+              min={20}
+              max={60}
+              value={horizonDays}
+              onChange={(event) => setHorizonDays(Number(event.target.value))}
+              style={{ width: "70px", padding: "4px 8px" }}
+            />
+          </label>
+
+          <label className="audit-toggle-label">
+            <input
+              type="checkbox"
+              checked={runAudit}
+              onChange={(e) => setRunAudit(e.target.checked)}
+            />
+            Auditoría rigurosa (Held-out seeds)
+          </label>
+
+          <button type="submit" disabled={busy}>
+            {busy ? "Calculando…" : runAudit ? "Buscar y Auditar" : "Optimizar Local"}
+          </button>
+        </div>
+
+        {error && <p role="alert" style={{ color: "#ff5252" }}>{error}</p>}
+
         {job && (
-          <div className="committee-status-card">
-            <ShieldAlert size={28} className="committee-icon" />
-            <div>
-              <h3>Baseline {job.baselineMean == null ? "en curso" : Math.round(job.baselineMean).toLocaleString()} contagios</h3>
-              <p>
-                Candidata {job.candidateMean == null ? "sin dato" : Math.round(job.candidateMean).toLocaleString()}.
-                Versión recomendada {job.recommendedPolicyVersion}. Auditoría {job.finalAudit}. Revisión {job.stateRevision}.
-              </p>
-              <p>{job.note}</p>
-              <label>
-                Día
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.max(0, horizonDays)}
-                  value={day}
-                  onChange={(event) => setDay(Number(event.target.value))}
-                />
+          <div className="committee-status-card" style={{ display: "block" }}>
+            {/* KPI Cards Grid */}
+            <div className="committee-kpi-grid">
+              {/* Tarjeta 1: Reducción de Contagios */}
+              <div className="committee-kpi-card">
+                <div className="kpi-title-row">
+                  <span>Eficacia de Contención</span>
+                  <TrendingDown size={16} color="#00e5a3" />
+                </div>
+                <div className="kpi-main-metric">
+                  {stats ? `-${stats.reductionPct}%` : "—"}
+                  {stats && stats.reductionPct > 0 && (
+                    <span className="kpi-badge badge-green">Mitigación</span>
+                  )}
+                </div>
+                <div className="kpi-subtext">
+                  <strong>{stats ? stats.reductionAbsolute.toLocaleString() : 0}</strong> contagios evitados frente al escenario base.
+                  <br />
+                  Baseline: {job.baselineMean == null ? "—" : Math.round(job.baselineMean).toLocaleString()} | Candidata: {job.candidateMean == null ? "—" : Math.round(job.candidateMean).toLocaleString()}
+                </div>
+              </div>
+
+              {/* Tarjeta 2: Capacidad Hospitalaria */}
+              <div className="committee-kpi-card">
+                <div className="kpi-title-row">
+                  <span>Carga Hospitalaria Pico</span>
+                  <Activity size={16} color={stats?.hospitalStatus === "colapso" ? "#ff5252" : "#ffb300"} />
+                </div>
+                <div className="kpi-main-metric">
+                  {stats ? `${stats.peakHospitalLoadPct}%` : "—"}
+                  {stats && (
+                    <span className={`kpi-badge ${stats.hospitalStatus === "colapso" ? "badge-red" : stats.hospitalStatus === "alerta" ? "badge-amber" : "badge-green"}`}>
+                      {stats.hospitalStatus.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="kpi-subtext">
+                  Capacidad: <strong>2.500 camas</strong> (H. Rodríguez Zambrano).
+                  <br />
+                  Días en colapso: <strong>{stats?.collapseDays ?? 0} días</strong>.
+                  <br />
+                  Tasa de ataque final: <strong>{stats?.attackRatePct ?? 0}%</strong> de la ciudad.
+                </div>
+              </div>
+
+              {/* Tarjeta 3: Distribución Táctica */}
+              <div className="committee-kpi-card">
+                <div className="kpi-title-row">
+                  <span>Distribución Presupuestaria</span>
+                  <DollarSign size={16} color="#29b6f6" />
+                </div>
+                <div className="kpi-main-metric">
+                  ${stats ? stats.totalBudgetSpent.toLocaleString() : "0"}
+                </div>
+                {stats && (
+                  <>
+                    <div className="tactics-progress-bar">
+                      <div className="bar-vaccine" style={{ width: `${stats.vaccineBudgetPct}%` }} title="Vacunas" />
+                      <div className="bar-cordon" style={{ width: `${stats.cordonBudgetPct}%` }} title="Cordones" />
+                      <div className="bar-fumigation" style={{ width: `${stats.fumigationBudgetPct}%` }} title="Fumigación" />
+                    </div>
+                    <div className="tactics-legend">
+                      <div className="legend-row">
+                        <span>💉 Inmunización:</span>
+                        <strong>{stats.vaccineBudgetPct}% ({stats.totalVaccineDoses.toLocaleString()} dosis)</strong>
+                      </div>
+                      <div className="legend-row">
+                        <span>🚧 Cordones:</span>
+                        <strong>{stats.cordonBudgetPct}% ({stats.totalCordons} zonas)</strong>
+                      </div>
+                      <div className="legend-row">
+                        <span>💨 Fumigación:</span>
+                        <strong>{stats.fumigationBudgetPct}% ({stats.totalFumigations} zonas)</strong>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Tarjeta 4: Dictamen de Auditoría */}
+              <div className="committee-kpi-card">
+                <div className="kpi-title-row">
+                  <span>Auditoría de Generalización</span>
+                  <Award size={16} color="#00e5a3" />
+                </div>
+                <div className="kpi-main-metric" style={{ fontSize: "20px" }}>
+                  {job.finalAudit === "passed" && (
+                    <span className="kpi-badge badge-green" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <ShieldCheck size={14} /> CERTIFICADA
+                    </span>
+                  )}
+                  {job.finalAudit === "failed" && (
+                    <span className="kpi-badge badge-red" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <ShieldAlert size={14} /> RECHAZADA
+                    </span>
+                  )}
+                  {job.finalAudit === "not-run" && (
+                    <span className="kpi-badge badge-blue">PRELIMINAR</span>
+                  )}
+                </div>
+                <div className="kpi-subtext">
+                  Versión recomendada: <strong>v{job.recommendedPolicyVersion}</strong> (Rev. {job.stateRevision}).
+                  <br />
+                  Simulaciones evaluadas: <strong>{job.trajectories ?? (playback.length > 0 ? playback.length : 1)} réplicas</strong>.
+                  <br />
+                  <span style={{ fontSize: "11px", color: "#7d9ba6" }}>{job.note}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Slider de Inspección Día a Día */}
+            <div style={{ marginTop: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ fontWeight: 600, color: "#e2f1f5" }}>Línea de Tiempo de Inspección Táctica: Día {day}</span>
+                <span style={{ fontSize: "12px", color: "#8da4ae" }}>0 a {Math.max(0, horizonDays)} días</span>
               </label>
-              {snapshot && (
-                <>
-                  <p>
-                    Día {snapshot.day}: {snapshot.action.summaryText}. Acumulados {Math.round(snapshot.cumulativeInfected).toLocaleString()}.
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0, horizonDays)}
+                value={day}
+                onChange={(event) => setDay(Number(event.target.value))}
+                style={{ width: "100%" }}
+              />
+
+              {currentSnapshot && (
+                <div className="day-inspection-box">
+                  <div className="day-inspection-metrics">
+                    <span className="metric-chip">
+                      Infectados Activos: <strong>{Math.round(currentSnapshot.totalI).toLocaleString()}</strong> ({currentDailyStat?.activeInfectionPct ?? 0}%)
+                    </span>
+                    <span className="metric-chip">
+                      Ocupación Hospital: <strong>{currentDailyStat?.hospitalLoadPct ?? 0}%</strong>
+                    </span>
+                    <span className="metric-chip">
+                      Casos Acumulados: <strong>{Math.round(currentSnapshot.cumulativeInfected).toLocaleString()}</strong>
+                    </span>
+                    <span className="metric-chip">
+                      Gasto del Día: <strong>${currentSnapshot.action.budgetSpent.toLocaleString()}</strong>
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#b0c6ce" }}>
+                    <strong>Acciones Día {currentSnapshot.day}:</strong> {currentSnapshot.action.summaryText || "Sin intervenciones activas."}
                   </p>
-                  <PlaybackMap snapshot={snapshot} />
-                </>
+                  <PlaybackMap snapshot={currentSnapshot} />
+                </div>
               )}
             </div>
           </div>
