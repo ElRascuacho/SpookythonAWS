@@ -76,7 +76,7 @@ Globals:
     Runtime: nodejs20.x
     Architectures:
       - arm64
-    Timeout: 15
+    Timeout: 29
     MemorySize: 512
     Environment:
       Variables:

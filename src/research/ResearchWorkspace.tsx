@@ -451,7 +451,7 @@ export function ResearchWorkspace({
     setError("");
     const controller = new AbortController();
     request.current = controller;
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), 27000);
     const signal = voiceSignal
       ? AbortSignal.any([controller.signal, voiceSignal])
       : controller.signal;

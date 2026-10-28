@@ -13,6 +13,7 @@ import { ResearchContextSchema } from "../src/domain/researchEvidence";
 
 export const RESEARCH_ROUTE = "/api/research/agent";
 export const RESEARCH_BODY_LIMIT = 48_000;
+export const RESEARCH_AGENT_TIMEOUT_MS = 24_000;
 const Input = z
   .object({
     message: z.string().trim().min(1).max(2000),
@@ -126,7 +127,7 @@ Capacidades: efectos de contacts locales o mobility por corredor; calendario dia
           },
         },
       }),
-      signal: AbortSignal.timeout(9000),
+      signal: AbortSignal.timeout(RESEARCH_AGENT_TIMEOUT_MS),
     });
     if (!response.ok)
       return fail(
@@ -189,7 +190,8 @@ Capacidades: efectos de contacts locales o mobility por corredor; calendario dia
       }
     }
     return json(200, { ...parsed.data, evaluation, model });
-  } catch {
+  } catch (error) {
+    console.error("[researchAgent] Error en consulta a OpenAI:", error);
     return fail(
       502,
       "research.unavailable",
