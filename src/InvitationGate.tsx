@@ -19,7 +19,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-const Game = lazy(() => import("./App"));
+const Game = lazy(() => import("./WorkspaceShell"));
 
 async function access(path: string, credentials?: { email: string; password: string }) {
   const response = await fetch(`/api/auth/${path}`, {

@@ -97,6 +97,7 @@ export interface DailyNodeSnapshot {
 }
 
 export interface DailyCitySnapshot {
+  researchEffects?: import('./research').DailyResearchEffects;
   day: number;
   totalS: number;
   totalE: number;

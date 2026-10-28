@@ -22,6 +22,7 @@ import type { Order } from "../domain/cureGame";
 import { northCamera, tacticalViewCamera, type TacticalView } from "./tacticalCamera";
 
 interface Props {
+  cameraBridge?: import('./tacticalCamera').TacticalCameraBridge;
   paused?: boolean;
   snapshot: DailyCitySnapshot;
   selectedNode: string;
@@ -485,6 +486,7 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
 
 export function CureEarth3DMap({
   paused = false,
+  cameraBridge,
   snapshot,
   selectedNode,
   onSelect,
@@ -496,6 +498,9 @@ export function CureEarth3DMap({
   const pinHostRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const mapRef = useRef<maplibregl.Map | null>(null);
   const flyoverTimerRef = useRef<number | null>(null);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const introRunningRef = useRef(false);
 
   const [layer, setLayer] = useState<"infection" | "protection">("infection");
   const [mapReady, setMapReady] = useState(false);
@@ -683,13 +688,17 @@ export function CureEarth3DMap({
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
+    // Only a camera present before construction represents a resumed view.
+    // Resize/move events during loading can populate the bridge; they must not
+    // suppress the original first-load fly-in.
+    const initialCamera = cameraBridge?.current;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: EARTH_3D_STYLE,
-      center: MANTA_CENTER,
-      zoom: prefersReducedMotion ? 13.15 : 11.6,
-      pitch: prefersReducedMotion ? 56 : 28,
-      bearing: prefersReducedMotion ? -18 : -6,
+      center: initialCamera?.center ?? MANTA_CENTER,
+      zoom: initialCamera?.zoom ?? (prefersReducedMotion ? 13.15 : 11.6),
+      pitch: initialCamera?.pitch ?? (prefersReducedMotion ? 56 : 28),
+      bearing: initialCamera?.bearing ?? (prefersReducedMotion ? -18 : -6),
       maxPitch: 75,
       // City-only camera cage: no planet / earth zoom-out is possible anymore.
       maxBounds: MANTA_BOUNDS,
@@ -794,10 +803,16 @@ export function CureEarth3DMap({
         map.getCanvas().style.cursor = "";
       });
 
+      // Keep attribution available through the native expandable control,
+      // without its expanded strip covering the tactical HUD on first load.
+      const attribution = map.getContainer().querySelector<HTMLDetailsElement>('.maplibregl-ctrl-attrib.maplibregl-compact');
+      if (attribution?.open) attribution.querySelector<HTMLElement>('summary')?.click();
       setMapReady(true);
       map.on("pitchend", () => setIsPitched(map.getPitch() > 1));
 
-      if (!prefersReducedMotion) {
+      if (!prefersReducedMotion && !pausedRef.current && !initialCamera) {
+        introRunningRef.current = true;
+        map.once('moveend', () => { introRunningRef.current = false; });
         map.flyTo({
           center: MANTA_CENTER,
           zoom: 13.15,
@@ -810,6 +825,12 @@ export function CureEarth3DMap({
     });
 
     mapRef.current = map;
+    map.on('moveend', () => {
+      if (cameraBridge && !pausedRef.current) {
+        const center = map.getCenter();
+        cameraBridge.current = { center: [center.lng, center.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
+      }
+    });
 
     return () => {
       if (flyoverTimerRef.current !== null) {
@@ -821,6 +842,29 @@ export function CureEarth3DMap({
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (paused) {
+      // Preserve an interrupted intro too, rather than restoring its old start.
+      if (introRunningRef.current && cameraBridge) {
+        const center = map.getCenter();
+        cameraBridge.current = { center: [center.lng, center.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
+      }
+      map.stop();
+      introRunningRef.current = false;
+      return;
+    }
+    // mapReady changes immediately after flyTo starts. A jumpTo here would
+    // cancel the intro in its first frame, even with the load guard fixed.
+    if (introRunningRef.current) return;
+    // resize emits moveend: capture the incoming camera before the newly active
+    // map can publish its stale viewport back into the bridge.
+    const incomingCamera = cameraBridge?.current;
+    map.resize();
+    if (incomingCamera) map.jumpTo(incomingCamera);
+  }, [paused, mapReady, cameraBridge]);
 
   // Update 3D GeoJSON sources when game state or orders change
   useEffect(() => {

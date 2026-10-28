@@ -23,11 +23,21 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
-    Description: Clave de OpenAI solo para el boletín diario. Vacía = boletín determinista de respaldo.
+    Description: Clave OpenAI del servidor para boletín y agente de investigación. Nunca se expone al navegador.
   OpenAiNewsModel:
     Type: String
     Default: gpt-4o-mini
     Description: Modelo de OpenAI usado por /api/news.
+
+  OpenAiResearchModel:
+    Type: String
+    Default: gpt-6-luna
+    Description: Modelo del agente supervisado de investigación.
+  EnableResearchAi:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Habilitar llamadas de pago del agente tras configurar cuotas y credenciales.
 
 Globals:
   Function:
@@ -45,6 +55,8 @@ Globals:
         INVITE_APP_ORIGIN: !Ref InviteAppOrigin
         OPENAI_API_KEY: !Ref OpenAiApiKey
         OPENAI_NEWS_MODEL: !Ref OpenAiNewsModel
+        OPENAI_RESEARCH_MODEL: !Ref OpenAiResearchModel
+        ENABLE_RESEARCH_AI: !Ref EnableResearchAi
 
 Resources:
   SpookythonHttpApi:
@@ -73,6 +85,12 @@ Resources:
             ApiId: !Ref SpookythonHttpApi
             Path: /api/auth/{action}
             Method: ANY
+        ResearchAgentRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /api/research/agent
+            Method: POST
         NewsRoute:
           Type: HttpApi
           Properties:

@@ -1,5 +1,10 @@
 import { ADJACENCY_LIST as DEFAULT_ADJACENCY_LIST, MANTA_NODES as DEFAULT_NODES, NODE_MAP as DEFAULT_NODE_MAP } from './mantaGraph';
 import type { DifficultyGraph } from './difficultyGraph';
+import type { DailyResearchEffects } from './research';
+
+export interface SimulationExtensions {
+  resolveDailyEffects?: (day: number, state: Readonly<Record<string, CompartmentState>>, budget: number) => DailyResearchEffects;
+}
 import { createSeededRng, RngFunction, sampleBinomial } from './prng';
 import { decideDailyAction } from './strategies';
 import {
@@ -26,7 +31,9 @@ export function runSingleSeirSimulation(
   runIndex: number,
   manualActions?: Record<number, DailyAction>,
   graph?: DifficultyGraph,
+  extensions?: SimulationExtensions,
 ): SingleSimulationRunResult {
+  if (extensions?.resolveDailyEffects && (manualActions || graph)) throw new Error('Las medidas de investigación requieren el grafo original y no admiten recompensas/acciones manuales del juego.');
   const MANTA_NODES = graph?.nodes ?? DEFAULT_NODES;
   const NODE_MAP = graph?.nodeMap ?? DEFAULT_NODE_MAP;
   const ADJACENCY_LIST = graph?.adjacencyList ?? DEFAULT_ADJACENCY_LIST;
@@ -71,12 +78,16 @@ export function runSingleSeirSimulation(
 
   for (let day = 0; day <= params.days; day++) {
     // 1. Decide Phase A interventions for today
-    const action = manualActions || day === 0
+    const effects = day > 0 ? extensions?.resolveDailyEffects?.(day, structuredClone(state), params.dailyBudget) : undefined;
+    if (effects && (!Number.isFinite(effects.cost) || effects.cost < 0 || effects.cost > params.dailyBudget || [...Object.values(effects.local), ...Object.values(effects.mobility)].some(v => !Number.isFinite(v) || v < 0 || v > 1))) throw new Error('Efectos o costos de investigación inválidos.');
+    const decisionParams = effects ? { ...params, dailyBudget: params.dailyBudget - effects.cost } : params;
+    const baseAction = manualActions || day === 0
       ? manualActions?.[day] ?? {
           day, vaccinatedNodes: {}, fumigatedNodes: [], cordonedNodes: [],
           cordonedEdges: [], budgetSpent: 0, summaryText: 'Sin intervención.',
         }
-      : decideDailyAction(day, state, params, strategy, strategyRng, graph);
+      : decideDailyAction(day, state, decisionParams, strategy, strategyRng, graph);
+    const action = effects ? { ...baseAction, budgetSpent: baseAction.budgetSpent + effects.cost, summaryText: `${baseAction.summaryText} Medidas experimentales: $${effects.cost.toFixed(2)}.` } : baseAction;
     totalBudgetSpent += action.budgetSpent;
 
     const cordonedNodeSet = new Set(action.cordonedNodes);
@@ -174,14 +185,14 @@ export function runSingleSeirSimulation(
           ? link.weight * (1 - CORDON_REDUCTION_ALPHA)
           : link.weight;
 
-        importedContagion += effectiveWeight * (iNeighbor / uNode.population) *
+        importedContagion += effectiveWeight * (effects?.mobility[link.edgeId] ?? 1) * (iNeighbor / uNode.population) *
           (isolatedNodeSet.has(uId) ? 0.5 : 1);
       }
 
       const isLocallyCordoned = cordonedNodeSet.has(vId);
       const localContagion =
         (iNow / nPop) * (isLocallyCordoned ? CORDON_LOCAL_LOCKDOWN_FACTOR : 1.0) *
-        (isolatedNodeSet.has(vId) ? 0.5 : 1);
+        (isolatedNodeSet.has(vId) ? 0.5 : 1) * (effects?.local[vId] ?? 1);
 
       // Necro-Dengue environmental vector amplifies contagion proportional to local/imported pathogen reservoir
       const activePathogenPressure = localContagion + importedContagion;
@@ -275,6 +286,7 @@ export function runSingleSeirSimulation(
       hospitalCollapsed,
       nodes: dailyNodes,
       action,
+      ...(effects ? { researchEffects: effects } : {}),
     });
   }
 

@@ -64,7 +64,7 @@ import { computePercentile, runMonteCarloComparison } from "./domain/monteCarlo"
 import { requestNews } from "./domain/newsClient";
 import type { GameNews, NewsState } from "./domain/newsModel";
 import { runSingleSeirSimulation } from "./domain/seirEngine";
-import type { MonteCarloComparisonResult } from "./domain/types";
+import type { MonteCarloComparisonResult, SimulationParams } from "./domain/types";
 
 const DEFAULT_CONFIG: GameConfig = {
   seed: 20261030,
@@ -244,11 +244,21 @@ function Dialog({
 export default function App({
   onLogout,
   loggingOut = false,
+  inactive = false,
+  onScenarioChange,
+  onOpenResearch,
+  cameraBridge,
 }: {
   onLogout?: () => void;
   loggingOut?: boolean;
+  inactive?: boolean;
+  onScenarioChange?: (params: SimulationParams) => void;
+  onOpenResearch?: () => void;
+  cameraBridge?: import('./components/tacticalCamera').TacticalCameraBridge;
 } = {}) {
   const [game, setGame] = useState(() => createGame(DEFAULT_CONFIG));
+  useEffect(() => { onScenarioChange?.(structuredClone(game.params)); }, [game.params, onScenarioChange]);
+  useEffect(() => { if (inactive) setModal(null); }, [inactive]);
   const [simulationMode, setSimulationMode] = useState(false);
   const [selectedNode, setSelectedNode] = useState("N01");
   const [orders, setOrders] = useState<Order[]>([]);
@@ -481,6 +491,11 @@ export default function App({
           <button aria-label="Modo simulación múltiple" disabled={dayTransition !== null} onClick={() => setSimulationMode(true)}>
             <Activity size={16} /><span>Simulación</span>
           </button>
+          {onOpenResearch && (
+            <button aria-label="Investigación" title="Abrir investigación experimental" onClick={onOpenResearch}>
+              <FlaskConical size={16} /><span>Investigación</span>
+            </button>
+          )}
           <button aria-label="Campaña cinematográfica" onClick={() => { setBriefingChapter(0); setModal("campaign"); }}>
             <Clapperboard size={16} />
             <span>Campaña</span>
@@ -513,7 +528,8 @@ export default function App({
 
       <main className="map-stage">
         <CureEarth3DMap
-          paused={modal === "operations"}
+          paused={inactive || modal === "operations"}
+          cameraBridge={cameraBridge}
           snapshot={snapshot}
           selectedNode={selectedNode}
           onSelect={selectZone}

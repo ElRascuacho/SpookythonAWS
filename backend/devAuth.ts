@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { authorize, json } from "./auth";
 import { NEWS_BODY_LIMIT, NEWS_ROUTE, handleNewsRoute } from "./news";
+import { RESEARCH_BODY_LIMIT, RESEARCH_ROUTE, handleResearchAgent } from './researchAgent';
 
 export function invitationAuth(env: Record<string, string>): Plugin {
   const middleware =
@@ -11,7 +12,7 @@ export function invitationAuth(env: Record<string, string>): Plugin {
       const origin = env.INVITE_APP_ORIGIN || `http://localhost:${port}`;
       const pathname = req.url.split("?")[0] ?? req.url;
       // /api/news necesita un cuerpo algo mayor (estado de partida) que el resto.
-      const bodyLimit = pathname === NEWS_ROUTE ? NEWS_BODY_LIMIT : 4096;
+      const bodyLimit = pathname === RESEARCH_ROUTE ? RESEARCH_BODY_LIMIT : pathname === NEWS_ROUTE ? NEWS_BODY_LIMIT : 4096;
       try {
         const chunks: Buffer[] = [];
         let size = 0;
@@ -45,6 +46,7 @@ export function invitationAuth(env: Record<string, string>): Plugin {
         // Después de autorizar y antes del 404: boletín diario generado en servidor.
         if (!response && pathname === NEWS_ROUTE)
           response = await handleNewsRoute(request, clientIp, serverEnv);
+        if (!response && pathname === RESEARCH_ROUTE) response = await handleResearchAgent(request, clientIp, serverEnv);
         response ??= json(404, { error: "Ruta no encontrada." });
         res.writeHead(
           response.status,
