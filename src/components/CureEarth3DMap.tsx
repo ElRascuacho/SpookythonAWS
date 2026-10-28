@@ -16,7 +16,7 @@ import {
   SprayCan,
 } from "lucide-react";
 import { MANTA_EDGES, MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
-import { quadraticRoutePoint, TRAFFIC_VEHICLES } from "../domain/traffic";
+import { pointOnRoad, TRAFFIC_ROUTES, TRAFFIC_VEHICLES } from "../domain/traffic";
 import type { CityNode, DailyCitySnapshot } from "../domain/types";
 import type { Order } from "../domain/cureGame";
 
@@ -1059,33 +1059,27 @@ export function CureEarth3DMap({
             }
           }
 
+          const blockedRoads = TRAFFIC_ROUTES.map((road) => road.edges.some((id) => {
+            const edge = MANTA_EDGES.find((item) => item.id === id);
+            return snap.action.cordonedEdges.includes(id) || (edge && activeOrders.some((order) => order.kind === "cordon" && (order.nodeId === edge.source || order.nodeId === edge.target)));
+          }));
           for (const vehicle of TRAFFIC_VEHICLES) {
-            const edge = MANTA_EDGES.find(({ id }) => id === vehicle.edge);
-            if (!edge) continue;
-            const p1 = projectedPts[edge.source];
-            const p2 = projectedPts[edge.target];
-            if (!p1 || !p2) continue;
-            const isClosed =
-              snap.action.cordonedEdges.includes(edge.id) ||
-              activeOrders.some(
-                (order) =>
-                  order.kind === "cordon" &&
-                  (order.nodeId === edge.source || order.nodeId === edge.target),
-              );
-            if (isClosed) continue;
+            if (prefersReducedMotion && vehicle.id >= TRAFFIC_ROUTES.length) continue;
+            const road = TRAFFIC_ROUTES[vehicle.route];
+            if (!road) continue;
+            if (blockedRoads[vehicle.route]) continue;
 
             const t = prefersReducedMotion
               ? 0.5
               : ((elapsed + vehicle.delay) % vehicle.duration) / vehicle.duration;
-            const point = quadraticRoutePoint(
-              p1,
-              { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
-              p2,
-              t,
-            );
+            const point = map.project(pointOnRoad(road, t));
+            if (point.x < -30 || point.y < -30 || point.x > width + 30 || point.y > height + 30) continue;
+            const ahead = map.project(pointOnRoad(road, Math.min(1, t + 0.001)));
             ctx.save();
             ctx.translate(point.x, point.y);
-            ctx.rotate(point.angle);
+            ctx.rotate(Math.atan2(ahead.y - point.y, ahead.x - point.x));
+            const vehicleScale = Math.max(0.2, Math.min(1, (zoom - 11) / 6));
+            ctx.scale(vehicleScale, vehicleScale);
             drawTrafficVehicle(ctx, vehicle.type);
             ctx.restore();
           }
@@ -1533,6 +1527,7 @@ export function CureEarth3DMap({
         <span />2 km
         <small>Relieve AWS DEM · Ortofoto Satelital · Modelos 3D</small>
       </div>
+      <div className="osm-attribution">Vías © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · buses referenciales</div>
 
       <div className="map-legend">
         <span>
