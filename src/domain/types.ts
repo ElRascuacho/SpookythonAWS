@@ -65,7 +65,11 @@ export interface SimulationParams {
   initialExposedPerNode: number; // Expuestos iniciales por nodo Paciente Cero (default: 50)
 }
 
+export type FieldMissionKind = 'shooter' | 'parkour' | 'lab';
+export interface FieldReward { nodeId: string; amount: number }
+
 export interface DailyAction {
+  fieldRewards?: Partial<Record<FieldMissionKind, FieldReward>>;
   isolatedNodes?: string[];
   preventionNodes?: string[];
   day: number;

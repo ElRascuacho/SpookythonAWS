@@ -209,10 +209,16 @@ export function runSingleSeirSimulation(
         deltaR = sampleBinomial(iNow, pRecovery, rng);
       }
 
-      const nextS = sNow - deltaE;
+      const rewardAmount = (kind: 'shooter' | 'parkour') => {
+        const reward = action.fieldRewards?.[kind];
+        return reward?.nodeId === vId && Number.isSafeInteger(reward.amount) ? Math.max(0, reward.amount) : 0;
+      };
+      const rescued = Math.min(sNow - deltaE, rewardAmount('parkour'));
+      const treated = Math.min(iNow + deltaI - deltaR, rewardAmount('shooter'));
+      const nextS = sNow - deltaE - rescued;
       const nextE = eNow + deltaE - deltaI;
-      const nextI = iNow + deltaI - deltaR;
-      const nextR = rNow + deltaR;
+      const nextI = iNow + deltaI - deltaR - treated;
+      const nextR = rNow + deltaR + rescued + treated;
 
       // Environmental vector dynamics: rebounds toward baseVectorRisk when local zombies exist
       const zombiePrevalence = nextI / nPop;
@@ -246,7 +252,7 @@ export function runSingleSeirSimulation(
         vectorIndex: Number(nextW.toFixed(4)),
         newExposed: deltaE,
         newInfected: deltaI,
-        newRecovered: deltaR,
+        newRecovered: deltaR + treated,
         vaccinatedToday: vaccinatedTodayByNode[vId] ?? 0,
         fumigatedToday: fumigatedNodeSet.has(vId),
         cordonedToday: cordonedNodeSet.has(vId),

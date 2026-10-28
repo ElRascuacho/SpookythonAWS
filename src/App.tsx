@@ -21,6 +21,7 @@ import {
   TrendingDown,
   Users,
   X,
+  Gamepad2,
   type LucideIcon,
 } from "lucide-react";
 import { CureCityMap } from "./components/CureCityMap";
@@ -33,10 +34,11 @@ import {
 } from "./components/DayTransition";
 import { NewsFlash } from "./components/NewsFlash";
 import { GameTutorial } from "./components/GameTutorial";
-import { LabSpontaneousEvent } from "./components/LabSpontaneousEvent";
+import { FieldOperations } from "./components/FieldOperations";
+import { completeFieldMission } from "./domain/fieldMissions";
 import { SimulationDashboard } from "./components/SimulationDashboard";
 import { StrategyReport } from "./components/StrategyReport";
-import { createLabEvent, type LabEvent } from "./domain/spontaneousEvents";
+import { createLabEvent } from "./domain/spontaneousEvents";
 import { TUTORIAL_SEEN_KEY } from "./domain/tutorial";
 import {
   advanceDay,
@@ -95,7 +97,7 @@ const FUNDING_LABELS: Record<number, string> = {
   1200: "Estándar",
   2200: "Prioridad",
 };
-type Modal = "help" | "settings" | "analysis" | "result" | "logout" | "zone" | "campaign" | "event" | null;
+type Modal = "help" | "settings" | "analysis" | "result" | "logout" | "zone" | "campaign" | "operations" | null;
 interface Evaluation {
   comparison: MonteCarloComparisonResult;
   playerMean: number;
@@ -157,11 +159,13 @@ function Dialog({
   children,
   onClose,
   wide = false,
+  className = "",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -217,7 +221,7 @@ function Dialog({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`game-dialog ${wide ? "wide" : ""}`}
+        className={`game-dialog ${wide ? "wide" : ""} ${className}`}
       >
         <div className="dialog-heading">
           <div>
@@ -249,8 +253,7 @@ export default function App({
   const [simulationMode, setSimulationMode] = useState(false);
   const [selectedNode, setSelectedNode] = useState("N01");
   const [orders, setOrders] = useState<Order[]>([]);
-  const [eventBonus, setEventBonus] = useState<Order | null>(null);
-  const [activeEvent, setActiveEvent] = useState<LabEvent | null>(null);
+  const [missionNode, setMissionNode] = useState("N01");
   const [funding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
   const [modal, setModal] = useState<Modal>(() => {
     try {
@@ -283,7 +286,7 @@ export default function App({
     [],
   );
   const closeModal = () => {
-    if (modal === "event") setActiveEvent(null);
+    if (modal === "operations" && game.status !== "playing") { setModal("result"); return; }
     if (modal === "help") {
       try {
         localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
@@ -339,7 +342,7 @@ export default function App({
   const nextDay = () => {
     if (advancing.current) return;
     try {
-      const next = advanceDay(game, orders, funding, eventBonus ?? undefined);
+      const next = advanceDay(game, orders, funding);
       const report: DayTransitionReport = {
         day: next.day,
         totalDays: next.params.days,
@@ -347,7 +350,7 @@ export default function App({
         newCases:
           next.timeline[next.day].cumulativeInfected -
           game.timeline[game.day].cumulativeInfected,
-        brigades: orders.length + (eventBonus && !orders.some((o) => o.nodeId === eventBonus.nodeId && o.kind === "prevention") ? 1 : 0),
+        brigades: orders.length,
         funding,
         status: next.status,
       };
@@ -364,7 +367,6 @@ export default function App({
       } else startNews(buildNewsState(game, next, orders, funding));
       setGame(next);
       setOrders([]);
-      setEventBonus(null);
       setEvaluation(null);
       setNotice(`Día ${next.day}: ${next.log[0]}`);
       const finishTurn = () => {
@@ -374,7 +376,7 @@ export default function App({
         if (next.status !== "playing") setModal("result");
         else {
           const incident = createLabEvent(next.config.seed, next.day);
-          if (incident) { setActiveEvent(incident); setModal("event"); }
+          if (incident) { setMissionNode(incident.nodeId); setModal("operations"); }
         }
       };
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -406,8 +408,6 @@ export default function App({
       setGame(createGame(config));
       setSelectedNode(config.patientZeroId);
       setOrders([]);
-      setEventBonus(null);
-      setActiveEvent(null);
       setFunding(RESEARCH_LEVELS[1]);
       setEvaluation(null);
       setNotice("Nueva misión iniciada.");
@@ -478,6 +478,9 @@ export default function App({
           <b>DEMO JUGABLE</b>
         </div>
         <nav className="header-actions" aria-label="Opciones de misión">
+          <button aria-label="Minijuegos de operaciones de campo" disabled={!playing || dayTransition !== null} onClick={() => { setMissionNode(selectedNode); setModal("operations"); }}>
+            <Gamepad2 size={16} /><span>Operaciones</span>
+          </button>
           <button aria-label="Modo simulación múltiple" disabled={dayTransition !== null} onClick={() => setSimulationMode(true)}>
             <Activity size={16} /><span>Simulación</span>
           </button>
@@ -514,6 +517,7 @@ export default function App({
       <main className="map-stage">
         {mapView === "3d" ? (
           <CureEarth3DMap
+            paused={modal === "operations"}
             snapshot={snapshot}
             selectedNode={selectedNode}
             onSelect={selectZone}
@@ -685,14 +689,13 @@ export default function App({
           </button>
         </div>
 
-        {(orders.length > 0 || eventBonus) && (
+        {orders.length > 0 && (
           <div className="command-row plan-row">
             <span>
-              PLAN DE HOY · {orders.length + Number(!!eventBonus)}{" "}
-              {orders.length + Number(!!eventBonus) === 1 ? "BRIGADA" : "BRIGADAS"}
+              PLAN DE HOY · {orders.length}{" "}
+              {orders.length === 1 ? "BRIGADA" : "BRIGADAS"}
             </span>
             <ul className="plan-chips">
-              {eventBonus && <li><FlaskConical size={11} />Prevención GRATIS · {NODE_MAP[eventBonus.nodeId].name} · siguiente día</li>}
               {orders.map((order, index) => {
                 const Icon = ICONS[order.kind];
                 return (
@@ -770,13 +773,17 @@ export default function App({
         </Dialog>
       )}
 
-      {modal === "event" && activeEvent && (
-        <Dialog title="Incidente en el laboratorio" onClose={closeModal}>
-          <LabSpontaneousEvent event={activeEvent} onClose={closeModal} onComplete={(success) => {
-            if (success) {
-              setEventBonus({ nodeId: activeEvent.nodeId, kind: "prevention" });
-              setNotice(`Calibración correcta: prevención gratuita lista para ${NODE_MAP[activeEvent.nodeId].name}.`);
-            } else setNotice("Calibración omitida o fallida; no se aplicó ninguna penalización.");
+      {modal === "operations" && (
+        <Dialog title="Operaciones de campo" onClose={closeModal} className="field-dialog">
+          <FieldOperations game={game} nodeId={missionNode} onComplete={(kind) => {
+            const next = completeFieldMission(game, kind, missionNode);
+            setGame(next);
+            setEvaluation(null);
+            newsRequestId.current++;
+            setNews(null);
+            setNewsLoading(false);
+            setNotice(next.log[0]);
+            return next.log[0];
           }} />
         </Dialog>
       )}
@@ -790,7 +797,6 @@ export default function App({
             {(Object.keys(INTERVENTIONS) as Intervention[]).map((kind) => {
               const Icon = ICONS[kind];
               const action = INTERVENTIONS[kind];
-              const coveredByLab = kind === "prevention" && eventBonus?.nodeId === selectedNode;
               const assigned = orders.some(
                 (order) =>
                   order.nodeId === selectedNode && order.kind === kind,
@@ -799,8 +805,8 @@ export default function App({
                 <button
                   key={kind}
                   className={`quick-action ${assigned ? "assigned" : ""}`}
-                  aria-pressed={assigned || coveredByLab}
-                  aria-label={`${action.label} en ${node.name}: ${coveredByLab ? "gratis, cubierta por el laboratorio" : `$${action.cost}`}`}
+                  aria-pressed={assigned}
+                  aria-label={`${action.label} en ${node.name}: $${action.cost}`}
                   onClick={() => {
                     if (assigned) {
                       setOrders((current) => current.filter(
@@ -810,7 +816,6 @@ export default function App({
                     } else queueOrder(kind);
                   }}
                   disabled={
-                    coveredByLab ||
                     !playing ||
                     (!assigned && (remaining < action.cost ||
                       (kind === "vaccine" && local.S === 0)))
@@ -823,7 +828,7 @@ export default function App({
                     <strong>{action.label}</strong>
                     <small>{kind === "vaccine" ? `${game.params.vaccineBatchSize} dosis · solo población susceptible` : action.description}</small>
                   </span>
-                  {coveredByLab ? <b className="qa-cost">GRATIS</b> : assigned ? (
+                  {assigned ? (
                     <Check className="qa-check" size={14} />
                   ) : (
                     <b className="qa-cost">${format(action.cost)}</b>

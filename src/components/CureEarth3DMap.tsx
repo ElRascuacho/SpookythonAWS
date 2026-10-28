@@ -23,6 +23,7 @@ import type { Order } from "../domain/cureGame";
 export type MapStyleMode = "satellite" | "tactical3d";
 
 interface Props {
+  paused?: boolean;
   snapshot: DailyCitySnapshot;
   selectedNode: string;
   onSelect: (nodeId: string) => void;
@@ -507,6 +508,7 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
 };
 
 export function CureEarth3DMap({
+  paused = false,
   snapshot,
   selectedNode,
   onSelect,
@@ -911,7 +913,7 @@ export function CureEarth3DMap({
 
   // Optional 360° Tactical Camera Orbit
   useEffect(() => {
-    if (!isOrbiting || !mapReady) return;
+    if (!isOrbiting || !mapReady || paused) return;
     let rafId = 0;
     const rotate = () => {
       const map = mapRef.current;
@@ -922,7 +924,7 @@ export function CureEarth3DMap({
     };
     rafId = requestAnimationFrame(rotate);
     return () => cancelAnimationFrame(rafId);
-  }, [isOrbiting, mapReady]);
+  }, [isOrbiting, mapReady, paused]);
 
   // Unified 60fps Projection Loop: Synchronizes both the 3D Hologram Canvas AND the 16 Zone Pins
   // using the exact same map.project([lng, lat]) coordinate on every camera frame.
@@ -930,6 +932,7 @@ export function CureEarth3DMap({
     const canvas = overlayCanvasRef.current;
     const map = mapRef.current;
     if (!canvas || !map || !mapReady) return;
+    if (paused) { map.stop(); return; }
 
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -1210,7 +1213,7 @@ export function CureEarth3DMap({
       cancelAnimationFrame(rafId);
       if (prefersReducedMotion) map.off("render", onMapRender);
     };
-  }, [mapReady]);
+  }, [mapReady, paused]);
 
   const handleCityFlyover = () => {
     const map = mapRef.current;
