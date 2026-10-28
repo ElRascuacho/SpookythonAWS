@@ -71,7 +71,6 @@ export default function CommitteePanel() {
   const [horizonDays, setHorizonDays] = useState(40);
   const [seedMode, setSeedMode] = useState<"random" | "custom">("random");
   const [customSeed, setCustomSeed] = useState(20261030);
-  const [runAudit, setRunAudit] = useState(false);
   const [job, setJob] = useState<JobView | null>(null);
   const [playback, setPlayback] = useState<DailyCitySnapshot[]>([]);
   const [day, setDay] = useState(0);
@@ -92,12 +91,11 @@ export default function CommitteePanel() {
         credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `local-${horizonDays}-${activeSeed}-${runAudit ? "audit" : "preview"}-${Date.now()}`,
+          "Idempotency-Key": `preview-${horizonDays}-${activeSeed}-${Date.now()}`,
         },
         body: JSON.stringify({
           horizonDays,
           seed: activeSeed,
-          audit: runAudit,
         }),
       });
       let body: StartResponse | null = null;
@@ -345,7 +343,7 @@ export default function CommitteePanel() {
           <span className="committee-badge">COMITÉ EPIDEMIOLÓGICO</span>
           <h2>¿Qué hace el Comité?</h2>
           <p className="committee-subtitle">
-            Busca una política de respuesta que reduzca los contagios acumulados en una simulación mediante aprendizaje continuo sin sobreajuste. Compara la estrategia base con una candidata; es exploratoria, no valida decisiones reales.
+            Vista previa exploratoria: busca una política de respuesta en una simulación y la compara con la estrategia base. Sin prueba fuera de muestra completa; no entrena ni publica una política validada para decisiones reales.
           </p>
         </div>
       </header>
@@ -377,7 +375,7 @@ export default function CommitteePanel() {
               value={seedMode}
               onChange={(event) => setSeedMode(event.target.value as "random" | "custom")}
             >
-              <option value="random">🎲 Semilla Aleatoria (Anti-Overfitting)</option>
+              <option value="random">🎲 Semilla aleatoria</option>
               <option value="custom">📌 Semilla Específica</option>
             </select>
           </label>
@@ -396,17 +394,8 @@ export default function CommitteePanel() {
             </label>
           )}
 
-          <label className="audit-toggle-label">
-            <input
-              type="checkbox"
-              checked={runAudit}
-              onChange={(e) => setRunAudit(e.target.checked)}
-            />
-            Auditoría rigurosa (Held-out seeds)
-          </label>
-
           <button type="submit" disabled={busy}>
-            {busy ? "Calculando…" : runAudit ? "Buscar y Auditar" : "Entrenar y Validar"}
+            {busy ? "Calculando…" : "Explorar política"}
           </button>
         </div>
 
@@ -419,19 +408,21 @@ export default function CommitteePanel() {
               {/* Tarjeta 1: Reducción de Contagios */}
               <div className="committee-kpi-card">
                 <div className="kpi-title-row">
-                  <span>Eficacia de Contención</span>
+                  <span>Reducción preliminar vs base</span>
                   <TrendingDown size={16} color="#00e5a3" />
                 </div>
                 <div className="kpi-main-metric">
-                  {stats ? `-${stats.reductionPct}%` : "—"}
+                  {stats ? `${stats.reductionPct > 0 ? "+" : ""}${stats.reductionPct}%` : "—"}
                   {stats && stats.reductionPct > 0 && (
                     <span className="kpi-badge badge-green">Mitigación</span>
                   )}
                 </div>
                 <div className="kpi-subtext">
-                  <strong>{stats ? stats.reductionAbsolute.toLocaleString() : 0}</strong> contagios evitados frente al escenario base.
+                  Reducción estimada: <strong>{stats ? stats.reductionAbsolute.toLocaleString() : "—"}</strong> contagios frente a la base. Un valor negativo significa más contagios.
                   <br />
-                  Baseline: {job.baselineMean == null ? "—" : Math.round(job.baselineMean).toLocaleString()} | Candidata: {job.candidateMean == null ? "—" : Math.round(job.candidateMean).toLocaleString()}
+                  Base: {job.baselineMean == null ? "—" : Math.round(job.baselineMean).toLocaleString()} | Candidata: {job.candidateMean == null ? "—" : Math.round(job.candidateMean).toLocaleString()}
+                  <br />
+                  Estimación en muestras de búsqueda; no prueba fuera de muestra.
                 </div>
               </div>
 
@@ -495,30 +486,32 @@ export default function CommitteePanel() {
               {/* Tarjeta 4: Dictamen de Auditoría */}
               <div className="committee-kpi-card">
                 <div className="kpi-title-row">
-                  <span>Auditoría de Generalización</span>
+                  <span>Estado de la vista previa</span>
                   <Award size={16} color="#00e5a3" />
                 </div>
                 <div className="kpi-main-metric" style={{ fontSize: "20px" }}>
                   {job.finalAudit === "passed" && (
                     <span className="kpi-badge badge-green" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      <ShieldCheck size={14} /> CERTIFICADA
+                      <ShieldCheck size={14} /> SUPERÓ PRUEBA LOCAL
                     </span>
                   )}
                   {job.finalAudit === "failed" && (
                     <span className="kpi-badge badge-red" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      <ShieldAlert size={14} /> RECHAZADA
+                      <ShieldAlert size={14} /> NO SUPERÓ PRUEBA LOCAL
                     </span>
                   )}
                   {job.finalAudit === "not-run" && (
                     <span className={`kpi-badge ${job.promoted ? "badge-green" : "badge-blue"}`}>
-                      {job.promoted ? "VALIDADA EN PROMOCIÓN" : "PRELIMINAR"}
+                      {job.promoted ? "PROMOCIÓN LOCAL" : "PRELIMINAR"}
                     </span>
                   )}
                 </div>
                 <div className="kpi-subtext">
-                  Semilla evaluada: <strong>#{job.seedUsed ?? customSeed}</strong> | Versión: <strong>v{job.recommendedPolicyVersion}</strong>.
+                  Semilla explorada: <strong>#{job.seedUsed ?? customSeed}</strong> | Política candidata: <strong>v{job.recommendedPolicyVersion}</strong>.
                   <br />
                   Simulaciones evaluadas: <strong>{job.trajectories ?? (playback.length > 0 ? playback.length : 1)} réplicas</strong> ({job.generationsRun ?? 1} gen).
+                  <br />
+                  Sin prueba fuera de muestra completa ni publicación automática.
                   <br />
                   <span style={{ fontSize: "11px", color: "#7d9ba6" }}>{job.note}</span>
                 </div>
@@ -530,13 +523,13 @@ export default function CommitteePanel() {
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
                 <div>
                   <strong style={{ color: "#f0f7f9", fontSize: "14px" }}>
-                    🧠 Memoria Evolutiva y Pesos Aprendidos (Anti-Overfitting)
+                    🧠 Memoria exploratoria y pesos candidatos
                   </strong>
                   <div style={{ fontSize: "12px", color: "#8da4ae", marginTop: "4px" }}>
                     Campeones en memoria (Warm Starts): <strong>{job.librarySize ?? 0} / 8</strong> ({job.warmStartsCount ?? 0} usados en esta corrida) •{" "}
-                    Promoción fuera de muestra:{" "}
+                    Promoción local:{" "}
                     <strong style={{ color: job.promoted ? "#00e5a3" : "#ffb300" }}>
-                      {job.promoted ? "Superada (Archivada)" : "Conserva incumbente"}
+                      {job.promoted ? "Superada en vista previa" : "Conserva incumbente"}
                     </strong>
                   </div>
                 </div>
