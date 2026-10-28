@@ -18,6 +18,7 @@ export interface CommitteeWorkerEvent {
 
 export interface WorkerHandlerDependencies {
   executor?: { execute(jobId: string, ownerHash?: string): Promise<{ status: string; pairsCompleted: number }> };
+  trainingExecutor?: { execute(jobId: string, ownerHash?: string): Promise<{ status: string; completedTrajectories: number }> };
 }
 
 export async function handler(
@@ -30,6 +31,17 @@ export async function handler(
   const baseSeed = Number(event.baseSeed ?? 20261030);
   if (!jobId || !ownerHash) {
     return { ok: false, error: "jobId and ownerHash are required" };
+  }
+
+  if (event.type === "training") {
+    if (deps?.trainingExecutor) {
+      const res = await deps.trainingExecutor.execute(jobId, ownerHash);
+      return { ok: true, jobId, status: res.status, completedTrajectories: res.completedTrajectories };
+    }
+    return { ok: false, error: "Training worker is not available" };
+  }
+  if (event.type !== undefined && event.type !== "preview" && event.type !== "evaluation") {
+    return { ok: false, error: "Unsupported Committee worker event" };
   }
 
   if (event.type === "evaluation") {
