@@ -69,13 +69,13 @@ function CumulativeChart({ title, caption, band, selected, comparison, label }: 
           ) : (
             <span className="legend-item">
               <i className="legend-swatch legend-swatch--mean" aria-hidden="true" />
-              Promedio Monte Carlo
+              {comparison ? "Promedio Política del Comité" : "Promedio Monte Carlo"}
             </span>
           )}
           {comparison && (
             <span className="legend-item">
               <i className="legend-swatch legend-swatch--comparison" aria-hidden="true" />
-              Referencia SGC (misma semilla)
+              {selected ? "Referencia SGC (par elegido)" : "Promedio SGC (referencia)"}
             </span>
           )}
         </div>
@@ -300,6 +300,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
   const candidateInfected = pairs.length ? distribution(pairs.map((pair) => pair.candidate.infected)) : null;
   const candidateCollapse = pairs.filter((pair) => pair.candidate.hospitalCollapseDays > 0).length;
   const pairBand = pairs.length ? dailyCumulativeBand(pairs.map((pair) => pair.candidate.daily)) : [];
+  const sgcMeanDaily = pairs.length ? dailyCumulativeBand(pairs.map((pair) => pair.sgc.daily)).map((point) => point.mean) : null;
   const selectedPair = pairs.find((pair) => pair.index === selectedIndex) ?? null;
   const planLabel = actualPlan === "PLAYER" ? "plan jugado" : actualPlan === "RANDOM" ? "intervención al azar" : actualPlan === "NO_INTERVENTION" ? "sin intervención" : actualPlan === "COMMITTEE" ? "política publicada del Comité" : "cortafuegos automático";
   const difficultyLabel = actualDifficulty === "normal" ? "16 zonas" : actualDifficulty === "hard" ? "32 sectores sintéticos" : "48 sectores sintéticos";
@@ -365,7 +366,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
           />
         </div>
         <p>Diferencia pareada promedio (SGC menos política): {format(comparison.meanDifference)} contagios. Intervalo bootstrap del 95%: {format(comparison.confidenceInterval[0])} a {format(comparison.confidenceInterval[1])} contagios.</p>
-        <CumulativeChart title="Contagios de la política" caption={selectedPair ? `Par ${selectedPair.index}: política ${format(selectedPair.candidate.infected)} · SGC ${format(selectedPair.sgc.infected)}` : `Promedio de la política y banda P10–P90 · semilla ${actualSeed}`} band={pairBand} selected={selectedPair?.candidate.daily ?? null} comparison={selectedPair?.sgc.daily ?? null} label={selectedPair ? `Curva del par ${selectedPair.index}. La línea clara es la política y la coral es SGC.` : "Promedio de la política con banda P10–P90."} />
+        <CumulativeChart title="Contagios de la política vs. SGC" caption={selectedPair ? `Par ${selectedPair.index}: política ${format(selectedPair.candidate.infected)} · SGC ${format(selectedPair.sgc.infected)}` : `Promedio de la política (verde) vs. promedio SGC (coral) y banda P10–P90 · semilla ${actualSeed}`} band={pairBand} selected={selectedPair?.candidate.daily ?? null} comparison={selectedPair?.sgc.daily ?? sgcMeanDaily} label={selectedPair ? `Curva del par ${selectedPair.index}. La línea clara es la política y la coral es SGC.` : "Comparación del promedio de la política con banda P10–P90 frente al promedio de SGC."} />
         {selectedPair && <button className="secondary-button" type="button" onClick={() => setSelectedIndex(null)}>Volver al promedio</button>}
         <div className="simulation-toolbar"><p className="simulation-note">Cada fila es un par con la misma semilla y el mismo índice. La diferencia es SGC menos política. El CSV trae ambos lados sin redondear.</p><button className="secondary-button" type="button" onClick={() => downloadCsv(`comite-${actualSeed}.csv`, pairsToCsv({ plan: planLabel, difficulty: "16 zonas", seed: actualSeed!, policyVersion: policy.artifact.policyVersion, registryVersion: policy.registryVersion }, pairs))}>Descargar CSV</button></div>
         <DatasetDictionary mode="committee" />
