@@ -1,4 +1,16 @@
 .tutorial { font-size: 16px; line-height: 1.65; }
+.tutorial-required { padding: 12px 16px; border: 1px solid #668f80; border-radius: 6px; background: #b1dfc80b; }
+.tutorial-screenshot { margin: 20px 0; border: 1px solid #4c626a; border-radius: 8px; overflow: hidden; background: #0d1b22; }
+.tutorial-screenshot a { display: block; padding: 12px; text-align: center; }
+.tutorial-screenshot img { display: block; width: 100%; height: auto; margin: auto; }
+.tutorial-screenshot-2 img { max-width: 420px; }
+.tutorial-screenshot figcaption { padding: 12px 16px; color: var(--text); font-size: 15px; border-top: 1px solid #293940; }
+.tutorial-screenshot figcaption span { display: block; color: #b4c5cc; margin-top: 6px; font-size: 13px; }
+.tutorial-screenshot a:focus-visible { outline: 2px solid var(--mint); outline-offset: -4px; }
+.tutorial-explore { margin: 20px 0; }
+.tutorial-explore h4 { font-size: 19px; margin-bottom: 10px; }
+.tutorial-explore ul { padding-left: 22px; color: #b9c9cc; }
+.tutorial-explore li { margin-block: 10px; }
 .game-dialog:has(.tutorial) .icon-button { min-width: 44px; min-height: 44px; }
 .tutorial p { color: #b9c9cc; }
 .tutorial strong { color: var(--text); }

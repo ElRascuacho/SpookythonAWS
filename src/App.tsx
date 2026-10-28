@@ -19,7 +19,7 @@ import {
   HandHeart,
   SprayCan,
   TrendingDown,
-  Users,
+  Users, Volume2, VolumeX,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -36,7 +36,7 @@ import { FieldOperations } from "./components/FieldOperations";
 import { completeFieldMission, missionRewardAmount, randomFieldOperation, type FieldOperation } from "./domain/fieldMissions";
 import { SimulationDashboard } from "./components/SimulationDashboard";
 import { StrategyReport } from "./components/StrategyReport";
-import { TUTORIAL_SEEN_KEY } from "./domain/tutorial";
+import { hasCompletedTutorial, rememberTutorialCompletion } from "./domain/tutorialProgress";
 import {
   advanceDay,
   createGame,
@@ -158,12 +158,14 @@ function Dialog({
   onClose,
   wide = false,
   className = "",
+  dismissible = true,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
   className?: string;
+  dismissible?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -233,13 +235,13 @@ function Dialog({
             <span className="eyebrow">OPERACIÓN MANTA CERO</span>
             <h2>{title}</h2>
           </div>
-          <button
+          {dismissible && <button
             className="icon-button"
             aria-label="Cerrar ventana"
             onClick={onClose}
           >
             <X size={20} />
-          </button>
+          </button>}
         </div>
         {children}
       </div>
@@ -278,13 +280,8 @@ export default function App({
   const [orders, setOrders] = useState<Order[]>([]);
   const [fieldOperation, setFieldOperation] = useState<FieldOperation | null>(null);
   const [funding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
-  const [modal, setModal] = useState<Modal>(() => {
-    try {
-      return localStorage.getItem(TUTORIAL_SEEN_KEY) === "1" ? null : "help";
-    } catch {
-      return "help";
-    }
-  });
+  const [tutorialRequired, setTutorialRequired] = useState(() => !hasCompletedTutorial());
+  const [modal, setModal] = useState<Modal>(() => tutorialRequired ? "help" : null);
   const [briefingChapter, setBriefingChapter] = useState<CampaignChapter>(0);
   const [draft, setDraft] = useState<GameConfig>(DEFAULT_CONFIG);
   const [notice, setNotice] = useState("");
@@ -296,13 +293,14 @@ export default function App({
   const [news, setNews] = useState<GameNews | null>(null);
 
   useEffect(() => {
+    if (tutorialRequired) { setModal("help"); return; }
     if (activeMode === "campaign") {
       setBriefingChapter(0);
       setModal("campaign");
     } else if (activeMode === "game") {
       setModal((prev) => (prev === "campaign" ? null : prev));
     }
-  }, [activeMode]);
+  }, [activeMode, tutorialRequired]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsFacts, setNewsFacts] = useState("");
   const commandBarRef = useRef<HTMLElement | null>(null);
@@ -326,14 +324,8 @@ export default function App({
     [],
   );
   const closeModal = () => {
+    if (tutorialRequired) return;
     if (modal === "operations" && game.status !== "playing") { setModal("result"); return; }
-    if (modal === "help") {
-      try {
-        localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
-      } catch {
-        // Storage can be blocked; dismissing the tutorial must still work.
-      }
-    }
     if (modal === "operations" && fieldOperation && game.actions[game.day]?.fieldRewards?.[fieldOperation.kind]) setFieldOperation(null);
     if (modal === "campaign" && activeMode === "campaign") {
       onModeChange?.("game");
@@ -902,8 +894,12 @@ export default function App({
         </Dialog>
       )}
       {modal === "help" && (
-        <Dialog title="Aprende a jugar." onClose={closeModal}>
-          <GameTutorial config={DEFAULT_CONFIG} onClose={closeModal} />
+        <Dialog title="Tu primer día al mando" onClose={closeModal} dismissible={!tutorialRequired}>
+          <GameTutorial config={DEFAULT_CONFIG} required={tutorialRequired} onClose={closeModal} onComplete={() => {
+            rememberTutorialCompletion();
+            setTutorialRequired(false);
+            setModal(null);
+          }} />
         </Dialog>
       )}
       {modal === "settings" && (
