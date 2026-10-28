@@ -11,6 +11,16 @@ import { runMonteCarloComparison } from '../monteCarlo';
 const game = createGame({ seed: 42, scenario: 'standard', patientZeroId: 'N01', dailyBudget: 7500 });
 
 describe('accessible UI contracts', () => {
+  test('native zone selector and its popup options have explicit dark colors outside mobile breakpoints', () => {
+    const css = readFileSync(new URL('../../index.css', import.meta.url), 'utf8');
+    const control = css.match(/\n\.mobile-zone-select\s*\{([^}]+)\}/)![1];
+    const options = css.match(/\n\.mobile-zone-select option\s*\{([^}]+)\}/)![1];
+    expect(control).toContain('color-scheme: dark');
+    for (const rule of [control, options]) {
+      expect(rule).toContain('background: #10212a');
+      expect(rule).toContain('color: var(--text)');
+    }
+  });
   test('comparison provides a named native day selector and a legible scrollable graph', () => {
     const result = runMonteCarloComparison({ ...game.params, days: 2, monteCarloRuns: 1 });
     const html = renderToStaticMarkup(createElement(ComparisonChart, { result, currentDay: 1, onSelectDay: () => {}, activeStrategy: 'SMART_CORTAFUEGOS' }));
