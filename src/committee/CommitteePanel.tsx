@@ -23,12 +23,25 @@ interface JobView {
   candidateMean: number | null;
   note: string;
   trajectories?: number;
+  seedUsed?: number;
+  weights?: readonly [number, number, number, number];
+  promoted?: boolean;
+  warmStartsCount?: number;
+  generationsRun?: number;
+  librarySize?: number;
 }
 
 interface StartResponse extends Partial<JobView> {
   message?: string;
   error?: string;
 }
+
+const WEIGHT_LABELS = [
+  { key: "w_cordon_early", label: "Cordón Temprano (días 0–13)" },
+  { key: "w_fumig_early", label: "Fumigación Temprana (días 0–13)" },
+  { key: "w_cordon_late", label: "Cordón Tardío (día 14+)" },
+  { key: "w_fumig_late", label: "Fumigación Tardía (día 14+)" },
+] as const;
 
 function PlaybackMap({ snapshot }: { snapshot: DailyCitySnapshot }) {
   const [MapView, setMapView] = useState<ComponentType<MapProps> | null>(null);
@@ -56,6 +69,8 @@ function PlaybackMap({ snapshot }: { snapshot: DailyCitySnapshot }) {
 
 export default function CommitteePanel() {
   const [horizonDays, setHorizonDays] = useState(40);
+  const [seedMode, setSeedMode] = useState<"random" | "custom">("random");
+  const [customSeed, setCustomSeed] = useState(20261030);
   const [runAudit, setRunAudit] = useState(false);
   const [job, setJob] = useState<JobView | null>(null);
   const [playback, setPlayback] = useState<DailyCitySnapshot[]>([]);
@@ -67,17 +82,21 @@ export default function CommitteePanel() {
     setBusy(true);
     setError("");
     setPlayback([]);
+    const activeSeed =
+      seedMode === "random"
+        ? Math.floor(Math.random() * 0x7fffffff) + 1
+        : Math.max(0, Math.min(0xffffffff, Math.floor(Number(customSeed) || 0)));
     try {
       const response = await fetch("/api/committee/jobs", {
         method: "POST",
         credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `local-${horizonDays}-${runAudit ? "audit" : "preview"}-${Date.now()}`,
+          "Idempotency-Key": `local-${horizonDays}-${activeSeed}-${runAudit ? "audit" : "preview"}-${Date.now()}`,
         },
         body: JSON.stringify({
           horizonDays,
-          seed: 20261030,
+          seed: activeSeed,
           audit: runAudit,
         }),
       });
@@ -101,6 +120,20 @@ export default function CommitteePanel() {
       setError("No se pudo conectar. Revisa tu conexión y vuelve a intentar.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function resetLibrary() {
+    try {
+      const response = await fetch("/api/committee/library", {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      if (response.ok) {
+        setJob((prev) => (prev ? { ...prev, librarySize: 0 } : null));
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -144,6 +177,7 @@ export default function CommitteePanel() {
 
   const currentSnapshot = playback[day] ?? null;
   const currentDailyStat = stats?.dailyStats[day] ?? null;
+  const learnedWeights = job?.weights ?? [0, 0, 0, 0];
 
   return (
     <div className="committee-placeholder-panel">
@@ -251,6 +285,36 @@ export default function CommitteePanel() {
           color: #b0c6ce;
           cursor: pointer;
         }
+        .seed-mode-select {
+          background: #0d1b22;
+          color: #e2f1f5;
+          border: 1px solid #243d46;
+          border-radius: 4px;
+          padding: 5px 8px;
+          font-size: 13px;
+        }
+        .learning-memory-box {
+          background: rgba(13, 27, 34, 0.92);
+          border: 1px solid #243d46;
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 20px;
+        }
+        .weights-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+          gap: 10px;
+          margin-top: 12px;
+        }
+        .weight-chip {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid #1f3740;
+          border-radius: 6px;
+          padding: 8px 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
         .day-inspection-box {
           background: rgba(10, 21, 26, 0.9);
           border: 1px solid #1f3740;
@@ -281,7 +345,7 @@ export default function CommitteePanel() {
           <span className="committee-badge">COMITÉ EPIDEMIOLÓGICO</span>
           <h2>Tablero y Optimización de Políticas</h2>
           <p className="committee-subtitle">
-            Monitoreo cuantitativo de efectividad, contención de colapso hospitalario y distribución presupuestaria en Manta.
+            Monitoreo cuantitativo de efectividad, aprendizaje continuo sin sobreajuste y distribución presupuestaria en Manta.
           </p>
         </div>
       </header>
@@ -306,6 +370,32 @@ export default function CommitteePanel() {
             />
           </label>
 
+          <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            Semilla
+            <select
+              className="seed-mode-select"
+              value={seedMode}
+              onChange={(event) => setSeedMode(event.target.value as "random" | "custom")}
+            >
+              <option value="random">🎲 Semilla Aleatoria (Anti-Overfitting)</option>
+              <option value="custom">📌 Semilla Específica</option>
+            </select>
+          </label>
+
+          {seedMode === "custom" && (
+            <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              #
+              <input
+                type="number"
+                min={0}
+                max={4294967295}
+                value={customSeed}
+                onChange={(event) => setCustomSeed(Number(event.target.value))}
+                style={{ width: "120px", padding: "4px 8px" }}
+              />
+            </label>
+          )}
+
           <label className="audit-toggle-label">
             <input
               type="checkbox"
@@ -316,7 +406,7 @@ export default function CommitteePanel() {
           </label>
 
           <button type="submit" disabled={busy}>
-            {busy ? "Calculando…" : runAudit ? "Buscar y Auditar" : "Optimizar Local"}
+            {busy ? "Calculando…" : runAudit ? "Buscar y Auditar" : "Entrenar y Validar"}
           </button>
         </div>
 
@@ -420,16 +510,65 @@ export default function CommitteePanel() {
                     </span>
                   )}
                   {job.finalAudit === "not-run" && (
-                    <span className="kpi-badge badge-blue">PRELIMINAR</span>
+                    <span className={`kpi-badge ${job.promoted ? "badge-green" : "badge-blue"}`}>
+                      {job.promoted ? "VALIDADA EN PROMOCIÓN" : "PRELIMINAR"}
+                    </span>
                   )}
                 </div>
                 <div className="kpi-subtext">
-                  Versión recomendada: <strong>v{job.recommendedPolicyVersion}</strong> (Rev. {job.stateRevision}).
+                  Semilla evaluada: <strong>#{job.seedUsed ?? customSeed}</strong> | Versión: <strong>v{job.recommendedPolicyVersion}</strong>.
                   <br />
-                  Simulaciones evaluadas: <strong>{job.trajectories ?? (playback.length > 0 ? playback.length : 1)} réplicas</strong>.
+                  Simulaciones evaluadas: <strong>{job.trajectories ?? (playback.length > 0 ? playback.length : 1)} réplicas</strong> ({job.generationsRun ?? 1} gen).
                   <br />
                   <span style={{ fontSize: "11px", color: "#7d9ba6" }}>{job.note}</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Memoria Evolutiva y Pesos Aprendidos */}
+            <div className="learning-memory-box">
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                <div>
+                  <strong style={{ color: "#f0f7f9", fontSize: "14px" }}>
+                    🧠 Memoria Evolutiva y Pesos Aprendidos (Anti-Overfitting)
+                  </strong>
+                  <div style={{ fontSize: "12px", color: "#8da4ae", marginTop: "4px" }}>
+                    Campeones en memoria (Warm Starts): <strong>{job.librarySize ?? 0} / 8</strong> ({job.warmStartsCount ?? 0} usados en esta corrida) •{" "}
+                    Promoción fuera de muestra:{" "}
+                    <strong style={{ color: job.promoted ? "#00e5a3" : "#ffb300" }}>
+                      {job.promoted ? "Superada (Archivada)" : "Conserva incumbente"}
+                    </strong>
+                  </div>
+                </div>
+                {(job.librarySize ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void resetLibrary()}
+                    style={{ fontSize: "11px", padding: "4px 10px", opacity: 0.85 }}
+                  >
+                    Limpiar Memoria
+                  </button>
+                )}
+              </div>
+
+              <div className="weights-grid">
+                {WEIGHT_LABELS.map((item, idx) => {
+                  const weight = learnedWeights[idx] ?? 0;
+                  const multiplier = Math.exp(weight);
+                  return (
+                    <div key={item.key} className="weight-chip">
+                      <span style={{ fontSize: "11px", color: "#8da4ae" }}>{item.label}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                        <strong style={{ fontSize: "15px", color: "#e2f1f5" }}>
+                          w = {weight >= 0 ? `+${weight.toFixed(2)}` : weight.toFixed(2)}
+                        </strong>
+                        <span className="kpi-badge badge-blue">
+                          Prioridad ×{multiplier.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
