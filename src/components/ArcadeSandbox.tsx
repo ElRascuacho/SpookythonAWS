@@ -16,16 +16,6 @@ export function ArcadeSandbox({ onBack }: { onBack: () => void }) {
   const [event, setEvent] = useState<ArcadeGame | null>(null);
   const [lastEventTick, setLastEventTick] = useState(0);
   const [selectedNode, setSelectedNode] = useState(MANTA_NODES[0].id);
-  if (!started) return <main className="arcade-setup" aria-labelledby="arcade-setup-title">
-    <header className="arcade-topbar"><strong>ZERO DAY <span>/ ARCADE</span></strong><button className="secondary-button" onClick={onBack}>Volver</button></header>
-    <section className="arcade-setup-card"><p className="eyebrow">NUEVA PARTIDA · SANDBOX INDEPENDIENTE</p><h1 id="arcade-setup-title">Configura Arcade</h1>
-      <p>Elige el ritmo del brote y una semilla para repetir la misma partida. Los minijuegos aparecerán como eventos aleatorios.</p>
-      <fieldset><legend>Dificultad del brote</legend>{(['relajada','normal','caotica'] as const).map(value => <button key={value} type="button" aria-pressed={difficulty === value} onClick={() => setDifficulty(value)}>{value === 'relajada' ? 'Relajada · lento' : value === 'normal' ? 'Normal · equilibrado' : 'Caótica · rápido'}</button>)}</fieldset>
-      <label className="arcade-seed">Semilla <input type="number" min="0" max="999999" value={seed} onChange={e => setSeed(Math.max(0, Number(e.target.value)))}/></label>
-      <button className="secondary-button" onClick={() => setSeed(Math.floor(Math.random()*1_000_000))}>Semilla aleatoria</button>
-      <button className="primary-button" onClick={() => { setState(createSandbox(difficulty, seed)); setStarted(true); }}>Iniciar partida Arcade</button>
-    </section>
-  </main>;
   const baseSnapshot = useMemo(() => createGame({ seed: 42, scenario: 'standard', patientZeroId: 'N01', dailyBudget: 7500 }).timeline[0], []);
   const arcadeRisk = Object.fromEntries(MANTA_NODES.map((node, i) => [node.id, state.zones[i]]));
   const snapshot = { ...baseSnapshot, day: state.ticks + 3, nodes: Object.fromEntries(MANTA_NODES.map(node => [node.id, { ...baseSnapshot.nodes[node.id], I: arcadeRisk[node.id] * 5, R: 0 }])) };
@@ -42,6 +32,16 @@ export function ArcadeSandbox({ onBack }: { onBack: () => void }) {
       setLastEventTick(state.ticks);
     }
   }, [state.ticks, running, event, lastEventTick]);
+  if (!started) return <main className="arcade-setup" aria-labelledby="arcade-setup-title">
+    <header className="arcade-topbar"><strong>ZERO DAY <span>/ ARCADE</span></strong><button className="secondary-button" onClick={onBack}>Volver</button></header>
+    <section className="arcade-setup-card"><p className="eyebrow">NUEVA PARTIDA · SANDBOX INDEPENDIENTE</p><h1 id="arcade-setup-title">Configura Arcade</h1>
+      <p>Elige el ritmo del brote y una semilla para repetir la misma partida. Los minijuegos aparecerán como eventos aleatorios.</p>
+      <fieldset><legend>Dificultad del brote</legend>{(['relajada','normal','caotica'] as const).map(value => <button key={value} type="button" aria-pressed={difficulty === value} onClick={() => setDifficulty(value)}>{value === 'relajada' ? 'Relajada · lento' : value === 'normal' ? 'Normal · equilibrado' : 'Caótica · rápido'}</button>)}</fieldset>
+      <label className="arcade-seed">Semilla <input type="number" min="0" max="999999" value={seed} onChange={e => setSeed(Math.max(0, Number(e.target.value)))}/></label>
+      <button className="secondary-button" onClick={() => setSeed(Math.floor(Math.random()*1_000_000))}>Semilla aleatoria</button>
+      <button className="primary-button" onClick={() => { setState(createSandbox(difficulty, seed)); setStarted(true); }}>Iniciar partida Arcade</button>
+    </section>
+  </main>;
   return <main className="arcade-screen" aria-label="Modo Arcade">
     {event && <button className="arcade-event-alert" onClick={() => document.getElementById('arcade-games-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>¡Evento disponible! Ver minijuego ↑</button>}
     <header className="arcade-topbar"><strong>ZERO DAY <span>/ ARCADE</span></strong><div><span>{event ? 'EVENTO' : running ? 'EN MARCHA' : 'PAUSADO'} · {state.ticks} PULSOS</span><button className="secondary-button" onClick={onBack}>Salir</button></div></header>
