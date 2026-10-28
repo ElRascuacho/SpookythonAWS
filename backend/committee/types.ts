@@ -65,6 +65,8 @@ export interface JobDdbItem {
   message?: string;
   meanInfections?: number | null;
   phase?: JobPhase;
+  evaluation?: EvaluationJobMetadata;
+  evaluationCompletedPairs?: number;
 }
 
 export interface GlobalQuotaDdbItem {
@@ -100,10 +102,17 @@ export interface IdempotencyDdbItem {
   ttl: number;
 }
 
+export interface EvaluationJobMetadata {
+  registryVersion: string;
+  artifactHash: string;
+  plannedPairs: number;
+}
+
 export interface AdmitJobRequest {
   ownerHash: string;
   idempotencyKey: string;
   scenario: CommitteeScenarioInput;
+  evaluation?: EvaluationJobMetadata;
   now?: Date;
 }
 
@@ -116,6 +125,7 @@ export interface AdmitJobResult {
 
 export interface JobProgressUpdate {
   expectedRevision: number;
+  completedPairs?: number;
   progressPolicyVersion?: number;
   recommendedPolicyVersion?: number;
   phase?: JobPhase;
@@ -129,6 +139,7 @@ export interface TerminalJobTransition {
     "completed" | "no-improvement" | "cancelled" | "timed-out" | "failed"
   >;
   finalAuditStatus: FinalAuditStatus;
+  expectedRevision?: number;
   meanInfections?: number | null;
   message?: string | null;
 }

@@ -55,10 +55,11 @@ export class CommitteeAdmissionService {
       ownerHash,
       idempotencyKey,
       scenario,
+      evaluation,
       now = new Date(),
     } = request;
 
-    const payloadHash = hashPayload(scenario);
+    const payloadHash = hashPayload(evaluation ? { scenario, evaluation } : scenario);
     const keyHash = hashIdempotencyKey(idempotencyKey);
 
     // 1. Idempotency pre-check
@@ -88,6 +89,7 @@ export class CommitteeAdmissionService {
         payloadHash,
         jobId,
         scenario,
+        evaluation,
         now,
       });
       await this.client.send(new TransactWriteItemsCommand(txInput));
@@ -323,6 +325,7 @@ export class CommitteeAdmissionService {
     const res = await this.client.send(
       new GetItemCommand({
         TableName: this.tableName,
+        ConsistentRead: true,
         Key: marshall({
           pk: jobPk(jobId),
           sk: META_SK,
@@ -348,6 +351,7 @@ export class CommitteeAdmissionService {
     const res = await this.client.send(
       new GetItemCommand({
         TableName: this.tableName,
+        ConsistentRead: true,
         Key: marshall({
           pk: idempotencyPk(ownerHash, keyHash),
           sk: META_SK,
