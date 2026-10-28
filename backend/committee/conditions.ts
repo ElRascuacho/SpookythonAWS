@@ -22,6 +22,7 @@ import {
 } from "./constants";
 import type {
   CommitteeScenarioInput,
+  EvaluationJobMetadata,
   JobProgressUpdate,
   TerminalJobTransition,
 } from "./types";
@@ -56,6 +57,7 @@ export interface BuildAdmissionInputOptions {
   payloadHash: string;
   jobId: string;
   scenario: CommitteeScenarioInput;
+  evaluation?: EvaluationJobMetadata;
   now?: Date;
 }
 
@@ -69,6 +71,7 @@ export function buildAdmissionTransactionInput(
     payloadHash,
     jobId,
     scenario,
+    evaluation,
     now = new Date(),
   } = options;
 
@@ -201,6 +204,8 @@ export function buildAdmissionTransactionInput(
               progressPolicyVersion: 0,
               finalAuditStatus: "not-run",
               scenario,
+              evaluation,
+              evaluationCompletedPairs: evaluation ? 0 : undefined,
               horizonDays: scenario.horizonDays,
               createdAt: nowIso,
               updatedAt: nowIso,
@@ -289,6 +294,14 @@ export function buildProgressUpdateInput(
     ":now": nowIso,
   };
 
+  if (updates.completedPairs !== undefined) {
+    setClauses.push("#completedPairs = :completedPairs");
+    names["#completedPairs"] = "evaluationCompletedPairs";
+    names["#cancelRequested"] = "cancelRequested";
+    rawValues[":completedPairs"] = updates.completedPairs;
+    rawValues[":previousPairs"] = updates.completedPairs - 1;
+    rawValues[":false"] = false;
+  }
   if (updates.progressPolicyVersion !== undefined) {
     setClauses.push("#progressPolicyVersion = :progressPolicyVersion");
     names["#progressPolicyVersion"] = "progressPolicyVersion";
@@ -323,7 +336,8 @@ export function buildProgressUpdateInput(
     }),
     UpdateExpression: `SET ${setClauses.join(", ")}`,
     ConditionExpression:
-      "attribute_exists(pk) AND #status = :running AND #stateRevision = :expectedRevision",
+      "attribute_exists(pk) AND #status = :running AND #stateRevision = :expectedRevision" +
+      (updates.completedPairs !== undefined ? " AND #completedPairs = :previousPairs AND #cancelRequested = :false" : ""),
     ExpressionAttributeNames: names,
     ExpressionAttributeValues: marshall(rawValues, {
       removeUndefinedValues: true,
@@ -367,6 +381,7 @@ export function buildTerminalTransitionTransactionInput(
     ":running": "running",
   };
 
+  if (transition.expectedRevision !== undefined) rawValues[":expectedRevision"] = transition.expectedRevision;
   if (transition.meanInfections !== undefined) {
     setClauses.push("#meanInfections = :meanInfections");
     names["#meanInfections"] = "meanInfections";
@@ -390,7 +405,8 @@ export function buildTerminalTransitionTransactionInput(
           }),
           UpdateExpression: `SET ${setClauses.join(", ")}`,
           ConditionExpression:
-            "attribute_exists(pk) AND #status IN (:queued, :running)",
+            "attribute_exists(pk) AND #status IN (:queued, :running)" +
+            (transition.expectedRevision !== undefined ? " AND #stateRevision = :expectedRevision" : ""),
           ExpressionAttributeNames: names,
           ExpressionAttributeValues: marshall(rawValues, {
             removeUndefinedValues: true,

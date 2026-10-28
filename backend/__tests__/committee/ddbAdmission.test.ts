@@ -891,3 +891,53 @@ describe("T9 — DynamoDB Admission, Slot Claim, and Status CAS", () => {
     });
   });
 });
+
+// Evaluation lifecycle: no endpoint or worker is enabled by these tests.
+describe("evaluation job lifecycle", () => {
+  const tableName = "evaluations";
+  const ownerHash = "owner";
+  it("binds version and seed, enforces pair CAS, cancellation and terminal slot release", async () => {
+    const { EvaluationJobService } = await import("../../committee/evaluationJobService");
+    const db = new InMemoryDynamoDBClient() as unknown as DynamoDBClient;
+    const admission = new CommitteeAdmissionService(db, tableName);
+    const registry = { get: async (version: string) => ({ registryVersion: version, audit: "passed", artifact: { recommendation: "trained", policyVersion: 1, artifactHash: "hash", params: { days: 40, seed: 1 } } }) } as any;
+    const service = new EvaluationJobService(admission, registry);
+    const request = { ownerHash, idempotencyKey: "evaluation", registryVersion: "v1", seed: 12 };
+    const first = await service.admit(request);
+    expect((await service.admit(request)).jobId).toBe(first.jobId);
+    await expect(service.admit({ ...request, seed: 13 })).rejects.toThrow(IdempotencyConflictError);
+    await expect(service.admit({ ...request, registryVersion: "v2" })).rejects.toThrow(IdempotencyConflictError);
+    await expect(service.status(first.jobId, "other")).rejects.toThrow(JobNotFoundError);
+    await service.claim(first.jobId);
+    await expect(service.claim(first.jobId)).rejects.toThrow(InvalidStateTransitionError);
+    await service.completePair(first.jobId, 0, 2);
+    await expect(service.completePair(first.jobId, 0, 3)).rejects.toThrow(InvalidStateTransitionError);
+    const progress = await service.status(first.jobId, ownerHash);
+    expect(progress.evaluation?.completedPairs).toBe(1);
+    expect(progress.evaluation?.plannedPairs).toBe(128);
+    await admission.requestCancel(first.jobId, ownerHash);
+    await expect(service.completePair(first.jobId, 1, 3)).rejects.toThrow(InvalidStateTransitionError);
+    const cancelled = await service.status(first.jobId, ownerHash);
+    await service.terminalize(first.jobId, "cancelled", cancelled.stateRevision);
+    await expect(service.terminalize(first.jobId, "cancelled", cancelled.stateRevision)).rejects.toThrow(InvalidStateTransitionError);
+    expect((await service.status(first.jobId, ownerHash)).status).toBe("cancelled");
+    expect((await service.admit({ ...request, idempotencyKey: "next" })).status).toBe("queued");
+  });
+});
+
+  it("requires complete progress and rejects stale terminal races", async () => {
+    const { EvaluationJobService } = await import("../../committee/evaluationJobService");
+    const db = new InMemoryDynamoDBClient() as unknown as DynamoDBClient;
+    const admission = new CommitteeAdmissionService(db, "evaluation-race");
+    const registry = { get: async (version: string) => ({ registryVersion: version, audit: "passed", artifact: { recommendation: "trained", policyVersion: 1, artifactHash: "hash", params: { days: 40, seed: 1 } } }) } as any;
+    const service = new EvaluationJobService(admission, registry);
+    const job = await service.admit({ ownerHash: "owner", idempotencyKey: "race", registryVersion: "v1", seed: 42, plannedPairs: 1 });
+    await service.claim(job.jobId);
+    await expect(service.terminalize(job.jobId, "completed", 2)).rejects.toThrow(InvalidStateTransitionError);
+    await service.completePair(job.jobId, 0, 2);
+    await admission.requestCancel(job.jobId, "owner");
+    await expect(service.terminalize(job.jobId, "completed", 3)).rejects.toThrow(InvalidStateTransitionError);
+    await expect(service.terminalize(job.jobId, "failed", 3)).rejects.toThrow(InvalidStateTransitionError);
+    await service.terminalize(job.jobId, "cancelled", 4);
+    await expect(service.terminalize(job.jobId, "failed", 4)).rejects.toThrow(InvalidStateTransitionError);
+  });

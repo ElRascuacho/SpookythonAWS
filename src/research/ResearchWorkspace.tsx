@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Activity,
   ArrowLeft,
   Dna,
   FlaskConical,
@@ -16,6 +17,7 @@ import {
 import { ResearchVoiceControls } from "./ResearchVoiceControls";
 import { ResearchLiveReport, type ReportData } from "./ResearchLiveReport";
 import { ResearchWelcome } from "./ResearchWelcome";
+import {ResearchGuidedTour,type ResearchTourStep} from './ResearchGuidedTour';
 import {
   ResearchEvidencePanel,
   type EvidenceContext,
@@ -41,6 +43,7 @@ import {
   readWorkspace,
   resolveResearchEffects,
   type Measure,
+  type MeasureEvaluation,
   type ResearchWorkspace as Workspace,
 } from "../domain/research";
 import type {
@@ -106,6 +109,7 @@ export function ResearchWorkspace({
       id: string;
       role: string;
       text: string;
+      evaluation?: MeasureEvaluation | null;
       report?: { initial: ReportData; createdAt: string };
     }[]
   >([]);
@@ -129,6 +133,22 @@ export function ResearchWorkspace({
   const [view, setView] = useState<"scenario" | "measures">("measures");
   const [panelOpen, setPanelOpen] = useState(true);
   const [welcomeRequest, setWelcomeRequest] = useState(0);
+  const [tourStep,setTourStep]=useState<ResearchTourStep|null>(null);
+  const tourBackup=useRef<{view:typeof view;panelOpen:boolean;panelExpanded:boolean;inspecting:boolean;curveOpen:boolean;fileOpen:boolean;prompt:string;running:boolean}|null>(null);
+  const [tourNotice,setTourNotice]=useState('');
+  function startTour(){
+    if(busy||tourStep!==null)return;
+    tourBackup.current={view,panelOpen,panelExpanded,inspecting,curveOpen,fileOpen,prompt,running};
+    setRunning(false);setPanelExpanded(false);setInspecting(false);setCurveOpen(false);setFileOpen(false);setTourNotice('');setTourStep(0);
+  }
+  function endTour(completed=false){
+    const saved=tourBackup.current;if(!saved)return;tourBackup.current=null;setTourStep(null);
+    setView(saved.view);setPanelOpen(saved.panelOpen);setPanelExpanded(saved.panelExpanded);setInspecting(saved.inspecting);setCurveOpen(saved.curveOpen);setFileOpen(saved.fileOpen);setPrompt(saved.prompt);setRunning(visible&&saved.running);
+    if(completed){try{localStorage.setItem('manta-cero:research-tour:completed:v1','1');}catch{/* Completion need not depend on storage. */}}
+    setTourNotice(completed?'Recorrido completado. Tu experimento no se ha modificado.':'Recorrido cerrado sin marcar como completado.');
+  }
+  useEffect(()=>{if(!visible)endTour();},[visible]);
+  useEffect(()=>{if(!tourNotice)return;const timer=setTimeout(()=>setTourNotice(''),5000);return()=>clearTimeout(timer);},[tourNotice]);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [inspecting, setInspecting] = useState(false);
   const [curveOpen, setCurveOpen] = useState(false);
@@ -362,6 +382,7 @@ export function ResearchWorkspace({
       a.href = url;
       a.download = "manta-investigacion-v1.json";
       a.click();
+      if(tourStep===5)endTour(true);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       setError("Corrige la configuración antes de exportar.");
@@ -403,7 +424,7 @@ export function ResearchWorkspace({
     voiceSignal?: AbortSignal,
     voiceTool = false,
   ) {
-    if (busy || !(voiceMessage ?? prompt).trim()) return;
+    if (tourStep!==null || busy || !(voiceMessage ?? prompt).trim()) return;
     if (!draft && w.drafts.length >= 8) {
       setError("Máximo ocho medidas por experimento.");
       return;
@@ -435,6 +456,41 @@ export function ResearchWorkspace({
       ? AbortSignal.any([controller.signal, voiceSignal])
       : controller.signal;
     try {
+      const snapshot = result?.timeline?.[day];
+      let epidemicContext = undefined;
+      if (snapshot) {
+        const activeInfected = snapshot.totalI;
+        const cumulativeInfected = snapshot.cumulativeInfected;
+        const totalBudget = (w.params.dailyBudget ?? 1000) * (w.params.days ?? 60);
+        const budgetSpent =
+          result?.timeline
+            ?.slice(0, day + 1)
+            .reduce((acc, s) => acc + (s.action?.budgetSpent ?? 0), 0) ?? 0;
+        const budgetRemaining = Math.max(0, totalBudget - budgetSpent);
+        const capacity = w.params.hospitalCapacity || 1200;
+        const hospitalSaturationPercent = Number(
+          Math.min(100, (activeInfected / capacity) * 100).toFixed(1),
+        );
+        const topActiveNodes = Object.entries(snapshot.nodes)
+          .sort((a, b) => b[1].I - a[1].I)
+          .slice(0, 3)
+          .map(([id, n]) => {
+            const totalPop = n.S + n.E + n.I + n.R;
+            const prevalence =
+              totalPop > 0 ? Number((n.I / totalPop).toFixed(4)) : 0;
+            const name = MANTA_NODES.find((node) => node.id === id)?.name ?? id;
+            return { id, name, infected: n.I, prevalence };
+          });
+        epidemicContext = {
+          day,
+          activeInfected,
+          cumulativeInfected,
+          budgetRemaining,
+          hospitalSaturationPercent,
+          topActiveNodes,
+        };
+      }
+
       const response = await fetch("/api/research/agent", {
         method: "POST",
         credentials: "same-origin",
@@ -447,6 +503,7 @@ export function ResearchWorkspace({
             role: m.role === "Tú" ? "user" : "assistant",
             text: m.text,
           })),
+          epidemicContext,
         }),
         signal,
       });
@@ -479,6 +536,7 @@ export function ResearchWorkspace({
               id: replyId,
               role: `Agente · ${parsed.model}`,
               text: parsed.reply,
+              evaluation: parsed.evaluation,
             },
           ].slice(-20),
         );
@@ -596,7 +654,9 @@ export function ResearchWorkspace({
       aria-label="Espacio de investigación"
       tabIndex={-1}
     >
-      <ResearchWelcome active={visible} openRequest={welcomeRequest} />
+      <ResearchWelcome active={visible} openRequest={welcomeRequest} onStartTour={busy?undefined:startTour} />
+      <ResearchGuidedTour step={visible?tourStep:null} onCancel={()=>endTour()} />
+      {tourNotice&&<p className="rw-tour-notice" role="status">{tourNotice}</p>}
       <header className="hub-topbar">
         <a
           className="brand"
@@ -626,12 +686,14 @@ export function ResearchWorkspace({
         >
           <button
             aria-label="Agente de investigación"
+            data-research-tour="agent"
             aria-pressed={panelOpen && view === "measures"}
             onClick={() => {
               setPanelOpen(true);
               setInspecting(false);
               setCurveOpen(false);
               setView("measures");
+              if(tourStep===1)setTourStep(2);
             }}
           >
             <MessageSquare size={16} />
@@ -639,12 +701,14 @@ export function ResearchWorkspace({
           </button>
           <button
             aria-label="Configurar escenario"
+            data-research-tour="scenario"
             aria-pressed={panelOpen && view === "scenario"}
             onClick={() => {
               setPanelOpen(true);
               setInspecting(false);
               setCurveOpen(false);
               setView("scenario");
+              if(tourStep===0)setTourStep(1);
             }}
           >
             <Settings2 size={16} />
@@ -652,11 +716,13 @@ export function ResearchWorkspace({
           </button>
           <button
             aria-label="Evolución del experimento"
+            data-research-tour="evolution"
             aria-pressed={curveOpen}
             onClick={() => {
               if (window.matchMedia("(max-width: 720px)").matches)
                 setPanelOpen(false);
-              setCurveOpen((v) => !v);
+              setCurveOpen((v) => tourStep===3?true:!v);
+              if(tourStep===3)setTourStep(4);
             }}
           >
             <ChartNoAxesCombined size={16} />
@@ -664,8 +730,9 @@ export function ResearchWorkspace({
           </button>
           <button
             aria-label="Archivo del experimento"
+            data-research-tour="file"
             aria-expanded={fileOpen}
-            onClick={() => setFileOpen((v) => !v)}
+            onClick={() => {setFileOpen((v) => tourStep===4?true:!v);if(tourStep===4)setTourStep(5);}}
           >
             <FolderOpen size={16} />
             <span>Archivo</span>
@@ -700,7 +767,7 @@ export function ResearchWorkspace({
             Copiar escenario del juego
           </button>
           <button onClick={save}>Guardar</button>
-          <button onClick={download}>Exportar</button>
+          <button data-research-tour="export" onClick={download}>Exportar</button>
           <label className="rw-file">
             Importar
             <input
@@ -1230,7 +1297,7 @@ export function ResearchWorkspace({
                 className="rw-composer"
               >
                 <ResearchVoiceControls
-                  active={visible && panelOpen && view === "measures"}
+                  active={visible && panelOpen && view === "measures" && tourStep===null}
                   processing={busy}
                   onQuery={async (text, signal) => {
                     const result = await ask(text, signal, true);
@@ -1293,10 +1360,15 @@ export function ResearchWorkspace({
                 />
                 <textarea
                   aria-label="Petición al agente"
+                  data-research-tour="prompt"
                   aria-describedby="rw-composer-hint"
                   maxLength={2000}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onClick={() => {
+                    // Driver focuses this field automatically; only a deliberate click advances.
+                    if (tourStep === 2) setTourStep(3);
+                  }}
                   onKeyDown={(e) => {
                     if (
                       e.key === "Enter" &&
@@ -1305,6 +1377,7 @@ export function ResearchWorkspace({
                       e.keyCode !== 229
                     ) {
                       e.preventDefault();
+                      if(tourStep!==null){if(tourStep===2)setTourStep(3);return;}
                       if (!busy && prompt.trim())
                         e.currentTarget.form?.requestSubmit();
                     }
@@ -1313,7 +1386,7 @@ export function ResearchWorkspace({
                   required
                 />
                 <small id="rw-composer-hint">
-                  Enter para enviar · Shift + Enter para una nueva línea
+                  {tourStep===2?'Recorrido: haz clic en este cuadro o pulsa Enter para continuar. No se enviará a la IA.':tourStep!==null?'Recorrido activo: no se enviarán consultas a la IA.':'Enter para enviar · Shift + Enter para una nueva línea'}
                 </small>
                 <button disabled={busy || !prompt.trim()} type="submit">
                   {busy ? "Consultando agente…" : "Enviar al agente"}

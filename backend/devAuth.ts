@@ -4,6 +4,8 @@ import { authorize, json } from "./auth";
 import { NEWS_BODY_LIMIT, NEWS_ROUTE, handleNewsRoute } from "./news";
 import { RESEARCH_VOICE_ROUTE, handleResearchVoice } from './researchVoice';
 import { RESEARCH_BODY_LIMIT, RESEARCH_ROUTE, handleResearchAgent } from './researchAgent';
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { handleCommitteeRoute } from './committee/http';
 
 export function invitationAuth(env: Record<string, string>): Plugin {
@@ -42,7 +44,7 @@ export function invitationAuth(env: Record<string, string>): Plugin {
               ? undefined
               : Buffer.concat(chunks),
         });
-        const serverEnv = { ...env, INVITE_APP_ORIGIN: origin };
+        const serverEnv: Record<string, string | undefined> = { ...env, INVITE_APP_ORIGIN: origin };
         const clientIp = req.socket.remoteAddress ?? "unknown";
         let response = await authorize(request, clientIp, serverEnv);
         // Después de autorizar y antes del 404: boletín diario generado en servidor.
@@ -50,7 +52,26 @@ export function invitationAuth(env: Record<string, string>): Plugin {
           response = await handleNewsRoute(request, clientIp, serverEnv);
         if (!response && pathname === RESEARCH_ROUTE) response = await handleResearchAgent(request, clientIp, serverEnv);
         if (!response && pathname === RESEARCH_VOICE_ROUTE) response = await handleResearchVoice(request, clientIp, serverEnv);
-        if (!response && pathname.startsWith("/api/committee/")) response = await handleCommitteeRoute(request, serverEnv);
+        if (!response && pathname.startsWith("/api/committee/")) {
+          const localPolicyReader = !serverEnv.COMMITTEE_RESULTS_BUCKET ? {
+            async latest() {
+              const localCandidates = [
+                "committee-policy.local.json",
+                "docs/features/committee-learning/evidence/raw/local-registered-policy.json",
+              ];
+              for (const rel of localCandidates) {
+                const fullPath = join(process.cwd(), rel);
+                if (existsSync(fullPath)) {
+                  try {
+                    return JSON.parse(readFileSync(fullPath, "utf-8"));
+                  } catch {}
+                }
+              }
+              return null;
+            },
+          } : undefined;
+          response = await handleCommitteeRoute(request, serverEnv, undefined, localPolicyReader);
+        }
         response ??= json(404, { error: "Ruta no encontrada." });
         res.writeHead(
           response.status,

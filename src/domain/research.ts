@@ -119,8 +119,43 @@ const validateAgentProposal = (
 export const AgentReplySchema = AgentReplyShape.superRefine(
   validateAgentProposal,
 );
+export const EpidemicNodeContextSchema = z
+  .object({
+    id: NodeIdSchema,
+    name: z.string().min(1).max(100),
+    infected: z.number().int().nonnegative(),
+    prevalence: z.number().min(0).max(1),
+  })
+  .strict();
+
+export const EpidemicContextSchema = z
+  .object({
+    day: z.number().int().min(0).max(60),
+    activeInfected: z.number().int().nonnegative(),
+    cumulativeInfected: z.number().int().nonnegative(),
+    budgetRemaining: z.number().nonnegative(),
+    hospitalSaturationPercent: z.number().min(0).max(100),
+    topActiveNodes: z.array(EpidemicNodeContextSchema).max(5),
+  })
+  .strict();
+export type EpidemicContext = z.infer<typeof EpidemicContextSchema>;
+
+export const MeasureEvaluationSchema = z
+  .object({
+    infectionsAvoided: z.number().int(),
+    peakReductionPercent: z.number(),
+    estimatedCostUsd: z.number(),
+    budgetViable: z.boolean(),
+    hospitalRelieved: z.boolean(),
+    baselinePeakInfected: z.number().int(),
+    simulatedPeakInfected: z.number().int(),
+  })
+  .strict();
+export type MeasureEvaluation = z.infer<typeof MeasureEvaluationSchema>;
+
 export const AgentResponseSchema = AgentReplyShape.extend({
   model: z.string().min(1).max(200),
+  evaluation: MeasureEvaluationSchema.nullable().optional(),
 }).superRefine(validateAgentProposal);
 export const DraftSchema = z
   .object({

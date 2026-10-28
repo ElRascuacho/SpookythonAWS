@@ -1,3 +1,4 @@
+.research-guided-popover .driver-popover-title{color:#ffad66}.research-guided-popover .driver-popover-close-btn:focus-visible{outline-color:#ffad66}.rw-tour-notice{position:absolute;z-index:100;right:16px;top:84px;max-width:calc(100vw - 32px);padding:10px 14px;background:#192a32;border:1px solid #ffad6680;border-radius:8px;color:#ffe1c7;font-size:12px;pointer-events:none}
 .workspace-shell {
   --research-accent: #ffad66;
   --research-accent-hover: #ffc38d;
@@ -422,6 +423,59 @@
 }
 .rw-typing-dots i:nth-child(3) {
   animation-delay: 280ms;
+}
+
+/* Impact Evaluation Card */
+.rw-eval-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  font-size: 12px;
+}
+.rw-eval-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #34d399;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.rw-eval-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.rw-eval-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(2, 6, 23, 0.45);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.rw-eval-label {
+  font-size: 10px;
+  color: var(--muted, #94a3b8);
+}
+.rw-eval-val {
+  font-weight: 600;
+  font-size: 12px;
+  font-family: var(--mono);
+}
+.rw-eval-green {
+  color: #34d399;
+}
+.rw-eval-cyan {
+  color: #38bdf8;
+}
+.rw-eval-warn {
+  color: #fbbf24;
 }
 @keyframes research-caret {
   0%,

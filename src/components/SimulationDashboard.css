@@ -54,4 +54,18 @@ body:has(.simulation-dashboard) {
 .simulation-chart h2 { margin: 0; font-size: 20px; }
 .simulation-chart p { font-size: 15px; }
 .simulation-chart svg { width: 100%; height: 200px; color: #9fe4c1; border-bottom: 1px solid #526d69; }
+.simulation-chart .band { fill: currentColor; opacity: 0.28; }
+.simulation-chart .selected { stroke: #f6d98a; }
+.simulation-chart .comparison { stroke: #f58a72; }
 .simulation-chart > div { display: flex; justify-content: space-between; color: #b1c8c2; font-size: 15px; }
+.simulation-results > .secondary-button { width: auto; margin: 12px 0 0; }
+.simulation-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.simulation-toolbar .simulation-note { margin: 0; flex: 1 1 280px; }
+.simulation-toolbar .secondary-button { width: auto; margin: 0; }
+.simulation-table-wrap { overflow-x: auto; margin-top: 16px; border: 1px solid #36514f; border-radius: 8px; background: #192f36; }
+.simulation-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.simulation-table th, .simulation-table td { padding: 10px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid #2c4548; }
+.simulation-table th:first-child, .simulation-table td:first-child { text-align: left; }
+.simulation-table th button { font-weight: 650; color: #d7ebe4; }
+.simulation-table td button { min-height: 36px; padding: 4px 10px; border: 1px solid #526d69; border-radius: 4px; }
+.simulation-table tbody tr.is-selected { background: #245246; }
