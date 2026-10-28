@@ -17,6 +17,10 @@ describe("ModeShell (T13 / ADR-0007 / AC-01)", () => {
     expect(html).toContain('data-testid="tab-game"');
     expect(html).toContain('data-testid="tab-campaign"');
     expect(html).toContain('data-testid="tab-committee"');
+    // Mobile navigation hides the text spans, so tabs need independent names.
+    for (const name of ["Juego", "Campaña", "Comité"]) {
+      expect(html).toContain(`role="tab" aria-label="${name}"`);
+    }
     expect(html).toContain("Juego");
     expect(html).toContain("Campaña");
     expect(html).toContain("Comité");

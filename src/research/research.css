@@ -268,6 +268,7 @@
   max-height: 32vh;
   overflow: auto;
 }
+@media (min-width: 721px) {
 .research-workspace.rw-agent-wide {
   --agent-pane: clamp(420px, 33vw, 640px);
 }
@@ -293,6 +294,7 @@
 }
 .research-workspace.rw-agent-wide .rw-playback {
   right: 18px;
+}
 }
 .rw-panel-title > span:last-child {
   display: flex;
@@ -641,6 +643,8 @@
   }
 }
 @media (max-width: 720px) {
+  /* A third-width panel is desktop-only; keep the mobile reflow intact. */
+  .rw-panel-title button[aria-pressed] { display: none; }
   .rw-controls {
     top: 130px;
     bottom: 225px;

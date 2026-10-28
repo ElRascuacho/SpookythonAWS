@@ -21,19 +21,23 @@ const ModeContext = createContext<{
   switchMode: (mode: Mode) => void;
 } | null>(null);
 
-export function ModeTabs() {
+export function ModeTabs({ onSelect }: { onSelect?: () => void }) {
   const ctx = useContext(ModeContext);
   if (!ctx) return null;
   const { mode, switchMode } = ctx;
+  const select = (next: Mode) => {
+    switchMode(next);
+    onSelect?.();
+  };
   return (
     <nav className="mode-shell-nav" role="tablist" aria-label="Selector de modo">
-      <button type="button" role="tab" aria-selected={mode === "game"} className={`mode-shell-tab ${mode === "game" ? "active" : ""}`} onClick={() => switchMode("game")} data-testid="tab-game">
+      <button type="button" role="tab" aria-label="Juego" aria-selected={mode === "game"} className={`mode-shell-tab ${mode === "game" ? "active" : ""}`} onClick={() => select("game")} data-testid="tab-game">
         <Activity size={15} /><span>Juego</span>
       </button>
-      <button type="button" role="tab" aria-selected={mode === "campaign"} className={`mode-shell-tab ${mode === "campaign" ? "active" : ""}`} onClick={() => switchMode("campaign")} data-testid="tab-campaign">
+      <button type="button" role="tab" aria-label="Campaña" aria-selected={mode === "campaign"} className={`mode-shell-tab ${mode === "campaign" ? "active" : ""}`} onClick={() => select("campaign")} data-testid="tab-campaign">
         <Clapperboard size={15} /><span>Campaña</span>
       </button>
-      <button type="button" role="tab" aria-selected={mode === "committee"} className={`mode-shell-tab ${mode === "committee" ? "active" : ""}`} onClick={() => switchMode("committee")} data-testid="tab-committee">
+      <button type="button" role="tab" aria-label="Comité" aria-selected={mode === "committee"} className={`mode-shell-tab ${mode === "committee" ? "active" : ""}`} onClick={() => select("committee")} data-testid="tab-committee">
         <Brain size={15} /><span>Comité</span>
       </button>
     </nav>

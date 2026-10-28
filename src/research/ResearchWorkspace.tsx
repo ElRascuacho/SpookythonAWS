@@ -433,7 +433,7 @@ export function ResearchWorkspace({
           className="header-actions"
           aria-label="Herramientas de investigación"
         >
-          <ModeTabs />
+          <ModeTabs onSelect={onBack} />
           <button
             aria-label="Agente de investigación"
             aria-pressed={panelOpen && view === "measures"}

@@ -41,3 +41,14 @@
 ## Límites
 
 [Seguro] No se probaron NVDA/JAWS/VoiceOver, hardware táctil real, todos los estados de contraste, zoom de texto al 200% ni colores forzados. Las pruebas disponibles no acreditan conformidad WCAG ni accesibilidad no visual completa de los arcades. Los cambios permanecen locales, sin commit ni push en esta reanudación.
+
+## Integración posterior con el equipo
+
+[Seguro] Después del commit de accesibilidad se integraron cuatro commits remotos, incluido `9f8f822`, publicado mientras se validaba el primer pull. No hubo conflictos de texto. La comprobación de navegación encontró y corrigió dos regresiones:
+
+- «Juego» no salía de Investigación si el modo externo ya era `game`. Ahora seleccionar una pestaña también cierra el espacio de investigación, incluso al repetir el mismo modo.
+- El panel ampliado tenía un mínimo de 420 px que desbordaba el viewport móvil. La expansión se limita al escritorio y se mantiene la distribución móvil existente.
+
+[Seguro] Las pestañas conservan nombres accesibles mediante `aria-label` aunque sus textos se oculten en móvil; la prueba SSR de navegación comprueba estos nombres.
+
+[Seguro] Verificación integrada: **234 pruebas pasan**, builds frontend y ambas Lambda correctos. En Chromium 390×844, el harness con `ModeShell` y `WorkspaceShell` reales confirma el regreso a Juego desde Investigación, el panel dentro del viewport, el foco del laboratorio y la contención/restauración de foco del diálogo. Las dos regresiones se reprodujeron antes de corregirlas y sus comprobaciones pasan después.
