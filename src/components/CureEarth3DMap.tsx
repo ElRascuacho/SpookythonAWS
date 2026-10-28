@@ -24,6 +24,7 @@ import { northCamera, tacticalViewCamera, type TacticalView } from "./tacticalCa
 import { FIELD_MISSIONS, type FieldOperation } from "../domain/fieldMissions";
 
 interface Props {
+  arcadeRisk?: Record<string, number>;
   operation?: FieldOperation | null;
   onOperation?: () => void;
   cameraBridge?: import('./tacticalCamera').TacticalCameraBridge;
@@ -489,6 +490,7 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
 };
 
 export function CureEarth3DMap({
+  arcadeRisk,
   operation,
   onOperation,
   paused = false,
@@ -1327,7 +1329,7 @@ export function CureEarth3DMap({
                   ? "protected"
                   : "healthy";
 
-          const metricText =
+          const metricText = arcadeRisk ? `${arcadeRisk[node.id]} / 100` :
             layer === "protection"
               ? `${state.R.toLocaleString("es-EC")} INM`
               : state.I > 0
@@ -1363,7 +1365,7 @@ export function CureEarth3DMap({
                   .filter(Boolean)
                   .join(" ")}
                 aria-pressed={isSelected}
-                aria-label={`${node.name}: ${state.I} infecciosos, ${state.R} inmunes`}
+                aria-label={arcadeRisk ? `${node.name}: riesgo ${arcadeRisk[node.id]} de 100` : `${node.name}: ${state.I} infecciosos, ${state.R} inmunes`}
                 onClick={(ev) => {
                   ev.stopPropagation();
                   onSelect(node.id);
@@ -1399,7 +1401,7 @@ export function CureEarth3DMap({
                     </span>
                   )}
                 </span>
-                {isSelected && (
+                {isSelected && !arcadeRisk && (
                   <span className="pin-detail">
                     {state.S.toLocaleString("es-EC")} susc. ·{" "}
                     {state.R.toLocaleString("es-EC")} inm.
@@ -1448,7 +1450,7 @@ export function CureEarth3DMap({
           </button>
         </div>
 
-        <div
+        {!arcadeRisk && <div
           className="map-layers"
           role="group"
           aria-label="Capas epidemiológicas"
@@ -1465,7 +1467,7 @@ export function CureEarth3DMap({
           >
             Protección
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* Right Camera & 3D Orbit Controls */}

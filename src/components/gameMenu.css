@@ -39,9 +39,48 @@
 .arcade-grid .game-menu-option { gap:14px; }
 .arcade-grid meter { width:100%; }
 .arcade-zone { cursor: default; }
+.arcade-minigames { padding:24px; margin:32px 0 48px; border:1px solid #2e6658; border-radius:10px; background:linear-gradient(130deg,#142e2b,#0b1a22); }
+.arcade-event-alert { position:fixed; z-index:50; right:20px; bottom:20px; padding:14px 18px; border:1px solid #92ffcf; border-radius:8px; background:var(--mint); color:#041f15; font-weight:800; cursor:pointer; box-shadow:0 5px 24px #000a; }
+.arcade-event-alert:focus-visible { outline:3px solid white; outline-offset:3px; }
+.arcade-minigames h2 { margin:8px 0 20px; font-size:28px; }
+.arcade-mini-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+.arcade-mini-list .game-menu-option { gap:14px; padding:20px; }
+.arcade-mini-list .game-menu-option strong { font-size:18px; }
+.arcade-mini-list .game-menu-option > span:not(.game-menu-action) { color:var(--muted); line-height:1.5; }
+.arcade-mini-play { margin-top:20px; max-width:850px; }
+.arcade-mini-play h3 { font-size:22px; }
+.arcade-mini-play [role="status"] { color:var(--mint); font-weight:700; min-height:2em; }
+.arcade-mini-buttons, .arcade-reflex-grid { display:grid; gap:10px; margin:16px 0; }
+.arcade-mini-buttons { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.arcade-reflex-grid { grid-template-columns:repeat(3,1fr); max-width:360px; }
+.arcade-mini-buttons button, .arcade-reflex-grid button { min-height:64px; border:1px solid #316f60; border-radius:8px; background:#173b34; color:var(--mint); font-size:18px; font-weight:700; cursor:pointer; }
+.arcade-mini-buttons button:disabled, .arcade-reflex-grid button:disabled { opacity:.35; cursor:default; }
+.arcade-mini-buttons button:focus-visible, .arcade-reflex-grid button:focus-visible { outline:3px solid var(--mint); outline-offset:3px; }
+.arcade-map { margin:24px 0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#081820; }
+.arcade-map-heading { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:16px 20px; color:var(--muted); font-size:13px; }
+.arcade-map-heading strong { color:var(--mint); text-transform:uppercase; letter-spacing:.08em; }
+.arcade-map .city-map { height:540px; min-height:0; }
+.arcade-zone.is-selected { border-color:var(--mint); }
 .arcade-difficulty { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:auto; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
 .arcade-difficulty [role="group"] { display:flex; gap:8px; }
 .arcade-difficulty button { width:44px; height:44px; border:1px solid var(--line); border-radius:8px; background:#17302e; color:var(--mint); font-size:23px; cursor:pointer; }
 .arcade-difficulty button:hover:not(:disabled) { border-color:var(--mint); background:#21443e; }
 .arcade-difficulty button:focus-visible { outline:3px solid var(--mint); outline-offset:3px; }
 .arcade-difficulty button:disabled { opacity:.35; cursor:not-allowed; }
+.arcade-screen { position:fixed; inset:0; z-index:40; display:flex; flex-direction:column; overflow:hidden; color:var(--text); background:var(--ink); }
+.arcade-topbar { height:54px; flex:none; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:#09151e; border-bottom:1px solid var(--line); font:700 12px var(--mono); letter-spacing:.08em; }
+.arcade-topbar strong { color:var(--mint); }.arcade-topbar strong span { color:var(--text); }.arcade-topbar>div { display:flex; align-items:center; gap:16px; color:var(--muted); }
+.arcade-layout { flex:1; min-height:0; display:grid; grid-template-columns:290px minmax(0,1fr); gap:12px; padding:12px; }
+.arcade-rail { display:flex; flex-direction:column; gap:14px; min-height:0; overflow:auto; padding:18px; border:1px solid var(--line); border-radius:8px; background:#0c1922; }
+.arcade-rail h1 { margin:0; font-size:26px; }.arcade-rail>p { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }.arcade-rail .arcade-minigames { margin:8px 0 0; padding:14px; }
+.arcade-rail .arcade-minigames h2 { font-size:18px; }.arcade-rail .arcade-minigames .game-menu-note { font-size:11px; }
+.arcade-map { position:relative; min-width:0; min-height:0; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#081820; }.arcade-map .city-map { position:absolute; inset:0; width:100%; height:100%; min-height:0; }
+.arcade-difficulty { margin-top:0; }.arcade-event-alert { bottom:24px; }
+@media(max-width:760px) { .arcade-topbar { padding:0 12px; }.arcade-layout { grid-template-columns:1fr; grid-template-rows:minmax(230px,38svh) minmax(0,1fr); overflow:auto; }.arcade-rail { order:2; }.arcade-map { order:1; min-height:230px; }.arcade-map .city-map { min-height:0; }.arcade-rail .arcade-minigames { order:-1; } }
+.arcade-setup { position:fixed; inset:0; display:grid; place-items:center; overflow:auto; color:var(--text); background:radial-gradient(ellipse at 50% 20%,#193d3b80,transparent 60%),var(--ink); }
+.arcade-setup-card { width:min(640px,calc(100% - 36px)); display:flex; flex-direction:column; gap:18px; padding:clamp(24px,5vw,48px); border:1px solid var(--line); border-radius:12px; background:#0c1922; box-shadow:0 24px 80px #0008; }
+.arcade-setup-card h1 { margin:0; font-size:clamp(32px,5vw,48px); }.arcade-setup-card p { color:var(--muted); line-height:1.6; }
+.arcade-setup-card fieldset { display:flex; flex-wrap:wrap; gap:8px; border:1px solid var(--line); border-radius:8px; padding:16px; }.arcade-setup-card legend { color:var(--mint); font-weight:700; }
+.arcade-setup-card fieldset button { flex:1; min-height:48px; border:1px solid var(--line); border-radius:6px; background:#10232b; color:var(--text); cursor:pointer; }
+.arcade-setup-card fieldset button[aria-pressed="true"] { border-color:var(--mint); background:#173b34; color:var(--mint); }
+.arcade-seed { display:flex; gap:12px; align-items:center; color:var(--muted); }.arcade-seed input { flex:1; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:6px; background:#081820; color:var(--text); }

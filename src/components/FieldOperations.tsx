@@ -11,7 +11,7 @@ import './FieldOperations.css';
 
 type Phase = 'ready' | 'playing' | 'paused' | 'won' | 'lost';
 
-function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; onWin: () => void; receipt: string }) {
+export function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; onWin: () => void; receipt: string }) {
   const [progress, setProgress] = useState(loadProgress);
   const progressRef = useRef(progress);
   const [saveError, setSaveError] = useState('');
