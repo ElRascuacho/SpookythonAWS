@@ -2141,6 +2141,18 @@ svg {
 }
 .mobile-zone-select {
   display: none;
+  color-scheme: dark;
+  background: #10212a;
+  color: var(--text);
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  padding: 9px;
+  font: inherit;
+  min-height: 44px;
+}
+.mobile-zone-select option {
+  background: #10212a;
+  color: var(--text);
 }
 @media (max-width: 680px) {
   .mobile-zone-select {

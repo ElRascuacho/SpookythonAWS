@@ -11,9 +11,11 @@ const KEY = "manta-cero:research-welcome:v1";
 export function ResearchWelcome({
   active,
   openRequest = 0,
+  onStartTour,
 }: {
   active: boolean;
   openRequest?: number;
+  onStartTour?:()=>void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     heading = useRef<HTMLHeadingElement>(null),
@@ -120,6 +122,7 @@ export function ResearchWelcome({
       </p>
       <footer>
         <span>Puedes volver a verla desde el botón ⓘ de Investigación.</span>
+        {onStartTour&&<button type="button" onClick={()=>{dismiss();onStartTour();}}>Iniciar recorrido guiado</button>}
         <button type="button" onClick={dismiss}>
           Entrar al laboratorio <span aria-hidden="true">→</span>
         </button>

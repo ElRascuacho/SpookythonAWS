@@ -16,6 +16,7 @@ import {
 import { ResearchVoiceControls } from "./ResearchVoiceControls";
 import { ResearchLiveReport, type ReportData } from "./ResearchLiveReport";
 import { ResearchWelcome } from "./ResearchWelcome";
+import {ResearchGuidedTour,type ResearchTourStep} from './ResearchGuidedTour';
 import {
   ResearchEvidencePanel,
   type EvidenceContext,
@@ -127,6 +128,22 @@ export function ResearchWorkspace({
   const [view, setView] = useState<"scenario" | "measures">("measures");
   const [panelOpen, setPanelOpen] = useState(true);
   const [welcomeRequest, setWelcomeRequest] = useState(0);
+  const [tourStep,setTourStep]=useState<ResearchTourStep|null>(null);
+  const tourBackup=useRef<{view:typeof view;panelOpen:boolean;panelExpanded:boolean;inspecting:boolean;curveOpen:boolean;fileOpen:boolean;prompt:string;running:boolean}|null>(null);
+  const [tourNotice,setTourNotice]=useState('');
+  function startTour(){
+    if(busy||tourStep!==null)return;
+    tourBackup.current={view,panelOpen,panelExpanded,inspecting,curveOpen,fileOpen,prompt,running};
+    setRunning(false);setPanelExpanded(false);setInspecting(false);setCurveOpen(false);setFileOpen(false);setTourNotice('');setTourStep(0);
+  }
+  function endTour(completed=false){
+    const saved=tourBackup.current;if(!saved)return;tourBackup.current=null;setTourStep(null);
+    setView(saved.view);setPanelOpen(saved.panelOpen);setPanelExpanded(saved.panelExpanded);setInspecting(saved.inspecting);setCurveOpen(saved.curveOpen);setFileOpen(saved.fileOpen);setPrompt(saved.prompt);setRunning(visible&&saved.running);
+    if(completed){try{localStorage.setItem('manta-cero:research-tour:completed:v1','1');}catch{/* Completion need not depend on storage. */}}
+    setTourNotice(completed?'Recorrido completado. Tu experimento no se ha modificado.':'Recorrido cerrado sin marcar como completado.');
+  }
+  useEffect(()=>{if(!visible)endTour();},[visible]);
+  useEffect(()=>{if(!tourNotice)return;const timer=setTimeout(()=>setTourNotice(''),5000);return()=>clearTimeout(timer);},[tourNotice]);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [inspecting, setInspecting] = useState(false);
   const [curveOpen, setCurveOpen] = useState(false);
@@ -356,6 +373,7 @@ export function ResearchWorkspace({
       a.href = url;
       a.download = "manta-investigacion-v1.json";
       a.click();
+      if(tourStep===5)endTour(true);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       setError("Corrige la configuración antes de exportar.");
@@ -397,7 +415,7 @@ export function ResearchWorkspace({
     voiceSignal?: AbortSignal,
     voiceTool = false,
   ) {
-    if (busy || !(voiceMessage ?? prompt).trim()) return;
+    if (tourStep!==null || busy || !(voiceMessage ?? prompt).trim()) return;
     if (!draft && w.drafts.length >= 8) {
       setError("Máximo ocho medidas por experimento.");
       return;
@@ -563,7 +581,9 @@ export function ResearchWorkspace({
       aria-label="Espacio de investigación"
       tabIndex={-1}
     >
-      <ResearchWelcome active={visible} openRequest={welcomeRequest} />
+      <ResearchWelcome active={visible} openRequest={welcomeRequest} onStartTour={busy?undefined:startTour} />
+      <ResearchGuidedTour step={visible?tourStep:null} onCancel={()=>endTour()} />
+      {tourNotice&&<p className="rw-tour-notice" role="status">{tourNotice}</p>}
       <header className="hub-topbar">
         <a
           className="brand"
@@ -593,12 +613,14 @@ export function ResearchWorkspace({
         >
           <button
             aria-label="Agente de investigación"
+            data-research-tour="agent"
             aria-pressed={panelOpen && view === "measures"}
             onClick={() => {
               setPanelOpen(true);
               setInspecting(false);
               setCurveOpen(false);
               setView("measures");
+              if(tourStep===1)setTourStep(2);
             }}
           >
             <MessageSquare size={16} />
@@ -606,12 +628,14 @@ export function ResearchWorkspace({
           </button>
           <button
             aria-label="Configurar escenario"
+            data-research-tour="scenario"
             aria-pressed={panelOpen && view === "scenario"}
             onClick={() => {
               setPanelOpen(true);
               setInspecting(false);
               setCurveOpen(false);
               setView("scenario");
+              if(tourStep===0)setTourStep(1);
             }}
           >
             <Settings2 size={16} />
@@ -619,11 +643,13 @@ export function ResearchWorkspace({
           </button>
           <button
             aria-label="Evolución del experimento"
+            data-research-tour="evolution"
             aria-pressed={curveOpen}
             onClick={() => {
               if (window.matchMedia("(max-width: 720px)").matches)
                 setPanelOpen(false);
-              setCurveOpen((v) => !v);
+              setCurveOpen((v) => tourStep===3?true:!v);
+              if(tourStep===3)setTourStep(4);
             }}
           >
             <ChartNoAxesCombined size={16} />
@@ -631,8 +657,9 @@ export function ResearchWorkspace({
           </button>
           <button
             aria-label="Archivo del experimento"
+            data-research-tour="file"
             aria-expanded={fileOpen}
-            onClick={() => setFileOpen((v) => !v)}
+            onClick={() => {setFileOpen((v) => tourStep===4?true:!v);if(tourStep===4)setTourStep(5);}}
           >
             <FolderOpen size={16} />
             <span>Archivo</span>
@@ -667,7 +694,7 @@ export function ResearchWorkspace({
             Copiar escenario del juego
           </button>
           <button onClick={save}>Guardar</button>
-          <button onClick={download}>Exportar</button>
+          <button data-research-tour="export" onClick={download}>Exportar</button>
           <label className="rw-file">
             Importar
             <input
@@ -1175,7 +1202,7 @@ export function ResearchWorkspace({
                 className="rw-composer"
               >
                 <ResearchVoiceControls
-                  active={visible && panelOpen && view === "measures"}
+                  active={visible && panelOpen && view === "measures" && tourStep===null}
                   processing={busy}
                   onQuery={async (text, signal) => {
                     const result = await ask(text, signal, true);
@@ -1238,6 +1265,7 @@ export function ResearchWorkspace({
                 />
                 <textarea
                   aria-label="Petición al agente"
+                  data-research-tour="prompt"
                   aria-describedby="rw-composer-hint"
                   maxLength={2000}
                   value={prompt}
@@ -1250,6 +1278,7 @@ export function ResearchWorkspace({
                       e.keyCode !== 229
                     ) {
                       e.preventDefault();
+                      if(tourStep!==null){if(tourStep===2&&prompt.trim().length>=12)setTourStep(3);return;}
                       if (!busy && prompt.trim())
                         e.currentTarget.form?.requestSubmit();
                     }
@@ -1258,7 +1287,7 @@ export function ResearchWorkspace({
                   required
                 />
                 <small id="rw-composer-hint">
-                  Enter para enviar · Shift + Enter para una nueva línea
+                  {tourStep!==null?'Práctica: escribe al menos 12 caracteres y pulsa Enter. No se enviará a la IA.':'Enter para enviar · Shift + Enter para una nueva línea'}
                 </small>
                 <button disabled={busy || !prompt.trim()} type="submit">
                   {busy ? "Consultando agente…" : "Enviar al agente"}

@@ -32,8 +32,9 @@ import {
 } from "./components/DayTransition";
 import { NewsFlash } from "./components/NewsFlash";
 import { GameTutorial } from "./components/GameTutorial";
+import { GameGuidedTour, type GameTourStep } from './components/GameGuidedTour';
 import { FieldOperations } from "./components/FieldOperations";
-import { completeFieldMission, missionRewardAmount, randomFieldOperation, type FieldOperation } from "./domain/fieldMissions";
+import { completeFieldMission, randomFieldOperation, pendingFieldOperation, FIELD_MISSIONS, type FieldOperation } from "./domain/fieldMissions";
 import { SimulationDashboard } from "./components/SimulationDashboard";
 import { StrategyReport } from "./components/StrategyReport";
 import { hasCompletedTutorial, rememberTutorialCompletion } from "./domain/tutorialProgress";
@@ -282,6 +283,8 @@ export default function App({
   const [funding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
   const [tutorialRequired, setTutorialRequired] = useState(() => !hasCompletedTutorial());
   const [modal, setModal] = useState<Modal>(() => tutorialRequired ? "help" : null);
+  const [tourStep,setTourStep]=useState<GameTourStep|null>(null);
+  const tourBackup=useRef<{game:typeof game;orders:Order[];funding:ResearchFunding;selectedNode:string;required:boolean;operation:FieldOperation|null}|null>(null);
   const [briefingChapter, setBriefingChapter] = useState<CampaignChapter>(0);
   const [draft, setDraft] = useState<GameConfig>(DEFAULT_CONFIG);
   const [notice, setNotice] = useState("");
@@ -337,6 +340,7 @@ export default function App({
   };
 
   useEffect(() => {
+    if(inactive||tourStep!==null)return;
     if (tutorialRequired) { setModal("help"); return; }
     if (activeMode === "campaign") {
       setBriefingChapter(0);
@@ -344,7 +348,8 @@ export default function App({
     } else if (activeMode === "game") {
       setModal((prev) => (prev === "campaign" ? null : prev));
     }
-  }, [activeMode, tutorialRequired]);
+  }, [activeMode, tutorialRequired, inactive, tourStep]);
+  useEffect(()=>{if(inactive&&tourStep!==null)finishGuidedTour(false);},[inactive]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsFacts, setNewsFacts] = useState("");
   const commandBarRef = useRef<HTMLElement | null>(null);
@@ -369,6 +374,7 @@ export default function App({
   );
   const closeModal = () => {
     if (tutorialRequired) return;
+    if(modal==='operations'&&tourStep===3){setTourStep(2);setModal(null);return;}
     if (modal === "operations" && game.status !== "playing") { setModal("result"); return; }
     if (modal === "operations" && fieldOperation && game.actions[game.day]?.fieldRewards?.[fieldOperation.kind]) setFieldOperation(null);
     if (modal === "campaign" && activeMode === "campaign") {
@@ -392,16 +398,18 @@ export default function App({
   const chapterId = game.config.campaignChapter;
   const chapter = chapterId === undefined ? null : CHAPTERS[chapterId];
 
-  const availableOperation = playing && fieldOperation && !game.actions[game.day]?.fieldRewards?.[fieldOperation.kind] && missionRewardAmount(game, fieldOperation.kind, fieldOperation.nodeId) > 0 ? fieldOperation : null;
-  useEffect(() => { setFieldOperation(null); }, [game.day, game.config]);
+  const availableOperation = pendingFieldOperation(game,fieldOperation);
+  const openFieldOperation=()=>{if(availableOperation){setSelectedNode(availableOperation.nodeId);setModal('operations');if(tourStep===2)setTourStep(3);}};
   useEffect(() => {
-    if (!playing || inactive || simulationMode || modal || dayTransition || news || availableOperation) return;
+    if (!playing || inactive || tourStep!==null || simulationMode || modal || dayTransition || news || availableOperation) return;
     const timer = window.setTimeout(() => setFieldOperation(randomFieldOperation(game)), 25000 + Math.random() * 30000);
     return () => window.clearTimeout(timer);
-  }, [game, playing, inactive, simulationMode, modal, dayTransition, news, availableOperation]);
+  }, [game, playing, inactive, tourStep, simulationMode, modal, dayTransition, news, availableOperation]);
 
   const selectZone = (id: string) => {
+    if(!NODE_MAP[id])return;
     setSelectedNode(id);
+    if(tourStep!==null){if(tourStep===0&&id!==selectedNode)setTourStep(1);return;}
     setModal("zone");
   };
 
@@ -427,10 +435,25 @@ export default function App({
       setNewsLoading(false);
     });
   };
+  function startGuidedTour(){
+    if(advancing.current||tourStep!==null)return;
+    tourBackup.current={game,orders,funding,selectedNode,required:tutorialRequired,operation:fieldOperation};
+    const practiceZone=DEFAULT_CONFIG.patientZeroId;
+    setGame(createGame(DEFAULT_CONFIG));setOrders([]);setFunding(RESEARCH_LEVELS[1]);setSelectedNode(practiceZone);setFieldOperation({kind:'shooter',nodeId:practiceZone});setNews(null);setTutorialRequired(false);setModal(null);setTourStep(0);
+  }
+  function finishGuidedTour(completed:boolean,message?:string){
+    const saved=tourBackup.current;if(!saved)return;
+    tourBackup.current=null;setTourStep(null);setGame(saved.game);setOrders(saved.orders);setFunding(saved.funding);setSelectedNode(saved.selectedNode);setFieldOperation(saved.operation);
+    if(completed){rememberTutorialCompletion();setTutorialRequired(false);setModal(null);}else{setTutorialRequired(saved.required);setModal(!inactive&&saved.required?'help':null);}
+    setNotice(message??'Práctica cerrada. Tu partida y tu plan se han restaurado.');
+  }
   const nextDay = () => {
-    if (advancing.current) return;
+    if (advancing.current || (tourStep!==null&&tourStep!==4)) return;
+    if(availableOperation){setNotice(`Completa ${FIELD_MISSIONS[availableOperation.kind].title} antes de cambiar de día: la operación y su recompensa pertenecen al turno actual.`);return;}
     try {
       const next = advanceDay(game, orders, funding);
+      if(tourStep===4){finishGuidedTour(true,`Práctica completada: día ${next.day}, cura ${next.research}%, ${Math.round(next.timeline[next.day].totalI)} infecciosos. Tu partida original no cambió.`);return;}
+      setFieldOperation(null);
       const report: DayTransitionReport = {
         day: next.day,
         totalDays: next.params.days,
@@ -546,7 +569,8 @@ export default function App({
   if (simulationMode) return <SimulationDashboard game={game} onBack={() => setSimulationMode(false)} />;
 
   return (
-    <div className="game-shell">
+    <div className={`game-shell ${tourStep!==null?'game-tour-active':''}`}>
+      <GameGuidedTour active={tourStep!==null&&!inactive&&modal!=='operations'} step={tourStep??0} onCancel={()=>finishGuidedTour(false)}/>
       <audio ref={bgmAudioRef} loop preload="auto" aria-hidden="true">
         <source src="/audio/bgm-manta-cero.m4a" type="audio/mp4" />
         <source src="/audio/bgm-manta-cero.mp3" type="audio/mpeg" />
@@ -621,7 +645,7 @@ export default function App({
         <CureEarth3DMap
           paused={inactive || modal === "operations"}
           operation={!modal && !dayTransition && !news ? availableOperation : null}
-          onOperation={() => { if (availableOperation) { setSelectedNode(availableOperation.nodeId); setModal("operations"); } }}
+          onOperation={openFieldOperation}
           cameraBridge={cameraBridge}
           snapshot={snapshot}
           selectedNode={selectedNode}
@@ -725,6 +749,7 @@ export default function App({
             <strong>{node.name}</strong>
             <select
               className="mobile-zone-select"
+              data-game-tour="zone"
               aria-label="Seleccionar zona de intervención"
               value={selectedNode}
               onChange={(event) => selectZone(event.target.value)}
@@ -766,8 +791,11 @@ export default function App({
           </div>
           <button
             className="advance-button"
+            data-game-tour="advance"
             onClick={nextDay}
-            disabled={!playing || dayTransition !== null}
+            disabled={!playing || dayTransition !== null || Boolean(availableOperation)}
+            aria-describedby={availableOperation?'field-day-lock':undefined}
+            title={availableOperation?`Completa ${FIELD_MISSIONS[availableOperation.kind].title} para avanzar el día`:undefined}
             aria-busy={dayTransition !== null}
           >
             {playing
@@ -779,6 +807,7 @@ export default function App({
           </button>
         </div>
 
+        {availableOperation&&<section id="field-day-lock" className="field-day-lock" role="status" aria-label="Minijuego pendiente"><div><strong>Día bloqueado · operación pendiente</strong><p>Completa {FIELD_MISSIONS[availableOperation.kind].title} en {NODE_MAP[availableOperation.nodeId].name}. La operación y su recompensa pertenecen al día actual: debes resolverla antes de simular el siguiente. Cerrar o fallar no la completa; puedes reintentar.</p></div><button type="button" data-game-tour="operation" onClick={openFieldOperation}>Realizar minijuego</button></section>}
         {orders.length > 0 && (
           <div className="command-row plan-row">
             <span>
@@ -824,12 +853,14 @@ export default function App({
               <button
                 key={amount}
                 className={funding === amount ? "active" : ""}
+                data-game-tour={amount===RESEARCH_LEVELS[2]?'funding':undefined}
                 disabled={
                   !playing ||
                   getPlanCost(orders, amount) > game.params.dailyBudget
                 }
                 onClick={() => {
                   setFunding(amount);
+                  if(tourStep===1&&amount===RESEARCH_LEVELS[2])setTourStep(2);
                   setNotice(`Investigación: $${format(amount)} por día.`);
                 }}
               >
@@ -865,6 +896,7 @@ export default function App({
 
       {modal === "operations" && fieldOperation && (
         <Dialog title="Operaciones de campo" onClose={closeModal} className="field-dialog">
+          {tourStep===3&&<div className="field-tour-coach" role="status"><strong>Paso 4 de 5 · completa el minijuego</strong><p>Practica Perímetro cero: apunta con el ratón o las flechas, dispara con clic o espacio y recarga con R. Neutraliza 8 objetivos antes de perder los 3 escudos. Solo ganar y recibir la recompensa permite continuar; si pierdes, reintenta. También hay extracción (parkour) y laboratorio. El día está detenido hasta resolver la operación.</p><button type="button" onClick={()=>finishGuidedTour(false)}>Salir de la práctica y restaurar mi partida</button></div>}
           <FieldOperations game={game} nodeId={fieldOperation.nodeId} kind={fieldOperation.kind} onComplete={(kind) => {
             const next = completeFieldMission(game, kind, fieldOperation.nodeId);
             setGame(next);
@@ -873,6 +905,7 @@ export default function App({
             setNews(null);
             setNewsLoading(false);
             setNotice(next.log[0]);
+            if(tourStep===3){setFieldOperation(null);setModal(null);setTourStep(4);}
             return next.log[0];
           }} />
         </Dialog>
@@ -954,7 +987,7 @@ export default function App({
       )}
       {modal === "help" && (
         <Dialog title="Tu primer día al mando" onClose={closeModal} dismissible={!tutorialRequired}>
-          <GameTutorial config={DEFAULT_CONFIG} required={tutorialRequired} onClose={closeModal} onComplete={() => {
+          <GameTutorial config={DEFAULT_CONFIG} required={tutorialRequired} onGuidedTour={startGuidedTour} onClose={closeModal} onComplete={() => {
             rememberTutorialCompletion();
             setTutorialRequired(false);
             setModal(null);

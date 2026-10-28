@@ -15,7 +15,7 @@ const SCREENSHOTS = [
   { file: "04-turno.png", alt: "Barra de progreso de la cura, día actual y botón Avanzar un día.", caption: "4. Revisa tu presupuesto y toca Avanzar un día para ejecutar el plan." },
 ];
 
-export function GameTutorial({ config, onClose, onComplete, required = false }: { config: GameConfig; onClose: () => void; onComplete: () => void; required?: boolean }) {
+export function GameTutorial({ config, onClose, onComplete, onGuidedTour, required = false }: { config: GameConfig; onClose: () => void; onComplete: () => void; onGuidedTour?:()=>void; required?: boolean }) {
   const [state, dispatch] = useReducer(tutorialReducer, config, createTutorial);
   const heading = useRef<HTMLHeadingElement>(null);
   const { step, game, nodeId, protection, funding } = state;
@@ -32,7 +32,7 @@ export function GameTutorial({ config, onClose, onComplete, required = false }: 
   return (
     <section className="tutorial" aria-label="Tutorial interactivo">
       <p className="tutorial-safe"><ShieldCheck size={15} aria-hidden="true" /> Práctica segura · tu partida no cambia</p>
-      {required && <p className="tutorial-required">Primera visita: aprende en 4 pasos, sin límite de tiempo. También puedes saltar la guía y volver desde «Cómo jugar».</p>}
+      {required && <p className="tutorial-required">Primera visita: recorre el juego con acciones guiadas y un minijuego, o practica con capturas. Sin límite de tiempo. Puedes salir y volver desde «Cómo jugar».</p>}
       {step === -1 ? (
         <>
           <div className="tutorial-welcome">
@@ -43,7 +43,8 @@ export function GameTutorial({ config, onClose, onComplete, required = false }: 
           <ol className="tutorial-roadmap">
             {TUTORIAL_STEPS.map((label, index) => <li key={label}><span>{index + 1}</span>{label}</li>)}
           </ol>
-          <button className="primary-button" onClick={() => dispatch({ type: "next" })}>Practicar mi primer día <ArrowRight size={18} /></button>
+          {onGuidedTour&&<><p>También puedes recorrer los controles reales del juego: el foco avanza solo cuando seleccionas una zona, asignas inversión, abres y completas un minijuego y ejecutas el turno. Al terminar o salir se restaura tu partida.</p><button className="primary-button" onClick={onGuidedTour}>Recorrer la interfaz del juego <ArrowRight size={18}/></button></>}
+          <button className={onGuidedTour?'secondary-button':'primary-button'} onClick={() => dispatch({ type: "next" })}>Practicar mi primer día <ArrowRight size={18} /></button>
           <button className="secondary-button" onClick={required ? onComplete : onClose}>{required ? "Saltar tutorial" : "Cerrar guía"}</button>
           <p className="tutorial-caption">Puedes volver cuando quieras desde «Cómo jugar».</p>
         </>

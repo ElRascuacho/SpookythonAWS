@@ -1,3 +1,4 @@
+.research-guided-popover .driver-popover-title{color:#ffad66}.research-guided-popover .driver-popover-close-btn:focus-visible{outline-color:#ffad66}.rw-tour-notice{position:absolute;z-index:100;right:16px;top:84px;max-width:calc(100vw - 32px);padding:10px 14px;background:#192a32;border:1px solid #ffad6680;border-radius:8px;color:#ffe1c7;font-size:12px;pointer-events:none}
 .workspace-shell {
   --research-accent: #ffad66;
   --research-accent-hover: #ffc38d;
