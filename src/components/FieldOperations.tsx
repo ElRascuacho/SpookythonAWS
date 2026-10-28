@@ -146,6 +146,6 @@ export function FieldOperations({ game, nodeId, kind, onComplete }: { game: Cure
     <div className="field-mission-title"><span>{FIELD_MISSIONS[kind].role}</span><strong>{FIELD_MISSIONS[kind].title}</strong></div>
     {kind === 'lab' ? <LabPuzzle seed={game.config.seed} day={game.day} onWin={complete} receipt={receipt} /> : <ArcadeMission kind={kind} onWin={complete} receipt={receipt} />}
     {error && <p className="field-error" role="alert">{error}</p>}
-    <p className="field-footnote">{FIELD_MISSIONS[kind].reward} Operaciones ficticias: se trata o protege a la población, sin eliminarla. Salir o fallar no cuesta recursos; puedes volver desde la burbuja.</p>
+    <p className="field-footnote">{FIELD_MISSIONS[kind].reward} Operaciones ficticias: se trata o protege a la población, sin eliminarla. {receipt?'Operación completada: cierra esta ventana para continuar.':'El día está bloqueado hasta ganar: esta operación y su recompensa corresponden al turno actual. Salir o fallar no cuesta recursos, pero no desbloquea el día. Vuelve desde «Realizar minijuego» o la burbuja y reintenta.'}</p>
   </section>;
 }

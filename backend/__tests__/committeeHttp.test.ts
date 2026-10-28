@@ -93,3 +93,40 @@ describe("committee http", () => {
     expect(other!.status).toBe(401);
   });
 });
+
+test('training remains disabled and latest policy requires authentication', async () => {
+  const cookie = await sessionCookie();
+  const unauthorized = await handleCommitteeRoute(new Request('https://manta.example/api/committee/policies/latest'), env);
+  expect(unauthorized!.status).toBe(401);
+  const disabled = await handleCommitteeRoute(new Request('https://manta.example/api/committee/training/jobs', { method: 'POST', headers: { cookie } }), { ...env, COMMITTEE_TRAINING_ENABLED: 'true' });
+  expect(disabled!.status).toBe(503);
+  expect((await disabled!.json()).code).toBe('committee.training_unavailable');
+  const unavailable = await handleCommitteeRoute(new Request('https://manta.example/api/committee/policies/latest', { headers: { cookie } }), env);
+  expect(unavailable!.status).toBe(503);
+});
+
+test('latest policy returns not found separately from registry failures', async () => {
+  const cookie = await sessionCookie();
+  const request = () => new Request('https://manta.example/api/committee/policies/latest', { headers: { cookie } });
+  expect((await handleCommitteeRoute(request(), env, undefined, { latest: async () => null }))!.status).toBe(404);
+  expect((await handleCommitteeRoute(request(), env, undefined, { latest: async () => { throw new Error('denied'); } }))!.status).toBe(503);
+  const record = { registryVersion: 'test' } as any;
+  const response = await handleCommitteeRoute(request(), env, undefined, { latest: async () => record });
+  expect(response!.status).toBe(200);
+  expect(await response!.json()).toEqual(record);
+});
+
+test('storage failure returns controlled service unavailable', async () => {
+  const cookie = await sessionCookie();
+  const response = await handleCommitteeRoute(new Request('https://manta.example/api/committee/jobs/job-a', { headers: { cookie } }), env, undefined, undefined, async () => { throw new Error('storage failure'); });
+  expect(response!.status).toBe(503);
+  expect((await response!.json()).code).toBe('committee.storage_unavailable');
+});
+
+test('central evaluation remains fail-closed without a durable worker', async () => {
+  const cookie = await sessionCookie();
+  expect((await handleCommitteeRoute(new Request('https://manta.example/api/committee/evaluations', { method: 'POST' }), env))!.status).toBe(401);
+  const response = await handleCommitteeRoute(new Request('https://manta.example/api/committee/evaluations', { method: 'POST', headers: { cookie }, body: '{}' }), env);
+  expect(response!.status).toBe(503);
+  expect((await response!.json()).code).toBe('committee.evaluation_unavailable');
+});

@@ -9,15 +9,16 @@ export function GameGuidedTour({active,step,onCancel}:{active:boolean;step:GameT
  useEffect(()=>{
   if(!active)return;
   let cleaning=false;const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const tour=driver({animate:!reduced,smoothScroll:!reduced,overlayColor:'#061017',overlayOpacity:.72,stagePadding:8,stageRadius:8,disableActiveInteraction:false,advanceOnClick:false,allowKeyboardControl:false,overlayClickBehavior:()=>{},showButtons:['close'],allowClose:true,closeBtnLabel:'Salir de la práctica guiada',showProgress:true,progressText:'{{current}} de {{total}}',popoverClass:'game-guided-popover',onNextClick:()=>{},onPrevClick:()=>{},onHighlighted:element=>{if(element instanceof HTMLElement)element.focus({preventScroll:true});},onDestroyed:()=>{instance.current=null;if(!cleaning)cancel.current();},steps:[
+  const tour=driver({animate:!reduced,smoothScroll:!reduced,overlayColor:'#061017',overlayOpacity:.72,stagePadding:8,stageRadius:8,disableActiveInteraction:false,advanceOnClick:false,allowKeyboardControl:false,overlayClickBehavior:()=>{},showButtons:['close'],allowClose:true,closeBtnLabel:'Salir de la práctica guiada',showProgress:true,progressText:'{{current}} de {{total}}',popoverClass:'game-guided-popover',onNextClick:()=>{},onPrevClick:()=>{},onCloseClick:()=>stop(),onHighlighted:element=>{if(element instanceof HTMLElement)element.focus({preventScroll:true});},onDestroyed:()=>{instance.current=null;if(!cleaning)cancel.current();},steps:[
    {element:'[data-game-tour="zone"]',popover:{title:'1. Elige una zona',description:'Selecciona otra zona en este control real. El recorrido solo avanza cuando cambias la selección. Estás en una práctica: al salir se restaurará tu partida.',side:'top'}},
    {element:'[data-game-tour="funding"]',popover:{title:'2. Financia el laboratorio',description:'Pulsa esta inversión para asignarla al plan. Reservar presupuesto impulsa la cura; todavía no ejecuta el turno.',side:'top'}},
    {element:'[data-game-tour="operation"]',popover:{title:'3. Abre la operación de campo',description:'Apareció un minijuego: el día está bloqueado hasta completarlo. Pulsa «Realizar minijuego». Contención trata infectados, extracción protege población y laboratorio ayuda a la cura.',side:'top'}},
    {element:'.field-operations',popover:{title:'4. Completa el minijuego',description:'Neutraliza los 8 objetivos en Perímetro cero para obtener la recompensa. Salir o perder no equivale a completarlo.',side:'top'}},
    {element:'[data-game-tour="advance"]',popover:{title:'5. Ejecuta el plan',description:'La operación ya está completada y el día se ha desbloqueado. Pulsa «Avanzar un día». Verás el resumen de la práctica y recuperarás tu partida original.',side:'top'}}, 
   ]});
+  const stop=()=>{cleaning=true;tour.destroy();cancel.current();};
   instance.current=tour;tour.drive(step);
-  const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();tour.destroy();}};
+  const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();stop();}};
   document.addEventListener('keydown',escape,true);
   return()=>{cleaning=true;document.removeEventListener('keydown',escape,true);tour.destroy();if(instance.current===tour)instance.current=null;};
  },[active]);

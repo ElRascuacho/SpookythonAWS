@@ -8,7 +8,7 @@ test('an eligible pending minigame blocks until the actual reward has been award
  expect(pendingFieldOperation(game,operation)).toEqual(operation);
  const completed=completeFieldMission(game,'shooter','N01');expect(completed.actions[game.day]?.fieldRewards?.shooter).toBeDefined();expect(pendingFieldOperation(completed,operation)).toBeNull();
 });
-test('practice laboratory is eligible at the seeded hospital and only completion unlocks it',()=>{
+test('laboratory missions obey the same completion gate as arcade missions',()=>{
  const game=createGame({seed:42,scenario:'standard',patientZeroId:'N04',dailyBudget:7500}),operation={kind:'lab' as const,nodeId:'N04'};
  expect(pendingFieldOperation(game,operation)).not.toBeNull();const completed=completeFieldMission(game,'lab','N04');expect(completed.research).toBeGreaterThan(game.research);expect(pendingFieldOperation(completed,operation)).toBeNull();
 });

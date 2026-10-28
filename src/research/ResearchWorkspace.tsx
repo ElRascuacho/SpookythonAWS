@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Activity,
   ArrowLeft,
   Dna,
   FlaskConical,
@@ -40,6 +41,7 @@ import {
   readWorkspace,
   resolveResearchEffects,
   type Measure,
+  type MeasureEvaluation,
   type ResearchWorkspace as Workspace,
 } from "../domain/research";
 import type {
@@ -105,6 +107,7 @@ export function ResearchWorkspace({
       id: string;
       role: string;
       text: string;
+      evaluation?: MeasureEvaluation | null;
       report?: { initial: ReportData; createdAt: string };
     }[]
   >([]);
@@ -447,6 +450,41 @@ export function ResearchWorkspace({
       ? AbortSignal.any([controller.signal, voiceSignal])
       : controller.signal;
     try {
+      const snapshot = result?.timeline?.[day];
+      let epidemicContext = undefined;
+      if (snapshot) {
+        const activeInfected = snapshot.totalI;
+        const cumulativeInfected = snapshot.cumulativeInfected;
+        const totalBudget = (w.params.dailyBudget ?? 1000) * (w.params.days ?? 60);
+        const budgetSpent =
+          result?.timeline
+            ?.slice(0, day + 1)
+            .reduce((acc, s) => acc + (s.action?.budgetSpent ?? 0), 0) ?? 0;
+        const budgetRemaining = Math.max(0, totalBudget - budgetSpent);
+        const capacity = w.params.hospitalCapacity || 1200;
+        const hospitalSaturationPercent = Number(
+          Math.min(100, (activeInfected / capacity) * 100).toFixed(1),
+        );
+        const topActiveNodes = Object.entries(snapshot.nodes)
+          .sort((a, b) => b[1].I - a[1].I)
+          .slice(0, 3)
+          .map(([id, n]) => {
+            const totalPop = n.S + n.E + n.I + n.R;
+            const prevalence =
+              totalPop > 0 ? Number((n.I / totalPop).toFixed(4)) : 0;
+            const name = MANTA_NODES.find((node) => node.id === id)?.name ?? id;
+            return { id, name, infected: n.I, prevalence };
+          });
+        epidemicContext = {
+          day,
+          activeInfected,
+          cumulativeInfected,
+          budgetRemaining,
+          hospitalSaturationPercent,
+          topActiveNodes,
+        };
+      }
+
       const response = await fetch("/api/research/agent", {
         method: "POST",
         credentials: "same-origin",
@@ -459,6 +497,7 @@ export function ResearchWorkspace({
             role: m.role === "Tú" ? "user" : "assistant",
             text: m.text,
           })),
+          epidemicContext,
         }),
         signal,
       });
@@ -491,6 +530,7 @@ export function ResearchWorkspace({
               id: replyId,
               role: `Agente · ${parsed.model}`,
               text: parsed.reply,
+              evaluation: parsed.evaluation,
             },
           ].slice(-20),
         );
@@ -598,7 +638,7 @@ export function ResearchWorkspace({
             <Dna size={26} />
           </span>
           <span>
-            MANTA<span className="brand-zero">CERO</span>
+            ZERO <span className="brand-zero">DAY</span>
             <small>LABORATORIO · MODELO SEIR-V</small>
           </span>
         </a>
@@ -1270,6 +1310,10 @@ export function ResearchWorkspace({
                   maxLength={2000}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onClick={() => {
+                    // Driver focuses this field automatically; only a deliberate click advances.
+                    if (tourStep === 2) setTourStep(3);
+                  }}
                   onKeyDown={(e) => {
                     if (
                       e.key === "Enter" &&
@@ -1278,7 +1322,7 @@ export function ResearchWorkspace({
                       e.keyCode !== 229
                     ) {
                       e.preventDefault();
-                      if(tourStep!==null){if(tourStep===2&&prompt.trim().length>=12)setTourStep(3);return;}
+                      if(tourStep!==null){if(tourStep===2)setTourStep(3);return;}
                       if (!busy && prompt.trim())
                         e.currentTarget.form?.requestSubmit();
                     }
@@ -1287,7 +1331,7 @@ export function ResearchWorkspace({
                   required
                 />
                 <small id="rw-composer-hint">
-                  {tourStep!==null?'Práctica: escribe al menos 12 caracteres y pulsa Enter. No se enviará a la IA.':'Enter para enviar · Shift + Enter para una nueva línea'}
+                  {tourStep===2?'Recorrido: haz clic en este cuadro o pulsa Enter para continuar. No se enviará a la IA.':tourStep!==null?'Recorrido activo: no se enviarán consultas a la IA.':'Enter para enviar · Shift + Enter para una nueva línea'}
                 </small>
                 <button disabled={busy || !prompt.trim()} type="submit">
                   {busy ? "Consultando agente…" : "Enviar al agente"}

@@ -70,7 +70,7 @@ describe("research agent server boundary (provider doubles only in tests)", () =
     expect(payload.instructions).toContain(
       "No eres un asistente de propósito general",
     );
-    expect(payload.instructions).toContain("Si context falta");
+    expect(payload.instructions).toContain("Si context y telemetría faltan");
     // Parse the whole HTTP envelope with the same schema used by the UI.
     const body = AgentResponseSchema.parse(await response.json());
     expect(body.model).toBe("gpt-6.1-terra");
@@ -338,5 +338,56 @@ describe("research agent server boundary (provider doubles only in tests)", () =
       (await handleResearchAgent(request(), "limited", env, fetcher)).status,
     ).toBe(429);
     expect(count).toBe(4);
+  });
+  test("injects epidemic telemetry into prompt instructions and returns evaluation", async () => {
+    let payload: any;
+    const fetcher = (async (_url: any, options: any) => {
+      payload = JSON.parse(options.body);
+      return Response.json({
+        status: "completed",
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({
+                  scope: "research",
+                  reply: "Priorizaremos Tarqui.",
+                  proposal: researchMeasure,
+                }),
+              },
+            ],
+          },
+        ],
+      });
+    }) as typeof fetch;
+
+    const reqWithContext = new Request("https://app.test/api/research/agent", {
+      method: "POST",
+      body: JSON.stringify({
+        message: "Ayuda con el brote",
+        current: null,
+        epidemicContext: {
+          day: 14,
+          activeInfected: 850,
+          cumulativeInfected: 2300,
+          budgetRemaining: 7500,
+          hospitalSaturationPercent: 70.8,
+          topActiveNodes: [
+            { id: "N01", name: "Mercado Central", infected: 420, prevalence: 0.084 },
+          ],
+        },
+      }),
+    });
+
+    const res = await handleResearchAgent(reqWithContext, "telemetry-test", env, fetcher);
+    expect(res.status).toBe(200);
+    expect(payload.instructions).toContain("TELEMETRÍA EN VIVO DE MANTA (Día 14)");
+    expect(payload.instructions).toContain("Mercado Central (N01): 420 infectados");
+    expect(payload.instructions).toContain("70.8%");
+
+    const body = AgentResponseSchema.parse(await res.json());
+    expect(body.evaluation).toBeDefined();
+    expect(typeof body.evaluation?.infectionsAvoided).toBe("number");
   });
 });

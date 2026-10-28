@@ -3,6 +3,13 @@ import { NODE_MAP } from "./mantaGraph";
 
 export const TUTORIAL_STEPS = ["Zona", "Protección", "Laboratorio", "Turno"] as const;
 export const TUTORIAL_SEEN_KEY = "manta-cero:tutorial:v1";
+export type TutorialInteraction = { type: "zone"; nodeId: string } | { type: "protect" } | { type: "fund"; amount: ResearchFunding } | { type: "advance" };
+
+export function interactWithTutorial(state: TutorialState, action: TutorialInteraction): TutorialState {
+  if (action.type === "advance") return state.step === 3 ? tutorialReducer(state, { type: "next" }) : state;
+  const chosen = tutorialReducer(state, action);
+  return chosen === state ? state : tutorialReducer(chosen, { type: "next" });
+}
 
 export interface TutorialState {
   step: number;
