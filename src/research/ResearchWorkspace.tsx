@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { ResearchVoiceControls } from "./ResearchVoiceControls";
 import { ResearchLiveReport, type ReportData } from "./ResearchLiveReport";
+import { reportConsent } from "./reportConsent";
 import { ResearchWelcome } from "./ResearchWelcome";
+import { ResearchChart } from "./ResearchChart";
 import {ResearchGuidedTour,type ResearchTourStep} from './ResearchGuidedTour';
 import {
   ResearchEvidencePanel,
@@ -33,6 +35,7 @@ import { AgentReplyText } from "./AgentReplyText";
 import { CureEarth3DMap } from "../components/CureEarth3DMap";
 import { MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
 import { runSingleSeirSimulation } from "../domain/seirEngine";
+import { applyAgentMeasure } from "../domain/agentMeasure";
 import {
   AgentResponseSchema,
   MeasureSchema,
@@ -44,6 +47,7 @@ import {
   resolveResearchEffects,
   type Measure,
   type MeasureEvaluation,
+  type ResearchChartSpec,
   type ResearchWorkspace as Workspace,
 } from "../domain/research";
 import type {
@@ -73,6 +77,13 @@ const researchNodes = MANTA_NODES.map((n) => ({
   id: n.id as Measure["zones"][number],
 }));
 const mainParams = ["days", "seed", "dailyBudget", "betaHuman", "betaVector"];
+const agentTools = [
+  { id: "measure", label: "Medidas", detail: "Crea o edita una intervención declarativa, la activa y prepara una simulación local si el escenario es válido." },
+  { id: "evaluation", label: "Pre-evaluar", detail: "Estima impacto, costo, viabilidad presupuestaria y alivio hospitalario con el motor SEIR-V local." },
+  { id: "charts", label: "Gráficos", detail: "Prepara curvas SEIR, carga por zona e impacto de medida solo con datos validados del experimento." },
+  { id: "analysis", label: "Analizar", detail: "Interpreta telemetría observada, evidencia comparativa y resultados del Comité sin inventar datos clínicos." },
+  { id: "reports", label: "Reportes", detail: "Envía el reporte vivo y todos los gráficos disponibles del experimento dentro del chat." },
+] as const;
 const initialResult = (params = newWorkspace().params) =>
   runSingleSeirSimulation({ ...params, days: 0 }, "NO_INTERVENTION", 0);
 export function ResearchWorkspace({
@@ -110,6 +121,9 @@ export function ResearchWorkspace({
       role: string;
       text: string;
       evaluation?: MeasureEvaluation | null;
+      charts?: ResearchChartSpec[];
+      liveChartsIdentity?: string;
+      playbackOffer?: boolean;
       report?: { initial: ReportData; createdAt: string };
     }[]
   >([]);
@@ -134,26 +148,29 @@ export function ResearchWorkspace({
   const [panelOpen, setPanelOpen] = useState(true);
   const [welcomeRequest, setWelcomeRequest] = useState(0);
   const [tourStep,setTourStep]=useState<ResearchTourStep|null>(null);
-  const tourBackup=useRef<{view:typeof view;panelOpen:boolean;panelExpanded:boolean;inspecting:boolean;curveOpen:boolean;fileOpen:boolean;prompt:string;running:boolean}|null>(null);
+  type PanelSize = "small" | "half" | "full";
+  const [panelSize, setPanelSize] = useState<PanelSize>("small");
+  const tourBackup=useRef<{view:typeof view;panelOpen:boolean;panelSize:PanelSize;inspecting:boolean;curveOpen:boolean;fileOpen:boolean;prompt:string;running:boolean}|null>(null);
   const [tourNotice,setTourNotice]=useState('');
   function startTour(){
     if(busy||tourStep!==null)return;
-    tourBackup.current={view,panelOpen,panelExpanded,inspecting,curveOpen,fileOpen,prompt,running};
-    setRunning(false);setPanelExpanded(false);setInspecting(false);setCurveOpen(false);setFileOpen(false);setTourNotice('');setTourStep(0);
+    tourBackup.current={view,panelOpen,panelSize,inspecting,curveOpen,fileOpen,prompt,running};
+    setRunning(false);setPanelSize("small");setInspecting(false);setCurveOpen(false);setFileOpen(false);setTourNotice('');setTourStep(0);
   }
   function endTour(completed=false){
     const saved=tourBackup.current;if(!saved)return;tourBackup.current=null;setTourStep(null);
-    setView(saved.view);setPanelOpen(saved.panelOpen);setPanelExpanded(saved.panelExpanded);setInspecting(saved.inspecting);setCurveOpen(saved.curveOpen);setFileOpen(saved.fileOpen);setPrompt(saved.prompt);setRunning(visible&&saved.running);
+    setView(saved.view);setPanelOpen(saved.panelOpen);setPanelSize(saved.panelSize);setInspecting(saved.inspecting);setCurveOpen(saved.curveOpen);setFileOpen(saved.fileOpen);setPrompt(saved.prompt);setRunning(visible&&saved.running);
     if(completed){try{localStorage.setItem('manta-cero:research-tour:completed:v1','1');}catch{/* Completion need not depend on storage. */}}
     setTourNotice(completed?'Recorrido completado. Tu experimento no se ha modificado.':'Recorrido cerrado sin marcar como completado.');
   }
   useEffect(()=>{if(!visible)endTour();},[visible]);
   useEffect(()=>{if(!tourNotice)return;const timer=setTimeout(()=>setTourNotice(''),5000);return()=>clearTimeout(timer);},[tourNotice]);
-  const [panelExpanded, setPanelExpanded] = useState(false);
   const [inspecting, setInspecting] = useState(false);
   const [curveOpen, setCurveOpen] = useState(false);
   const [fileOpen, setFileOpen] = useState(false);
   const [rawParams, setRawParams] = useState<Record<string, string>>({});
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [focusedTool, setFocusedTool] = useState<(typeof agentTools)[number]["id"] | null>(null);
   const request = useRef<AbortController | null>(null);
   const chatScroll = useRef<HTMLDivElement | null>(null);
   const followChat = useRef(true);
@@ -331,8 +348,10 @@ export function ResearchWorkspace({
       setDay(0);
       setRunning(false);
       setError("");
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo iniciar.");
+      return false;
     }
   }
   function fresh(source?: SimulationParams) {
@@ -447,6 +466,12 @@ export function ResearchWorkspace({
         ),
       );
     if (voiceMessage === undefined) setPrompt("");
+    if (!voiceTool && (focusedTool === "reports" || reportConsent(message, false))) {
+      const published = publishAllAvailableReports();
+      const reply = "Listo: envié todos los reportes disponibles en el chat.";
+      if (voiceTool) return { reply, proposal: null, model: "Trinity", report: published };
+      return { reply, proposal: null, model: "Trinity", report: published };
+    }
     setBusy(true);
     setError("");
     const controller = new AbortController();
@@ -491,6 +516,29 @@ export function ResearchWorkspace({
         };
       }
 
+      const chartContext = {
+        observedDays: (result?.timeline ?? []).slice(0, day + 1).map((s) => ({
+          day: s.day,
+          activeInfected: s.totalI,
+          exposed: s.totalE,
+          recovered: s.totalR,
+          cumulativeInfected: s.cumulativeInfected,
+          hospitalCollapsed: s.hospitalCollapsed,
+        })),
+        zones: snapshot
+          ? Object.entries(snapshot.nodes).map(([id, n]) => {
+              const totalPop = n.S + n.E + n.I + n.R;
+              return {
+                id,
+                name: MANTA_NODES.find((node) => node.id === id)?.name ?? id,
+                infected: n.I,
+                exposed: n.E,
+                recovered: n.R,
+                prevalence: totalPop > 0 ? Number((n.I / totalPop).toFixed(4)) : 0,
+              };
+            })
+          : [],
+      };
       const response = await fetch("/api/research/agent", {
         method: "POST",
         credentials: "same-origin",
@@ -504,6 +552,8 @@ export function ResearchWorkspace({
             text: m.text,
           })),
           epidemicContext,
+          chartContext,
+          ...(voiceTool ? { focusTool: "measure" } : focusedTool ? { focusTool: focusedTool } : {}),
         }),
         signal,
       });
@@ -528,46 +578,47 @@ export function ResearchWorkspace({
           ? null
           : replyId,
       );
-      if (!voiceTool)
+      if (!voiceTool || parsed.proposal || parsed.charts?.length)
         setChat((s) =>
           [
             ...s,
             {
               id: replyId,
-              role: `Agente · ${parsed.model}`,
+              role: "Trinity",
               text: parsed.reply,
               evaluation: parsed.evaluation,
+              charts: parsed.charts,
             },
           ].slice(-20),
         );
       if (parsed.proposal) {
         const id = target ?? crypto.randomUUID();
-        setW((s) => ({
-          ...s,
-          drafts: target
-            ? s.drafts.map((d) =>
-                d.id === target
-                  ? {
-                      ...d,
-                      definition: parsed.proposal!,
-                      revision: d.revision + 1,
-                    }
-                  : d,
-              )
-            : [
-                ...s.drafts,
-                {
-                  id,
-                  definition: parsed.proposal!,
-                  revision: 1,
-                  confirmedRevision: 0,
-                  confirmed: null,
-                  enabled: true,
-                  history: [],
-                },
-              ],
-        }));
+        const next = applyAgentMeasure(w, parsed.proposal, id, target);
+        // Preserve other unconfirmed drafts rather than silently omitting them.
+        const runnable = next.drafts.every((d) => !d.enabled || (d.confirmed && d.confirmedRevision === d.revision));
+        let simulation: SingleSimulationRunResult | null = null;
+        if (runnable) {
+          try {
+            const measures = next.drafts.filter((d) => d.enabled).map((d) => ({ id: d.id, definition: d.confirmed! }));
+            simulation = runSingleSeirSimulation(next.params, next.strategy, 0, undefined, undefined,
+              measures.length ? { resolveDailyEffects: (day, state, budget) => resolveResearchEffects(day, state, budget, measures) } : undefined);
+          } catch {
+            // Keep the validated active measure even if a local execution cannot start.
+          }
+        }
+        setW(next);
         setDraftId(id);
+        if (simulation) {
+          setManifest(structuredClone(next));
+          setResult(simulation);
+          setDay(0);
+          setRunning(true);
+        }
+        const status = simulation
+          ? "Medida creada, activada y simulación local iniciada desde el día 0. Puedes pausarla o editar la medida."
+          : "Medida creada y activada. No se inició simulación: revisa las otras medidas pendientes o los parámetros del escenario.";
+        setChat((entries) => entries.map((entry) => entry.id === replyId ? { ...entry, text: `${entry.text}\n${status}` } : entry));
+        return { ...parsed, confirmed: true, applied: true, simulation_started: Boolean(simulation), reply: `${parsed.reply} ${status}` };
       }
       return parsed;
     } catch (e) {
@@ -645,10 +696,123 @@ export function ResearchWorkspace({
     identity: identity ?? "",
     points: observed.map((s) => ({ day: s.day, infected: s.totalI })),
   };
-  const max = Math.max(1, ...observed.map((s) => s.totalI));
+  function availableReportCharts(): ResearchChartSpec[] {
+    const curve: ResearchChartSpec = {
+      type: "line",
+      title: "Reporte gráfico · evolución SEIR",
+      subtitle: "Datos observados del playback actual hasta el día seleccionado.",
+      xLabel: "Día",
+      yLabel: "Personas",
+      unit: "people",
+      source: "Simulador SEIR-V local",
+      series: [
+        { name: "Infectados activos", color: "#ff6b6b", points: observed.map((s) => ({ x: s.day, y: s.totalI })) },
+        { name: "Expuestos", color: "#ffd166", points: observed.map((s) => ({ x: s.day, y: s.totalE })) },
+        { name: "Recuperados", color: "#8bd8bd", points: observed.map((s) => ({ x: s.day, y: s.totalR })) },
+        { name: "Acumuladas", color: "#7aa2ff", points: observed.map((s) => ({ x: s.day, y: s.cumulativeInfected })) },
+      ],
+    };
+    const zones = Object.entries(snapshot.nodes)
+      .sort((a, b) => b[1].I - a[1].I)
+      .slice(0, 8);
+    const burden: ResearchChartSpec = {
+      type: "bar",
+      title: "Reporte gráfico · focos por zona",
+      subtitle: "Zonas con mayor carga activa en el día observado.",
+      xLabel: "Zona",
+      yLabel: "Infectados activos",
+      unit: "people",
+      source: "Instantánea validada del simulador local",
+      series: [
+        {
+          name: "Activos",
+          color: "#ffad66",
+          points: zones.map(([id, n]) => {
+            const totalPop = n.S + n.E + n.I + n.R;
+            const prevalence = totalPop > 0 ? (n.I / totalPop) * 100 : 0;
+            return { x: id, y: n.I, label: `${NODE_MAP[id]?.name ?? id} · ${prevalence.toFixed(1)}%` };
+          }),
+        },
+      ],
+    };
+    const latestEvaluation = [...chat].reverse().find((m) => m.evaluation)?.evaluation;
+    const impact: ResearchChartSpec[] = latestEvaluation ? [{
+      type: "bar",
+      title: "Reporte gráfico · impacto de la última medida evaluada",
+      subtitle: "Pre-evaluación determinística; hipótesis no calibrada.",
+      xLabel: "Métrica",
+      yLabel: "Valor",
+      unit: "count",
+      source: "Motor SEIR-V local / researchEvaluation",
+      series: [{
+        name: "Resultado",
+        color: "#8bd8bd",
+        points: [
+          { x: "Pico base", y: latestEvaluation.baselinePeakInfected },
+          { x: "Pico simulado", y: latestEvaluation.simulatedPeakInfected },
+          { x: "Infecciones evitadas", y: latestEvaluation.infectionsAvoided },
+          { x: "Reducción pico %", y: Number(latestEvaluation.peakReductionPercent.toFixed(2)) },
+        ],
+      }],
+    }] : [];
+    return [curve, burden, ...impact];
+  }
+  function publishAllAvailableReports() {
+    const id = crypto.randomUUID();
+    const chartId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    const charts = availableReportCharts();
+    followChat.current = true;
+    setChat((s) => [
+      ...s,
+      {
+        id,
+        role: "Reporte",
+        text: `Reporte vivo del experimento generado para el día ${day}; datos del simulador, no evidencia clínica.`,
+        report: { initial: structuredClone(reportData), createdAt },
+      },
+      {
+        id: chartId,
+        role: "Trinity",
+        text: `Envié todos los reportes disponibles: reporte vivo, evolución SEIR y focos por zona${charts.length > 2 ? ", más impacto de la última medida evaluada" : ""}. ¿Quieres reproducir la simulación desde el día 0 hasta el día final? El mapa y estos gráficos seguirán cada día.`,
+        charts,
+        liveChartsIdentity: reportData.identity,
+        playbackOffer: true,
+      },
+    ].slice(-20));
+    return {
+      generated: true,
+      reportIds: [id, chartId],
+      reports: charts.map((chart) => chart.title),
+      observedDay: day,
+      executionPrepared: Boolean(manifest),
+      evidenceCurrent: agentContext.evidenceCurrent,
+      observed: agentContext.observed,
+      note: "Se abrieron todos los reportes disponibles dentro del chat. No se ejecutaron evaluaciones nuevas ni se confirmaron/aplicaron medidas.",
+    };
+  }
+  const max = Math.max(0, ...observed.map((s) => s.totalI));
+  const curve = { width: 640, height: 220, left: 52, right: 18, top: 18, bottom: 38 };
+  const curvePlotWidth = curve.width - curve.left - curve.right;
+  const curvePlotHeight = curve.height - curve.top - curve.bottom;
+  const curveMax = Math.max(10, Math.ceil(max / 10) * 10);
+  const curveX = (index: number) =>
+    curve.left + (observed.length <= 1 ? 0 : (index / (observed.length - 1)) * curvePlotWidth);
+  const curveY = (value: number) => curve.top + (1 - value / curveMax) * curvePlotHeight;
+  const curvePoints = observed.map((s, index) => `${curveX(index)},${curveY(s.totalI)}`).join(" ");
+  const curveArea = observed.length
+    ? `${curve.left},${curve.height - curve.bottom} ${curvePoints} ${curveX(observed.length - 1)},${curve.height - curve.bottom}`
+    : "";
+  const curveTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
+    value: Math.round(curveMax * ratio),
+    y: curveY(curveMax * ratio),
+  }));
+  const curveDayTicks = Array.from(new Set([0, Math.floor(day / 2), day])).filter(
+    (value) => value >= 0 && value < observed.length,
+  );
   return (
     <section
-      className={`research-workspace ${visible ? "is-active" : ""} ${panelOpen ? "rw-panel-open" : ""} ${panelExpanded ? "rw-panel-expanded" : ""}`}
+      className={`research-workspace ${visible ? "is-active" : ""} ${panelOpen ? "rw-panel-open" : ""} rw-panel-${panelSize}`}
       inert={!visible}
       aria-hidden={!visible}
       aria-label="Espacio de investigación"
@@ -821,21 +985,32 @@ export function ResearchWorkspace({
                 ? "Agente de investigación"
                 : "Escenario experimental"}
             </span>
-            <div className="rw-panel-actions">
+            <div className="rw-panel-actions" aria-label="Tamaño de ventana">
               <button
-                aria-label={
-                  panelExpanded
-                    ? "Reducir panel del agente"
-                    : "Ampliar panel del agente"
-                }
-                aria-pressed={panelExpanded}
-                onClick={() => setPanelExpanded((v) => !v)}
+                aria-label="Usar ventana pequeña"
+                title="Pequeña"
+                aria-pressed={panelSize === "small"}
+                onClick={() => setPanelSize("small")}
               >
-                {panelExpanded ? (
-                  <Minimize2 size={16} />
-                ) : (
-                  <Maximize2 size={16} />
-                )}
+                <Minimize2 size={16} />
+                <span>Pequeña</span>
+              </button>
+              <button
+                aria-label="Usar media pantalla"
+                title="Media pantalla"
+                aria-pressed={panelSize === "half"}
+                onClick={() => setPanelSize("half")}
+              >
+                1/2
+              </button>
+              <button
+                aria-label="Usar pantalla completa"
+                title="Pantalla completa"
+                aria-pressed={panelSize === "full"}
+                onClick={() => setPanelSize("full")}
+              >
+                <Maximize2 size={16} />
+                <span>Completa</span>
               </button>
               <button
                 aria-label="Plegar panel del agente"
@@ -932,21 +1107,6 @@ export function ResearchWorkspace({
           )}
           {view === "measures" && (
             <div className="rw-content rw-agent-content">
-              <div className="rw-actions rw-agent-toolbar">
-                <select
-                  aria-label="Medida a editar"
-                  value={draftId ?? ""}
-                  onChange={(e) => setDraftId(e.target.value || null)}
-                >
-                  <option value="">Crear nueva medida</option>
-                  {w.drafts.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.definition.name} · r{d.revision}
-                    </option>
-                  ))}
-                </select>
-                <button onClick={() => setDraftId(null)}>Nueva medida</button>
-              </div>
               <div
                 className="rw-agent-scroll"
                 ref={chatScroll}
@@ -998,9 +1158,7 @@ export function ResearchWorkspace({
                     <div>
                       <strong>AGENTE DE INVESTIGACIÓN</strong>
                       <p>
-                        Describe la intervención que deseas explorar.
-                        Revisaremos sus parámetros, supuestos y efectos antes de
-                        aplicarla al experimento.
+                        Describe la intervención que deseas explorar. Trinity la validará, activará y simulará localmente; podrás editarla o desactivarla después.
                       </p>
                     </div>
                   )}
@@ -1027,16 +1185,37 @@ export function ResearchWorkspace({
                             {m.role === "Tú" ? (
                               <p>{m.text}</p>
                             ) : (
-                              <AgentReplyText
-                                text={m.text}
-                                animate={typingMessageId === m.id}
-                                onProgress={followTyping}
-                                onComplete={() =>
-                                  setTypingMessageId((id) =>
-                                    id === m.id ? null : id,
-                                  )
-                                }
-                              />
+                              <>
+                                <AgentReplyText
+                                  text={m.text}
+                                  animate={typingMessageId === m.id}
+                                  onProgress={followTyping}
+                                  onComplete={() =>
+                                    setTypingMessageId((id) =>
+                                      id === m.id ? null : id,
+                                    )
+                                  }
+                                />
+                                {m.liveChartsIdentity && <small>{m.liveChartsIdentity === reportData.identity && !stale ? `En vivo · día ${day}` : "Instantánea: la configuración cambió"}</small>}
+                                {(m.liveChartsIdentity === reportData.identity && !stale ? availableReportCharts() : m.charts)?.map((chart, index) => (
+                                  <ResearchChart
+                                    key={`${m.id}-chart-${index}`}
+                                    chart={chart}
+                                  />
+                                ))}
+                                {m.playbackOffer && (
+                                  <div className="rw-report-playback-offer">
+                                    <button type="button" disabled={busy || tourStep !== null || m.liveChartsIdentity !== reportData.identity} onClick={() => {
+                                      if (begin()) {
+                                        setRunning(true);
+                                        setCurveOpen(true);
+                                        setChat((entries) => entries.map((entry) => entry.id === m.id ? { ...entry, playbackOffer: false } : entry));
+                                      }
+                                    }}>Simular del día 0 al {w.params.days}</button>
+                                    <p>Usa solo medidas confirmadas. Puedes pausar o cambiar de día con los controles del mapa.</p>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </article>
                         ),
@@ -1299,6 +1478,22 @@ export function ResearchWorkspace({
                 <ResearchVoiceControls
                   active={visible && panelOpen && view === "measures" && tourStep===null}
                   processing={busy}
+                  toolsSlot={
+                    <>
+                    <button
+                      type="button"
+                      className="rw-tools-button"
+                      aria-expanded={toolsOpen}
+                      aria-controls="rw-agent-tools"
+                      onClick={() => setToolsOpen((open) => !open)}
+                    >
+                      <Settings2 size={15} /> Tools
+                    </button>
+                    <button type="button" disabled={busy || tourStep !== null || !valid} onClick={() => publishAllAvailableReports()}>
+                      <ChartNoAxesCombined size={15} /> Generar reporte
+                    </button>
+                    </>
+                  }
                   onQuery={async (text, signal) => {
                     const result = await ask(text, signal, true);
                     if (!result)
@@ -1308,39 +1503,16 @@ export function ResearchWorkspace({
                     return JSON.stringify({
                       reply: result.reply,
                       proposal_ready: Boolean(result.proposal),
-                      confirmed: false,
-                      applied: false,
+                      confirmed: Boolean("confirmed" in result && result.confirmed),
+                      applied: Boolean("applied" in result && result.applied),
+                      simulation_started: Boolean("simulation_started" in result && result.simulation_started),
                     });
                   }}
-                  getContext={() => agentContext}
-                  onReport={() => {
-                    const id = crypto.randomUUID(),
-                      createdAt = new Date().toISOString();
-                    followChat.current = true;
-                    setChat((s) =>
-                      [
-                        ...s,
-                        {
-                          id,
-                          role: "Reporte",
-                          text: `Reporte del experimento generado para el día ${day}; datos del simulador, no evidencia clínica.`,
-                          report: {
-                            initial: structuredClone(reportData),
-                            createdAt,
-                          },
-                        },
-                      ].slice(-20),
-                    );
-                    return {
-                      generated: true,
-                      reportId: id,
-                      observedDay: day,
-                      executionPrepared: Boolean(manifest),
-                      evidenceCurrent: agentContext.evidenceCurrent,
-                      observed: agentContext.observed,
-                      note: "Tarjeta de reporte abierta dentro del chat; se actualiza con el día observado. No se ejecutaron evaluaciones ni se confirmaron/aplicaron medidas.",
-                    };
-                  }}
+                  getContext={() => ({
+                    ...agentContext,
+                    ...(focusedTool ? { focusTool: focusedTool } : {}),
+                  })}
+                  onReport={publishAllAvailableReports}
                   onTranscript={(turn) => {
                     setTypingMessageId(null);
                     setChat((s) =>
@@ -1351,13 +1523,50 @@ export function ResearchWorkspace({
                             {
                               id: turn.id,
                               role:
-                                turn.role === "user" ? "Tú" : "Agente de voz",
+                                turn.role === "user" ? "Tú" : "Trinity",
                               text: turn.text,
                             },
                           ].slice(-20),
                     );
                   }}
                 />
+                {toolsOpen && (
+                  <section
+                    id="rw-agent-tools"
+                    className="rw-agent-tools"
+                    aria-label="Herramientas de Trinity"
+                  >
+                    <strong>Selecciona el foco de Trinity</strong>
+                    <div className="rw-tool-list" role="listbox" aria-label="Herramientas disponibles">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={focusedTool === null}
+                        className={focusedTool === null ? "is-selected" : ""}
+                        onClick={() => setFocusedTool(null)}
+                      >
+                        <b>Automático</b>
+                        <span>La agente decide el foco desde tu mensaje.</span>
+                      </button>
+                      {agentTools.map((tool) => (
+                        <button
+                          key={tool.id}
+                          type="button"
+                          role="option"
+                          aria-selected={focusedTool === tool.id}
+                          className={focusedTool === tool.id ? "is-selected" : ""}
+                          onClick={() => setFocusedTool(tool.id)}
+                        >
+                          <b>{tool.label}</b>
+                          <span>{tool.detail}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p>
+                      Al seleccionar una herramienta, Trinity la prioriza por texto y voz; puede usar otra capacidad cuando sea necesaria para completar tu tarea.
+                    </p>
+                  </section>
+                )}
                 <textarea
                   aria-label="Petición al agente"
                   data-research-tour="prompt"
@@ -1601,6 +1810,7 @@ export function ResearchWorkspace({
             data-open={curveOpen}
             aria-hidden={!curveOpen}
             inert={!curveOpen}
+            aria-label="Evolución observada del experimento"
           >
             <button
               className="rw-close"
@@ -1609,30 +1819,47 @@ export function ResearchWorkspace({
             >
               <X size={16} />
             </button>
-            <h2>Evolución observada · infecciosos activos</h2>
+            <header className="rw-curve-header">
+              <div>
+                <h2>Evolución observada</h2>
+                <span>Infecciosos activos · día {day}</span>
+              </div>
+              <strong>{snapshot.totalI.toLocaleString("es-EC")}</strong>
+            </header>
             <svg
-              viewBox="0 0 600 130"
+              viewBox={`0 0 ${curve.width} ${curve.height}`}
               role="img"
-              aria-label="Trayectoria observada de infecciosos"
+              aria-label={`Trayectoria observada: ${snapshot.totalI.toLocaleString("es-EC")} infecciosos activos en el día ${day}`}
             >
-              <polyline
-                points={observed
-                  .map(
-                    (s, i) =>
-                      `${(i / Math.max(1, result.timeline.length - 1)) * 590 + 5},${125 - (s.totalI / max) * 115}`,
-                  )
-                  .join(" ")}
-                fill="none"
-                stroke="#b1dfc8"
-                strokeWidth="2"
-              />
+              <defs>
+                <linearGradient id="rw-curve-fill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#b1dfc8" stopOpacity=".34" />
+                  <stop offset="100%" stopColor="#b1dfc8" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {curveTicks.map((tick) => (
+                <g key={tick.value} className="rw-curve-grid">
+                  <line x1={curve.left} x2={curve.width - curve.right} y1={tick.y} y2={tick.y} />
+                  <text x={curve.left - 8} y={tick.y + 4} textAnchor="end">{tick.value.toLocaleString("es-EC")}</text>
+                </g>
+              ))}
+              <line className="rw-curve-axis" x1={curve.left} x2={curve.left} y1={curve.top} y2={curve.height - curve.bottom} />
+              <line className="rw-curve-axis" x1={curve.left} x2={curve.width - curve.right} y1={curve.height - curve.bottom} y2={curve.height - curve.bottom} />
+              {curveArea && <polygon points={curveArea} fill="url(#rw-curve-fill)" />}
+              <polyline points={curvePoints} fill="none" stroke="#b1dfc8" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+              {observed.map((s, index) => (
+                <circle key={s.day} cx={curveX(index)} cy={curveY(s.totalI)} r={index === observed.length - 1 ? 5 : 2.5} className={index === observed.length - 1 ? "rw-curve-current" : "rw-curve-point"}>
+                  <title>Día {s.day}: {s.totalI.toLocaleString("es-EC")} infecciosos activos</title>
+                </circle>
+              ))}
+              {curveDayTicks.map((index) => (
+                <text key={index} className="rw-curve-day" x={curveX(index)} y={curve.height - 13} textAnchor="middle">Día {observed[index].day}</text>
+              ))}
             </svg>
             <p>
-              Una trayectoria SEIR-V real ·{" "}
-              {manifest
+              Solo días observados: 0–{day} · pico observado {max.toLocaleString("es-EC")} personas · {manifest
                 ? `semilla ${manifest.params.seed} · política ${manifest.strategy}`
-                : "sin ejecución configurada"}{" "}
-              · Sin evaluación masiva.
+                : "sin ejecución configurada"}.
             </p>
           </section>
         </main>

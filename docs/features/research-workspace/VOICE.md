@@ -42,7 +42,7 @@ Verificado con WebRTC/proveedor simulados y motor real en navegador: oferta sin 
 ```dotenv
 ENABLE_RESEARCH_VOICE=true
 OPENAI_RESEARCH_VOICE_MODEL=gpt-realtime-2.1-mini
-OPENAI_RESEARCH_VOICE=alloy
+OPENAI_RESEARCH_VOICE=coral
 ```
 
 La voz local fue habilitada a petición del usuario. SAM continúa deshabilitado por defecto. Requiere también `ENABLE_RESEARCH_AI=true`, HTTPS/localhost, WebRTC y clave con acceso al modelo. `OPENAI_RESEARCH_VOICE_API_KEY` es opcional; de no existir se reutiliza `OPENAI_API_KEY`. Nunca usar prefijo `VITE_` para claves. Reiniciar Vite tras cambiar configuración/backend.

@@ -62,7 +62,7 @@ Parameters:
     Description: Modelo de voz de OpenAI Realtime.
   OpenAiResearchVoice:
     Type: String
-    Default: alloy
+    Default: coral
     Description: Voz configurada para el agente de investigación.
 
   OpenAiResearchVoiceApiKey:

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { isVoiceAudioFocused, subscribeVoiceAudioFocus } from "./audio/voiceAudioFocus";
 import {
   Activity,
   ArrowRight,
@@ -301,6 +302,7 @@ export default function App({
   const [dayTransition, setDayTransition] =
     useState<DayTransitionReport | null>(null);
   const [news, setNews] = useState<GameNews | null>(null);
+  const voiceHasAudioFocus = useSyncExternalStore(subscribeVoiceAudioFocus, isVoiceAudioFocused, () => false);
   const [bgmPlaying, setBgmPlaying] = useState(false);
   const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
   const bgmUserToggledRef = useRef(false);
@@ -609,7 +611,7 @@ export default function App({
   return (
     <div className={`game-shell ${tutorial ? 'is-training' : ''} ${tourStep!==null?'game-tour-active':''}`} data-training-step={tutorial?.step}>
       <GameGuidedTour active={tourStep!==null&&!inactive&&modal!=='operations'} step={tourStep??0} onCancel={()=>finishGuidedTour(false)}/>
-      <audio ref={bgmAudioRef} loop preload="auto" aria-hidden="true">
+      <audio ref={bgmAudioRef} muted={voiceHasAudioFocus} loop preload="auto" aria-hidden="true">
         <source src="/audio/bgm-manta-cero.m4a" type="audio/mp4" />
         <source src="/audio/bgm-manta-cero.mp3" type="audio/mpeg" />
       </audio>

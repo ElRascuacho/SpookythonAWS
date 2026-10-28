@@ -153,9 +153,76 @@ export const MeasureEvaluationSchema = z
   .strict();
 export type MeasureEvaluation = z.infer<typeof MeasureEvaluationSchema>;
 
+export const ResearchChartPointSchema = z
+  .object({
+    x: z.union([z.string().max(80), z.number()]),
+    y: z.number().finite(),
+    label: z.string().max(120).optional(),
+  })
+  .strict();
+export const ResearchChartSeriesSchema = z
+  .object({
+    name: z.string().min(1).max(80),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    points: z.array(ResearchChartPointSchema).min(1).max(120),
+  })
+  .strict();
+export const ResearchChartSpecSchema = z
+  .object({
+    type: z.enum(["line", "area", "bar"]),
+    title: z.string().min(1).max(120),
+    subtitle: z.string().max(180).optional(),
+    xLabel: z.string().min(1).max(80),
+    yLabel: z.string().min(1).max(80),
+    unit: z.enum(["people", "percent", "usd", "count"]),
+    source: z.string().min(1).max(160),
+    series: z.array(ResearchChartSeriesSchema).min(1).max(5),
+  })
+  .strict();
+export type ResearchChartSpec = z.infer<typeof ResearchChartSpecSchema>;
+
+export const ResearchChartContextSchema = z
+  .object({
+    observedDays: z
+      .array(
+        z
+          .object({
+            day: z.number().int().min(0).max(60),
+            activeInfected: z.number().int().nonnegative(),
+            exposed: z.number().int().nonnegative(),
+            recovered: z.number().int().nonnegative(),
+            cumulativeInfected: z.number().int().nonnegative(),
+            hospitalCollapsed: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(61)
+      .optional()
+      .default([]),
+    zones: z
+      .array(
+        z
+          .object({
+            id: NodeIdSchema,
+            name: z.string().min(1).max(100),
+            infected: z.number().int().nonnegative(),
+            exposed: z.number().int().nonnegative(),
+            recovered: z.number().int().nonnegative(),
+            prevalence: z.number().min(0).max(1),
+          })
+          .strict(),
+      )
+      .max(16)
+      .optional()
+      .default([]),
+  })
+  .strict();
+export type ResearchChartContext = z.infer<typeof ResearchChartContextSchema>;
+
 export const AgentResponseSchema = AgentReplyShape.extend({
   model: z.string().min(1).max(200),
   evaluation: MeasureEvaluationSchema.nullable().optional(),
+  charts: z.array(ResearchChartSpecSchema).max(4).optional(),
 }).superRefine(validateAgentProposal);
 export const DraftSchema = z
   .object({

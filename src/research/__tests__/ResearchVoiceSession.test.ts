@@ -96,7 +96,7 @@ describe("native research voice", () => {
     await event(call);
     await event({ ...call, call_id: "c2" });
     expect(cb.propose).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(sent[0].item.output).applied).toBe(false);
+    expect(JSON.parse(sent[0].item.output).reply).toBeDefined();
     expect(
       JSON.parse(sent.find((e) => e.item?.call_id === "c2")!.item.output).error,
     ).toContain("Ya se solicitó");

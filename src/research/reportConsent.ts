@@ -18,16 +18,10 @@ export function isReportOffer(text: string) {
 /** Small explicit consent grammar, not an intent classifier for scientific content. */
 export function reportConsent(text: string, offered: boolean) {
   const value = normalize(text);
-  if (/\b(no|nunca|todavia|despues|espera|luego)\b/.test(value)) return false;
-  if (
-    /^(genera|generame|crea|creame|haz|hazme|prepara|muestra|muestrame) (un|el) (reporte|informe)( en vivo| actual| del experimento| de la evolucion)?( por favor)?$/.test(
-      value,
-    ) ||
-    /^quiero (un|el) (reporte|informe)( en vivo| del experimento)?( por favor)?$/.test(
-      value,
-    )
-  )
-    return true;
+  const reportNoun = /\b(reporte|reportes|informe|informes)\b/.test(value);
+  // Reports are an explicit local tool: any user turn that names one dispatches it
+  // directly instead of relying on the model to select a function call.
+  if (reportNoun) return true;
   return (
     offered &&
     /^(si|si por favor|si hazlo|si generalo|si genera el reporte|si genera un reporte|si quiero el reporte|si quiero un reporte|adelante|dale|de acuerdo|ok|claro)$/.test(
