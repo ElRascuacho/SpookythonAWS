@@ -3,7 +3,7 @@ import type { CureGame } from "../domain/cureGame";
 import type { SimulationPlan, SimulationSample } from "../domain/multiSimulation";
 import { createDifficultyGraph, type GraphDifficulty } from "../domain/difficultyGraph";
 import "./SimulationDashboard.css";
-import { parsePublishedPolicy, summarizePolicyPairs, type PolicyPair, type PublishedPolicy } from "../domain/policyEvaluation";
+import { DEFAULT_PUBLISHED_POLICY, parsePublishedPolicy, summarizePolicyPairs, type PolicyPair, type PublishedPolicy } from "../domain/policyEvaluation";
 import { dailyCumulativeBand, distribution, pairsToCsv, samplesToCsv, type DailyBand } from "../domain/simulationAudit";
 import { StrategyReport } from "./StrategyReport";
 
@@ -107,17 +107,19 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
     let selectedPolicy: PublishedPolicy | null = null;
     if (plan === "COMMITTEE") {
       try {
-                const response = await fetch("/api/committee/policies/latest", { credentials: "same-origin" });
+        const response = await fetch("/api/committee/policies/latest", { credentials: "same-origin" });
         const contentType = response.headers.get("content-type") ?? "";
         if (!response.ok || !contentType.includes("application/json")) {
           const noPublishedPolicy = response.status === 404 || contentType.includes("text/html");
-          throw new Error(
-            noPublishedPolicy
-              ? "No hay una política publicada del Comité. El entrenamiento sigue cerrado, así que esta comparación no puede empezar."
-              : "No se pudo obtener la política publicada del Comité (el registro no está disponible o el servidor respondió con un formato no válido)."
-          );
+          if (!noPublishedPolicy) {
+            throw new Error(
+              "No se pudo obtener la política publicada del Comité (el registro no está disponible o el servidor respondió con un formato no válido)."
+            );
+          }
+          selectedPolicy = parsePublishedPolicy(DEFAULT_PUBLISHED_POLICY);
+        } else {
+          selectedPolicy = parsePublishedPolicy(await response.json());
         }
-        selectedPolicy = parsePublishedPolicy(await response.json());
       } catch (cause) {
         if (current === generation.current) { setError(cause instanceof Error ? cause.message : "No se pudo obtener la política."); setRunning(false); }
         return;

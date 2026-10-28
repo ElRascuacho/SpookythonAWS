@@ -6,7 +6,9 @@ import { RESEARCH_VOICE_ROUTE, handleResearchVoice } from './researchVoice';
 import { RESEARCH_BODY_LIMIT, RESEARCH_ROUTE, handleResearchAgent } from './researchAgent';
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { DEFAULT_PUBLISHED_POLICY } from "../src/domain/policyEvaluation";
 import { handleCommitteeRoute } from './committee/http';
+import type { RegisteredPolicy } from './committee/policyRegistry';
 
 export function invitationAuth(env: Record<string, string>): Plugin {
   const middleware =
@@ -67,7 +69,7 @@ export function invitationAuth(env: Record<string, string>): Plugin {
                   } catch {}
                 }
               }
-              return null;
+              return DEFAULT_PUBLISHED_POLICY as unknown as RegisteredPolicy;
             },
           } : undefined;
           response = await handleCommitteeRoute(request, serverEnv, undefined, localPolicyReader);

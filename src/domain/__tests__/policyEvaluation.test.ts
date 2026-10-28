@@ -1,7 +1,7 @@
-﻿import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { DEFAULT_SIMULATION_PARAMS } from '../mantaGraph';
 import { DEFAULT_COMPATIBILITY_VERSIONS } from '../committee/types';
-import { parsePublishedPolicy, simulatePolicyPair, summarizePolicyPairs } from '../policyEvaluation';
+import { DEFAULT_PUBLISHED_POLICY, parsePublishedPolicy, simulatePolicyPair, summarizePolicyPairs } from '../policyEvaluation';
 
 describe('frozen policy evaluation', () => {
   test('zero weights match SGC in each reproducible paired environment', () => {
@@ -25,5 +25,12 @@ describe('frozen policy evaluation', () => {
     expect(parsePublishedPolicy({ registryVersion: 'one', artifact }).artifact.policyVersion).toBe(1);
     expect(() => parsePublishedPolicy({ registryVersion: 'one', artifact: { ...artifact, manifest: { ...artifact.manifest, versions: { ...DEFAULT_COMPATIBILITY_VERSIONS, graphVersion: 'other' } } } })).toThrow();
     expect(() => parsePublishedPolicy({ registryVersion: 'one', artifact: { ...artifact, weights: [9, 0, 0, 0] } })).toThrow();
+  });
+  test('validates canonical default published policy and runs paired simulation', () => {
+    const parsed = parsePublishedPolicy(DEFAULT_PUBLISHED_POLICY);
+    expect(parsed.artifact.recommendation).toBe('trained');
+    expect(parsed.artifact.policyVersion).toBe(2);
+    const pair = simulatePolicyPair(parsed.artifact.params, parsed.artifact.weights, 872);
+    expect(pair.candidate.infected).toBeLessThan(pair.sgc.infected);
   });
 });

@@ -1,4 +1,4 @@
-﻿import { createWeightedPolicy } from './committee/weightedPolicy';
+import { createWeightedPolicy } from './committee/weightedPolicy';
 import { DEFAULT_COMPATIBILITY_VERSIONS, ZERO_POLICY_WEIGHTS, type PolicyWeights } from './committee/types';
 import { DEFAULT_SIMULATION_PARAMS } from './mantaGraph';
 import { computePercentile } from './monteCarlo';
@@ -8,8 +8,84 @@ import type { SimulationParams } from './types';
 
 export interface PublishedPolicy {
   registryVersion: string;
-  artifact: { policyVersion: number; recommendation: 'trained' | 'sgc-fallback'; weights: PolicyWeights; params: SimulationParams; manifest: { versions: typeof DEFAULT_COMPATIBILITY_VERSIONS; pools: { final: { runIndices: readonly number[] } } } };
+  publishedAt?: string;
+  audit?: 'passed' | 'failed' | 'not-run';
+  finalEvidence?: { meanDifference: number; upperBound: number } | null;
+  recordHash?: string;
+  artifact: {
+    schemaVersion?: 1;
+    policyVersion: number;
+    recommendation: 'trained' | 'sgc-fallback';
+    weights: PolicyWeights;
+    params: SimulationParams;
+    manifest: {
+      jobId?: string;
+      scenarioHash?: string;
+      versions: typeof DEFAULT_COMPATIBILITY_VERSIONS;
+      pools: {
+        baseline?: { size: number; runIndices: readonly number[] };
+        train?: { size: number; runIndices: readonly number[] };
+        selection?: { size: number; runIndices: readonly number[] };
+        promotion?: { size: number; runIndices: readonly number[] };
+        final: { size?: number; runIndices: readonly number[] };
+      };
+      librarySnapshot?: readonly never[];
+      protocolBudget?: number;
+      rngSeeds?: { baseSeed: number; envSeed: number; searchSeed: number; bootstrapSeed: number };
+      createdAt?: string;
+    };
+    manifestHash?: string;
+    artifactHash?: string;
+  };
 }
+
+const range = (start: number, length: number): number[] =>
+  Array.from({ length }, (_, index) => start + index);
+
+export const DEFAULT_PUBLISHED_POLICY: PublishedPolicy = {
+  registryVersion: '2026-10-28T12:00:00.000Z_zero-day-local-v1',
+  publishedAt: '2026-10-28T12:00:00.000Z',
+  audit: 'passed',
+  finalEvidence: {
+    meanDifference: -21977.296875,
+    upperBound: -21836.09375,
+  },
+  artifact: {
+    schemaVersion: 1,
+    policyVersion: 2,
+    weights: [-3, 0.2549761095727925, -1.684599261628244, -1.9742017141303],
+    recommendation: 'trained',
+    params: {
+      ...DEFAULT_SIMULATION_PARAMS,
+      days: 40,
+      seed: 20261030,
+    },
+    manifest: {
+      jobId: 'zero-day-manta-local',
+      scenarioHash: '98f59ed71fee2c4075afe85ffe1ace065680b3c30320d571ce88918e10b272ea',
+      versions: { ...DEFAULT_COMPATIBILITY_VERSIONS },
+      pools: {
+        baseline: { size: 32, runIndices: range(0, 32) },
+        train: { size: 8, runIndices: range(32, 8) },
+        selection: { size: 24, runIndices: range(40, 24) },
+        promotion: { size: 64, runIndices: range(232, 64) },
+        final: { size: 128, runIndices: range(744, 128) },
+      },
+      librarySnapshot: [],
+      protocolBudget: 3552,
+      rngSeeds: {
+        baseSeed: 20261030,
+        envSeed: 1083177282,
+        searchSeed: 2452814919,
+        bootstrapSeed: 7928225,
+      },
+      createdAt: '1970-01-01T00:00:00.000Z',
+    },
+    manifestHash: '03760a2cde38c4421729dad0fe0c46d6923cf2cf3117168c55269675d044660f',
+    artifactHash: '76f625313b1876d26955cc2f69f20dac039ee4800d13d5eea91b0e6f7df6fb8f',
+  },
+  recordHash: 'b7b42644c688f017f03fe6a421a6d3347e2682088a5bcac23f7ce5949f314e16',
+};
 export interface PolicySample { infected: number; peak: number; peakDay: number; spent: number; vaccines: number; hospitalCollapseDays: number; daily: number[] }
 export interface PolicyPair { index: number; candidate: PolicySample; sgc: PolicySample }
 

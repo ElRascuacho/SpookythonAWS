@@ -9,7 +9,10 @@ import { authorize } from "./auth";
 import { NEWS_ROUTE, handleNewsRoute } from "./news";
 import { RESEARCH_VOICE_ROUTE, handleResearchVoice } from './researchVoice';
 import { RESEARCH_ROUTE, handleResearchAgent } from './researchAgent';
+import { S3Client } from "@aws-sdk/client-s3";
+import { DEFAULT_PUBLISHED_POLICY } from "../src/domain/policyEvaluation";
 import { handleCommitteeRoute } from './committee/http';
+import { PolicyRegistry, type RegisteredPolicy } from './committee/policyRegistry';
 
 export interface APIGatewayProxyEventV2 {
   rawPath?: string;
@@ -139,7 +142,24 @@ export async function handler(
     }
     // Se resuelve antes del enrutado de simulación: comparte contrato con el dev server.
     if (path.startsWith("/api/committee/")) {
-      const committeeResponse = await handleCommitteeRoute(request);
+      const bucket = process.env.COMMITTEE_RESULTS_BUCKET;
+      const s3Registry = bucket ? new PolicyRegistry(new S3Client({}), bucket) : null;
+      const policyReader = {
+        async latest(): Promise<RegisteredPolicy | null> {
+          if (s3Registry) {
+            const fromS3 = await s3Registry.latest();
+            if (fromS3) return fromS3;
+          }
+          return DEFAULT_PUBLISHED_POLICY as unknown as RegisteredPolicy;
+        },
+        async get(version: string): Promise<RegisteredPolicy | null> {
+          if (version === DEFAULT_PUBLISHED_POLICY.registryVersion) {
+            return DEFAULT_PUBLISHED_POLICY as unknown as RegisteredPolicy;
+          }
+          return s3Registry ? s3Registry.get(version) : null;
+        },
+      };
+      const committeeResponse = await handleCommitteeRoute(request, process.env, undefined, policyReader);
       if (committeeResponse) {
         return {
           statusCode: committeeResponse.status,
