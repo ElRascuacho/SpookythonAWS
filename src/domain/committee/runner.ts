@@ -8,6 +8,7 @@ import {
   type CemState,
 } from "./cemSearch";
 import { createRunManifest, createStreamRng, deriveStreamSeeds } from "./manifest";
+import { attemptPromotion, createPromotionState } from "./promotion";
 import { createWeightedPolicy } from "./weightedPolicy";
 import { ZERO_POLICY_WEIGHTS, type PolicyWeights, type SeedPools } from "./types";
 
@@ -105,27 +106,47 @@ export function runCommitteePreview(request: CommitteeRunRequest): CommitteeRunR
 
   if (cancelled) return finishCancelled(request, params, trajectories);
 
+  let recommendedPolicyVersion = 0;
+  let stateRevision = 2;
+  let weights = bestWeights;
+  if (request.limits?.includePromotion) {
+    const promotion = attemptPromotion(
+      createPromotionState(),
+      bestWeights,
+      manifest.pools,
+      createStreamRng("bootstrap", seeds, 0),
+      (candidate, incumbent, runIndices) => {
+        const candidateScores = score(candidate, runIndices);
+        const incumbentScores = score(incumbent, runIndices);
+        return { candidate: candidateScores, incumbent: incumbentScores };
+      },
+    );
+    recommendedPolicyVersion = promotion.state.recommendedPolicyVersion;
+    stateRevision = promotion.state.stateRevision;
+    weights = promotion.promoted ? promotion.state.publishedWeights : [...ZERO_POLICY_WEIGHTS];
+  }
+
   const playback = runSingleSeirSimulation(
     params,
     "SMART_CORTAFUEGOS",
     trainIndices[0] ?? 0,
     undefined,
-    { onDailyDecision: createWeightedPolicy(bestWeights), envNamespace: "committee-env" },
+    { onDailyDecision: createWeightedPolicy(weights), envNamespace: "committee-env" },
   ).timeline;
   trajectories += 1;
 
   return {
     status: "completed",
-    stateRevision: 2,
-    recommendedPolicyVersion: 0,
+    stateRevision,
+    recommendedPolicyVersion,
     finalAudit: "not-run",
-    weights: bestWeights,
+    weights,
     baselineMean: mean(baselineScores),
     candidateMean: Number.isFinite(bestMean) ? bestMean : null,
     trajectories,
     playback,
     note: request.limits?.includePromotion
-      ? "La promoción completa no corre en la vista previa local."
+      ? "Promoción evaluada en el pool del manifiesto. La auditoría final de 128 réplicas no se ejecutó."
       : "Vista previa local: baseline y candidata sobre el pool de entrenamiento. La auditoría final no se ejecutó.",
   };
 }

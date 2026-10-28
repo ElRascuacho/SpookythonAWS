@@ -1,6 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { ShieldAlert } from "lucide-react";
+import type { Order } from "../domain/cureGame";
 import type { DailyCitySnapshot } from "../domain/types";
+
+interface MapProps {
+  snapshot: DailyCitySnapshot;
+  selectedNode: string;
+  onSelect: (nodeId: string) => void;
+  orders: Order[];
+  patientZeroId: string;
+  paused?: boolean;
+}
 
 interface JobView {
   jobId: string;
@@ -8,9 +18,33 @@ interface JobView {
   stateRevision: number;
   recommendedPolicyVersion: number;
   finalAudit: string;
-  baselineMean: number;
+  baselineMean: number | null;
   candidateMean: number | null;
   note: string;
+}
+
+function PlaybackMap({ snapshot }: { snapshot: DailyCitySnapshot }) {
+  const [MapView, setMapView] = useState<ComponentType<MapProps> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void import("../components/CureEarth3DMap").then((mod) => {
+      if (alive) setMapView(() => mod.default);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!MapView) return null;
+  return (
+    <MapView
+      snapshot={snapshot}
+      selectedNode="N01"
+      onSelect={() => undefined}
+      orders={[]}
+      patientZeroId="N01"
+      paused
+    />
+  );
 }
 
 export default function CommitteePanel() {
@@ -44,7 +78,21 @@ export default function CommitteePanel() {
   }
 
   useEffect(() => {
-    if (!job) return;
+    if (!job || job.status === "completed" || job.status === "cancelled") return;
+    const timer = window.setInterval(() => {
+      void fetch(`/api/committee/jobs/${job.jobId}`, { credentials: "same-origin" })
+        .then((response) => response.ok ? response.json() : null)
+        .then((body: JobView | null) => {
+          if (!body) return;
+          setJob((current) => !current || body.stateRevision < current.stateRevision ? current : body);
+        })
+        .catch(() => undefined);
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [job]);
+
+  useEffect(() => {
+    if (!job || job.status === "queued") return;
     let ignore = false;
     fetch(`/api/committee/jobs/${job.jobId}/playback/${day}`, { credentials: "same-origin" })
       .then((response) => response.ok ? response.json() : null)
@@ -93,7 +141,7 @@ export default function CommitteePanel() {
           <div className="committee-status-card">
             <ShieldAlert size={28} className="committee-icon" />
             <div>
-              <h3>Baseline {Math.round(job.baselineMean).toLocaleString()} contagios</h3>
+              <h3>Baseline {job.baselineMean == null ? "en curso" : Math.round(job.baselineMean).toLocaleString()} contagios</h3>
               <p>
                 Candidata {job.candidateMean == null ? "sin dato" : Math.round(job.candidateMean).toLocaleString()}.
                 Versión recomendada {job.recommendedPolicyVersion}. Auditoría {job.finalAudit}. Revisión {job.stateRevision}.
@@ -110,9 +158,12 @@ export default function CommitteePanel() {
                 />
               </label>
               {snapshot && (
-                <p>
-                  Día {snapshot.day}: {snapshot.action.summaryText}. Acumulados {Math.round(snapshot.cumulativeInfected).toLocaleString()}.
-                </p>
+                <>
+                  <p>
+                    Día {snapshot.day}: {snapshot.action.summaryText}. Acumulados {Math.round(snapshot.cumulativeInfected).toLocaleString()}.
+                  </p>
+                  <PlaybackMap snapshot={snapshot} />
+                </>
               )}
             </div>
           </div>
