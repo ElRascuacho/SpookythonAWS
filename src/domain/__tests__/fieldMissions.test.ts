@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { advanceDay, createGame, type GameConfig } from '../cureGame';
-import { randomFieldOperation, missionFitsZone, completeFieldMission, connectedPipes, createPipePuzzle, missionRewardAmount, PIPE_SOLUTION, rotatePipe } from '../fieldMissions';
+import { randomFieldOperation, missionFitsZone, completeFieldMission, connectedPipes, createPipePuzzle, missionRewardAmount, PIPE_SOLUTION, rotatePipe, weeklyFieldOperation } from '../fieldMissions';
 import { TOTAL_MANTA_POPULATION } from '../mantaGraph';
 import { runSingleSeirSimulation } from '../seirEngine';
 import { simulateSample } from '../multiSimulation';
@@ -100,6 +100,30 @@ describe('map operation encounters', () => {
     expect(randomFieldOperation(game)).toBeNull();
     expect(randomFieldOperation({ ...game, status: 'lost' })).toBeNull();
     expect(randomFieldOperation(advanceDay(game, [], 1200))).not.toBeNull();
+  });
+  test('queues a deterministic operation as soon as an unsatisfied week starts', () => {
+    const day0 = createGame(config);
+    expect(weeklyFieldOperation(day0)).toBeNull();
+    const day1 = advanceDay(day0, [], 1200);
+    const required = weeklyFieldOperation(day1);
+    expect(required).not.toBeNull();
+    expect(missionRewardAmount(day1, required!.kind, required!.nodeId)).toBeGreaterThan(0);
+    expect(weeklyFieldOperation(day1)).toEqual(required);
+    const completed = completeFieldMission(day1, required!.kind, required!.nodeId);
+    expect(weeklyFieldOperation(completed)).toBeNull();
+    let later = completed;
+    for (let d = 2; d <= 6; d++) {
+      later = advanceDay(later, [], 1200);
+      expect(weeklyFieldOperation(later)).toBeNull();
+    }
+    const nextWeek = advanceDay(later, [], 1200);
+    expect(nextWeek.day).toBe(7);
+    expect(weeklyFieldOperation(nextWeek)).not.toBeNull();
+  });
+  test('counts a completed day-zero operation for the first gameplay week', () => {
+    const day0 = completeFieldMission(createGame(config), 'shooter', 'N01');
+    const day1 = advanceDay(day0, [], 1200);
+    expect(weeklyFieldOperation(day1)).toBeNull();
   });
 });
 

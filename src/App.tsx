@@ -35,7 +35,7 @@ import { NewsFlash } from "./components/NewsFlash";
 import { GameTutorial } from "./components/GameTutorial";
 import { GameGuidedTour, type GameTourStep } from './components/GameGuidedTour';
 import { FieldOperations } from "./components/FieldOperations";
-import { completeFieldMission, randomFieldOperation, pendingFieldOperation, FIELD_MISSIONS, type FieldOperation } from "./domain/fieldMissions";
+import { completeFieldMission, randomFieldOperation, pendingFieldOperation, weeklyFieldOperation, FIELD_MISSIONS, type FieldOperation } from "./domain/fieldMissions";
 import { SimulationDashboard } from "./components/SimulationDashboard";
 import { StrategyReport } from "./components/StrategyReport";
 import { hasCompletedTutorial, rememberTutorialCompletion } from "./domain/tutorialProgress";
@@ -483,7 +483,8 @@ export default function App({
     try {
       const next = advanceDay(game, orders, funding);
       if(tourStep===4){finishGuidedTour(true,`Práctica completada: día ${next.day}, cura ${next.research}%, ${Math.round(next.timeline[next.day].totalI)} infecciosos. Tu partida original no cambió.`);return;}
-      setFieldOperation(null);
+      const weeklyOperation = weeklyFieldOperation(next);
+      setFieldOperation(weeklyOperation);
       const report: DayTransitionReport = {
         day: next.day,
         totalDays: next.params.days,
@@ -509,7 +510,7 @@ export default function App({
       setGame(next);
       setOrders([]);
       setEvaluation(null);
-      setNotice(`Día ${next.day}: ${next.log[0]}`);
+      setNotice(weeklyOperation ? `Día ${next.day}: ${next.log[0]} Operación semanal disponible: ${FIELD_MISSIONS[weeklyOperation.kind].title}.` : `Día ${next.day}: ${next.log[0]}`);
       const finishTurn = () => {
         advancing.current = false;
         transitionTimer.current = null;
@@ -640,19 +641,19 @@ export default function App({
         }} />}
         <nav className="header-actions" aria-label="Opciones de misión">
           {!tutorial && <>
-          <button aria-label="Modo simulación múltiple" disabled={dayTransition !== null} onClick={() => setSimulationMode(true)}>
+          <button aria-label="Modo simulación múltiple" title="Ejecutar simulaciones múltiples" data-tooltip="Ejecutar simulaciones múltiples" disabled={dayTransition !== null} onClick={() => setSimulationMode(true)}>
             <Activity size={16} /><span>Simulación</span>
           </button>
           {onOpenResearch && (
-            <button className="research-entry" aria-label="Investigación" title="Abrir investigación experimental" onClick={onOpenResearch}>
+            <button className="research-entry" aria-label="Investigación" title="Abrir investigación experimental" data-tooltip="Abrir investigación experimental" onClick={onOpenResearch}>
               <FlaskConical size={16} /><span>Investigación</span>
             </button>
           )}
-          <button aria-label="Evaluar mi estrategia" onClick={openAnalysis}>
+          <button aria-label="Evaluar mi estrategia" title="Analizar tu estrategia actual" data-tooltip="Analizar tu estrategia actual" onClick={openAnalysis}>
             <TrendingDown size={16} />
             <span>Evaluar</span>
           </button>
-          <button aria-label="Cómo jugar" onClick={() => { setTutorial(createTutorial(DEFAULT_CONFIG)); setModal("help"); }}>
+          <button aria-label="Cómo jugar" title="Abrir la guía del juego" data-tooltip="Abrir la guía del juego" onClick={() => { setTutorial(createTutorial(DEFAULT_CONFIG)); setModal("help"); }}>
             <CircleHelp size={16} />
             <span>Cómo jugar</span>
           </button>
@@ -663,13 +664,14 @@ export default function App({
             aria-label={bgmPlaying ? "Silenciar música de fondo" : "Activar música de fondo"}
             aria-pressed={bgmPlaying}
             title={bgmPlaying ? "Silenciar música de fondo (Ecos del Refugio)" : "Activar música de fondo (Ecos del Refugio)"}
+            data-tooltip={bgmPlaying ? "Silenciar música de fondo" : "Activar música de fondo"}
             className={bgmPlaying ? "mint-text" : ""}
             onClick={toggleBgm}
           >
             {bgmPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
             <span>Música</span>
           </button>
-          {!tutorial && <><button aria-label="Nueva misión" onClick={openSettings}>
+          {!tutorial && <><button aria-label="Nueva misión" title="Configurar una nueva misión" data-tooltip="Configurar una nueva misión" onClick={openSettings}>
             <Settings2 size={16} />
             <span>Nueva misión</span>
           </button>
@@ -677,6 +679,7 @@ export default function App({
             <button
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
+              data-tooltip={loggingOut ? "Cerrando sesión…" : "Cerrar sesión"}
               onClick={() => setModal("logout")}
               disabled={loggingOut}
             >

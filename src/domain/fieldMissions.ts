@@ -34,6 +34,22 @@ export function randomFieldOperation(game: CureGame, rng = Math.random): FieldOp
   return { kind: option.kind, nodeId: option.nodes[Math.floor(rng() * option.nodes.length)].id };
 }
 
+export const FIELD_OPERATION_WEEK_DAYS = 7;
+
+export function hasCompletedFieldOperationThisWeek(game: CureGame, day = game.day): boolean {
+  const currentDay = Math.max(0, day);
+  const weekStart = Math.floor(currentDay / FIELD_OPERATION_WEEK_DAYS) * FIELD_OPERATION_WEEK_DAYS;
+  for (let d = weekStart; d <= currentDay; d++) {
+    if (Object.keys(game.actions[d]?.fieldRewards ?? {}).length > 0) return true;
+  }
+  return false;
+}
+
+export function weeklyFieldOperation(game: CureGame): FieldOperation | null {
+  if (game.status !== 'playing' || game.day <= 0 || hasCompletedFieldOperationThisWeek(game)) return null;
+  return randomFieldOperation(game, createSeededRng(game.config.seed, 'WEEKLY_FIELD_OPERATION', game.day));
+}
+
 export function missionRewardAmount(game: CureGame, kind: FieldMissionKind, nodeId: string) {
   const node = game.timeline[game.day].nodes[nodeId];
   if (!node) throw new Error('Zona de operación inválida.');

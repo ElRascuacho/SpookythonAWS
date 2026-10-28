@@ -33,13 +33,13 @@ export function ModeTabs({ onSelect }: { onSelect?: (mode: Mode) => void }) {
   };
   return (
     <nav className="mode-shell-nav" role="tablist" aria-label="Selector de modo">
-      <button type="button" role="tab" aria-label="Juego" title="Empieza aquí: aprende a contener el brote y encontrar la cura" aria-selected={mode === "game"} className={`mode-shell-tab ${mode === "game" ? "active" : ""}`} onClick={() => select("game")} data-testid="tab-game">
+      <button type="button" role="tab" aria-label="Juego" title="Empieza aquí: aprende a contener el brote y encontrar la cura" data-tooltip="Empieza aquí: contiene el brote y encuentra la cura" aria-selected={mode === "game"} className={`mode-shell-tab ${mode === "game" ? "active" : ""}`} onClick={() => select("game")} data-testid="tab-game">
         <Activity size={15} /><span>Juego</span>
       </button>
-      <button type="button" role="tab" aria-label="Campaña" title="Misiones con objetivos y un plazo definido" aria-selected={mode === "campaign"} className={`mode-shell-tab ${mode === "campaign" ? "active" : ""}`} onClick={() => select("campaign")} data-testid="tab-campaign">
+      <button type="button" role="tab" aria-label="Campaña" title="Misiones con objetivos y un plazo definido" data-tooltip="Misiones con objetivos y plazo definido" aria-selected={mode === "campaign"} className={`mode-shell-tab ${mode === "campaign" ? "active" : ""}`} onClick={() => select("campaign")} data-testid="tab-campaign">
         <Clapperboard size={15} /><span>Campaña</span>
       </button>
-      <button type="button" role="tab" aria-label="Comité" title="Herramienta opcional: compara estrategias sin cambiar tu partida" aria-selected={mode === "committee"} className={`mode-shell-tab ${mode === "committee" ? "active" : ""}`} onClick={() => select("committee")} data-testid="tab-committee">
+      <button type="button" role="tab" aria-label="Comité" title="Herramienta opcional: compara estrategias sin cambiar tu partida" data-tooltip="Compara estrategias sin cambiar tu partida" aria-selected={mode === "committee"} className={`mode-shell-tab ${mode === "committee" ? "active" : ""}`} onClick={() => select("committee")} data-testid="tab-committee">
         <Brain size={15} /><span>Comité</span>
       </button>
     </nav>

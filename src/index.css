@@ -2350,7 +2350,7 @@ svg {
   position: absolute;
   left: 0;
   bottom: var(--pin-stem-h, 22px);
-  transform: translateX(-50%) scale(var(--pin-scale, 1));
+  transform: translate(-50%, var(--pin-intro-y, 0px)) scale(calc(var(--pin-scale, 1) * var(--pin-intro-scale, 1)));
   transform-origin: center bottom;
   pointer-events: auto;
   display: flex;
@@ -2372,7 +2372,7 @@ svg {
     box-shadow 0.15s;
 }
 .earth-node-pin:not(:disabled):active {
-  transform: translateX(-50%) scale(calc(var(--pin-scale, 1) * 0.98));
+  transform: translate(-50%, var(--pin-intro-y, 0px)) scale(calc(var(--pin-scale, 1) * var(--pin-intro-scale, 1) * 0.98));
 }
 .earth-node-pin:hover {
   border-color: var(--mint);
@@ -3847,6 +3847,53 @@ svg {
 .hub-topbar .header-actions { gap: 8px; }
 .hub-topbar .header-actions button { min-height: 44px; padding: 8px 10px; font-size: 14px; color: #d1dee2; }
 .hub-topbar .header-actions button svg { width: 20px; height: 20px; }
+.hub-topbar [data-tooltip] {
+  position: relative;
+}
+.hub-topbar [data-tooltip]::after,
+.hub-topbar [data-tooltip]::before {
+  position: absolute;
+  left: 50%;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -4px);
+  transition: opacity .16s ease, transform .16s ease, visibility .16s ease;
+  z-index: 80;
+}
+.hub-topbar [data-tooltip]::after {
+  content: attr(data-tooltip);
+  top: calc(100% + 10px);
+  width: max-content;
+  max-width: 220px;
+  padding: 7px 10px;
+  border: 1px solid #2ee59d55;
+  border-radius: 7px;
+  background: #071016f5;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .35);
+  color: #edf6fa;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: .01em;
+  text-align: center;
+  text-transform: none;
+  white-space: normal;
+}
+.hub-topbar [data-tooltip]::before {
+  content: "";
+  top: calc(100% + 4px);
+  border: 6px solid transparent;
+  border-bottom-color: #2ee59d55;
+}
+.hub-topbar [data-tooltip]:hover::after,
+.hub-topbar [data-tooltip]:hover::before,
+.hub-topbar [data-tooltip]:focus-visible::after,
+.hub-topbar [data-tooltip]:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
 .map-stage .map-heading { top: 92px; }
 .map-heading .eyebrow, .map-heading h2 span { color: #b4c5cc; letter-spacing: .6px; }
 .map-stage .earth-top-controls { top: 90px; }

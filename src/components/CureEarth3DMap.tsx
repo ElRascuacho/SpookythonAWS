@@ -20,6 +20,7 @@ import type { CityNode, DailyCitySnapshot } from "../domain/types";
 import type { Order } from "../domain/cureGame";
 
 import { northCamera, tacticalViewCamera, type TacticalView } from "./tacticalCamera";
+import { createNetworkIntroPlan, edgeIntroProgress, networkIntroDuration, nodeIntroProgress } from "./networkIntro";
 
 import { FIELD_MISSIONS, type FieldOperation } from "../domain/fieldMissions";
 
@@ -37,6 +38,8 @@ interface Props {
 }
 
 const MANTA_CENTER: [number, number] = [-80.724, -0.9565];
+// N01 is Mercado Central de Tarqui: the visual wave follows its real network.
+const NETWORK_INTRO_PLAN = createNetworkIntroPlan(MANTA_EDGES, "N01");
 
 /**
  * Hard camera cage: the 3D viewport can never leave the city of Manta.
@@ -509,6 +512,9 @@ export function CureEarth3DMap({
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
   const introRunningRef = useRef(false);
+  const networkIntroStartRef = useRef<number | null>(null);
+  const networkIntroDoneRef = useRef(false);
+  const networkEdgesDoneRef = useRef(false);
 
   const [layer, setLayer] = useState<"infection" | "protection">("infection");
   const [mapReady, setMapReady] = useState(false);
@@ -687,6 +693,8 @@ export function CureEarth3DMap({
       },
     };
   }, [snapshot, selectedNode, orders, layer]);
+  const edgesGeoJsonRef = useRef(edgesGeoJson);
+  edgesGeoJsonRef.current = edgesGeoJson;
 
   // Initialize MapLibre 3D Map
   useEffect(() => {
@@ -700,6 +708,10 @@ export function CureEarth3DMap({
     // Resize/move events during loading can populate the bridge; they must not
     // suppress the original first-load fly-in.
     const initialCamera = cameraBridge?.current;
+    const revealNetwork = !prefersReducedMotion && !initialCamera;
+    networkIntroDoneRef.current = !revealNetwork;
+    networkEdgesDoneRef.current = !revealNetwork;
+    networkIntroStartRef.current = null;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: EARTH_3D_STYLE,
@@ -748,14 +760,15 @@ export function CureEarth3DMap({
         source: "cure-halos",
         paint: {
           "fill-color": ["get", "color"],
-          "fill-opacity": ["get", "opacity"],
+          "fill-opacity": revealNetwork ? 0 : ["get", "opacity"],
+          "fill-opacity-transition": { duration: 0 },
         },
       });
 
       // 2. Ground Mobility Corridors
       map.addSource("cure-edges", {
         type: "geojson",
-        data: edgesGeoJson,
+        data: revealNetwork ? { type: "FeatureCollection", features: [] } : edgesGeoJson,
       });
       map.addLayer({
         id: "cure-edges-glow",
@@ -793,7 +806,8 @@ export function CureEarth3DMap({
           "fill-extrusion-color": ["get", "color"],
           "fill-extrusion-height": ["get", "height"],
           "fill-extrusion-base": ["get", "base"],
-          "fill-extrusion-opacity": 0.92,
+          "fill-extrusion-opacity": revealNetwork ? 0 : 0.92,
+          "fill-extrusion-opacity-transition": { duration: 0 },
         },
       });
 
@@ -892,7 +906,7 @@ export function CureEarth3DMap({
     const edgesSrc = map.getSource("cure-edges") as
       | maplibregl.GeoJSONSource
       | undefined;
-    edgesSrc?.setData(edgesGeoJson);
+    if (networkEdgesDoneRef.current) edgesSrc?.setData(edgesGeoJson);
   }, [buildingsGeoJson, halosGeoJson, edgesGeoJson, mapReady]);
 
   // Smooth camera focus when selectedNode changes (without losing zoom context)
@@ -943,9 +957,46 @@ export function CureEarth3DMap({
 
     let rafId = 0;
     const startTime = performance.now();
+    if (!networkIntroDoneRef.current && networkIntroStartRef.current === null) {
+      networkIntroStartRef.current = startTime;
+    }
+    let lastNetworkUpdate = -Infinity;
 
     const syncScene = (now: number) => {
       const elapsed = (now - startTime) * 0.001;
+      const introElapsed = networkIntroDoneRef.current
+        ? Infinity
+        : (now - (networkIntroStartRef.current ?? now)) * 0.001;
+
+      // Keep geographic corridors smooth without rebuilding the WebGL source
+      // on every canvas frame.
+      if (!networkIntroDoneRef.current && now - lastNetworkUpdate >= 33) {
+        lastNetworkUpdate = now;
+        const done = introElapsed >= networkIntroDuration(NETWORK_INTRO_PLAN, MANTA_NODES.length);
+        if (!networkEdgesDoneRef.current) {
+          const source = map.getSource("cure-edges") as maplibregl.GeoJSONSource | undefined;
+          if (introElapsed >= NETWORK_INTRO_PLAN.edgesEnd) {
+            networkEdgesDoneRef.current = true;
+            source?.setData(edgesGeoJsonRef.current);
+          } else {
+            const features = edgesGeoJsonRef.current.features.flatMap((feature, index) => {
+              const progress = edgeIntroProgress(index, introElapsed, NETWORK_INTRO_PLAN);
+              if (progress <= 0) return [];
+              const [source, target] = feature.geometry.coordinates;
+              const [from, to] = NETWORK_INTRO_PLAN.edges[index].reverse ? [target, source] : [source, target];
+              return [{ ...feature, geometry: { ...feature.geometry, coordinates: [
+                from,
+                [from[0] + (to[0] - from[0]) * progress, from[1] + (to[1] - from[1]) * progress],
+              ] } }];
+            });
+            source?.setData({ type: "FeatureCollection", features });
+          }
+        }
+        if (done) networkIntroDoneRef.current = true;
+        const structures = nodeIntroProgress(5, introElapsed, NETWORK_INTRO_PLAN);
+        map.setPaintProperty("cure-halos-fill", "fill-opacity", ["*", ["get", "opacity"], structures]);
+        map.setPaintProperty("cure-compounds-extrusion", "fill-extrusion-opacity", 0.92 * structures);
+      }
       const mapCanvas = map.getCanvas();
       const width = mapCanvas.clientWidth;
       const height = mapCanvas.clientHeight;
@@ -966,12 +1017,17 @@ export function CureEarth3DMap({
 
       // 1. Project all 16 Zone Pins to their exact (pt.x, pt.y) screen coordinates
       const projectedPts: Record<string, { x: number; y: number }> = {};
-      for (const node of MANTA_NODES) {
+      for (const [index, node] of MANTA_NODES.entries()) {
         const pt = map.project([node.lng, node.lat]);
         projectedPts[node.id] = pt;
         const hostEl = pinHostRefs.current[node.id];
         if (hostEl) {
+          const progress = nodeIntroProgress(index, introElapsed, NETWORK_INTRO_PLAN);
           hostEl.style.transform = `translate3d(${pt.x.toFixed(1)}px, ${pt.y.toFixed(1)}px, 0)`;
+          hostEl.style.opacity = progress.toFixed(3);
+          hostEl.style.visibility = progress > 0.01 ? "visible" : "hidden";
+          hostEl.style.setProperty("--pin-intro-scale", (0.82 + progress * 0.18).toFixed(3));
+          hostEl.style.setProperty("--pin-intro-y", `${((1 - progress) * 10).toFixed(1)}px`);
         }
       }
 
@@ -996,8 +1052,9 @@ export function CureEarth3DMap({
 
           for (let i = 0; i < MANTA_EDGES.length; i++) {
             const edge = MANTA_EDGES[i];
-            const p1 = projectedPts[edge.source];
-            const p2 = projectedPts[edge.target];
+            const reverse = NETWORK_INTRO_PLAN.edges[i].reverse;
+            const p1 = projectedPts[reverse ? edge.target : edge.source];
+            const p2 = projectedPts[reverse ? edge.source : edge.target];
             if (!p1 || !p2) continue;
 
             const isClosed =
@@ -1023,9 +1080,14 @@ export function CureEarth3DMap({
             const cx = (p1.x + p2.x) * 0.5;
             const cy = (p1.y + p2.y) * 0.5 - arcLift;
 
+            const progress = edgeIntroProgress(i, introElapsed, NETWORK_INTRO_PLAN);
+            if (progress <= 0) continue;
+            const inv = 1 - progress;
+            const tipX = inv * inv * p1.x + 2 * inv * progress * cx + progress * progress * p2.x;
+            const tipY = inv * inv * p1.y + 2 * inv * progress * cy + progress * progress * p2.y;
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
-            ctx.quadraticCurveTo(cx, cy, p2.x, p2.y);
+            ctx.quadraticCurveTo(p1.x + (cx - p1.x) * progress, p1.y + (cy - p1.y) * progress, tipX, tipY);
 
             if (isClosed) {
               ctx.strokeStyle = "rgba(56, 189, 248, 0.82)";
@@ -1043,8 +1105,18 @@ export function CureEarth3DMap({
               ctx.lineWidth = touchesSelected ? 1.9 : 1.3;
               ctx.stroke();
 
-              if (infectedFlow > 0 && !prefersReducedMotion) {
-                const dir = srcI >= tgtI ? 1 : -1;
+              if (infectedFlow > 0 && !prefersReducedMotion && progress < 1) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(tipX, tipY, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = "#ffd0c5";
+                ctx.shadowColor = "#ff6b57";
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.restore();
+              }
+              if (infectedFlow > 0 && !prefersReducedMotion && progress >= 1) {
+                const dir = (srcI >= tgtI) !== reverse ? 1 : -1;
                 const speed = 0.26 + edge.weight * 0.5;
                 const tRaw = (elapsed * speed + i * 0.17) % 1;
                 const t = dir === 1 ? tRaw : 1 - tRaw;
@@ -1339,6 +1411,7 @@ export function CureEarth3DMap({
           return (
             <div
               key={node.id}
+              style={{ opacity: 0, visibility: "hidden" }}
               ref={(el) => {
                 pinHostRefs.current[node.id] = el;
               }}
