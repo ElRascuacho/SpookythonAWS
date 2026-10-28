@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { ResearchVoiceControls } from "./ResearchVoiceControls";
+import { ModeTabs } from "../ModeShell";
 import { AgentReplyText } from "./AgentReplyText";
 import { CureEarth3DMap } from "../components/CureEarth3DMap";
 import { MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
@@ -530,6 +531,7 @@ export function ResearchWorkspace({
           className="header-actions"
           aria-label="Herramientas de investigación"
         >
+          <ModeTabs />
           <button
             aria-label="Agente de investigación"
             aria-pressed={panelOpen && view === "measures"}

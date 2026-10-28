@@ -1,4 +1,4 @@
 .strategy-report { margin: 20px 0; padding: 18px; border: 1px solid #466a61; border-radius: 8px; background: #17332e; color: #e7f4ee; }
-.strategy-report h3 { margin: 0 0 10px; font-size: 16px; }
-.strategy-report p { color: #d1e5dc; font-size: 13px; line-height: 1.5; margin: 8px 0; }
-.strategy-report small { display: block; color: #a9c5b9; font-size: 11px; line-height: 1.45; }
+.strategy-report h3 { margin: 0 0 10px; font-size: 20px; }
+.strategy-report p { color: #d1e5dc; font-size: 15px; line-height: 1.5; margin: 8px 0; }
+.strategy-report small { display: block; color: #a9c5b9; font-size: 15px; line-height: 1.45; }

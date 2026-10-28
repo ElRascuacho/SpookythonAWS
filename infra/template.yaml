@@ -28,6 +28,17 @@ Parameters:
     Type: String
     Default: gpt-4o-mini
     Description: Modelo de OpenAI usado por /api/news.
+  CommitteeTableName:
+    Type: String
+    Default: SpookythonCommittee
+    Description: Nombre de la tabla DynamoDB para el comité de aprendizaje y slots.
+  CommitteeTrainingEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Habilita el entrenamiento del comité (requiere perfilado cloud previo y autorización de ReleaseOperator).
 
   OpenAiResearchModel:
     Type: String
@@ -38,23 +49,27 @@ Parameters:
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: Habilitar llamadas de pago del agente tras configurar cuotas y credenciales.
+  EnableResearchVoice:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Habilitar streaming o interacción de voz con OpenAI Realtime.
+  OpenAiResearchVoiceModel:
+    Type: String
+    Default: gpt-realtime-2.1-mini
+    Description: Modelo de voz de OpenAI Realtime.
+  OpenAiResearchVoice:
+    Type: String
+    Default: alloy
+    Description: Voz configurada para el agente de investigación.
 
   OpenAiResearchVoiceApiKey:
     Type: String
     NoEcho: true
     Default: ""
     Description: Clave opcional exclusiva para voz; vacia reutiliza la clave OpenAI del servidor.
-  EnableResearchVoice:
-    Type: String
-    Default: "false"
-    AllowedValues: ["true", "false"]
-    Description: Habilitar audio Realtime con facturacion separada del agente de texto.
-  OpenAiResearchVoiceModel:
-    Type: String
-    Default: gpt-realtime-2.1-mini
-  OpenAiResearchVoice:
-    Type: String
-    Default: alloy
 
 Globals:
   Function:
@@ -78,6 +93,9 @@ Globals:
         OPENAI_RESEARCH_VOICE_API_KEY: !Ref OpenAiResearchVoiceApiKey
         OPENAI_RESEARCH_VOICE_MODEL: !Ref OpenAiResearchVoiceModel
         OPENAI_RESEARCH_VOICE: !Ref OpenAiResearchVoice
+        COMMITTEE_TABLE_NAME: !Ref CommitteeTable
+        COMMITTEE_RESULTS_BUCKET: !Ref CommitteeResultsBucket
+        COMMITTEE_TRAINING_ENABLED: !Ref CommitteeTrainingEnabled
 
 Resources:
   SpookythonHttpApi:
@@ -91,14 +109,27 @@ Resources:
       CodeUri: ../build/lambda/
       Handler: handler.handler
       Description: Ejecuta M corridas Monte Carlo SEIR-V (Nada vs Azar vs Smart Cortafuegos) con semilla determinista.
+      Environment:
+        Variables:
+          COMMITTEE_WORKER_FUNCTION_NAME: !Ref CommitteeWorkerFunction
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SpookythonSimulationsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CommitteeTable
         - Statement:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
               Resource: "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0"
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt CommitteeWorkerFunction.Arn
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !Sub "${CommitteeResultsBucket.Arn}/committee/*"
       Events:
         InvitationRoute:
           Type: HttpApi
@@ -136,6 +167,40 @@ Resources:
             ApiId: !Ref SpookythonHttpApi
             Path: /mayor-report
             Method: POST
+        CommitteeRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /api/committee/{proxy+}
+            Method: ANY
+
+  CommitteeWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs22.x
+      Architectures:
+        - arm64
+      Timeout: 600
+      MemorySize: 2048
+      CodeUri: ../build/lambda/
+      Handler: workerHandler.handler
+      Description: Worker asíncrono para entrenamiento CEM del comité (Node 22 ARM 2048MB / 600s).
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+        MaximumEventAgeInSeconds: 120
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CommitteeTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource: !Sub "${CommitteeResultsBucket.Arn}/committee/*"
+            - Effect: Deny
+              Action:
+                - s3:PutObjectAcl
+              Resource: !Sub "${CommitteeResultsBucket.Arn}/*"
 
   SpookythonSimulationsTable:
     Type: AWS::DynamoDB::Table
@@ -149,6 +214,27 @@ Resources:
         - AttributeName: scenarioKey
           KeyType: HASH
 
+  CommitteeTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref CommitteeTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
   FrontendBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -161,6 +247,29 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+  CommitteeResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireCommitteeResultsAfter7Days
+            Status: Enabled
+            Prefix: committee/
+            ExpirationInDays: 7
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 7
 
   CloudFrontOAC:
     Type: AWS::CloudFront::OriginAccessControl
@@ -287,3 +396,12 @@ Outputs:
   FrontendBucketName:
     Description: S3 Bucket hosting the production frontend assets
     Value: !Ref FrontendBucket
+  CommitteeTableName:
+    Description: On-Demand DynamoDB Table for committee jobs, quotas, and policy library
+    Value: !Ref CommitteeTable
+  CommitteeResultsBucketName:
+    Description: Private S3 Bucket for committee progress artifacts, ledgers, and manifests
+    Value: !Ref CommitteeResultsBucket
+  CommitteeWorkerFunctionArn:
+    Description: ARN of dedicated async Committee Worker Lambda function
+    Value: !GetAtt CommitteeWorkerFunction.Arn

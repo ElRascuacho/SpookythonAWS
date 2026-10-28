@@ -1,5 +1,5 @@
 import { createSeededRng } from './prng';
-import { NODE_MAP, TOTAL_MANTA_POPULATION } from './mantaGraph';
+import { MANTA_NODES, NODE_MAP, TOTAL_MANTA_POPULATION } from './mantaGraph';
 import { campaignStatus } from './campaign';
 import { LOSS_THRESHOLD, type CureGame } from './cureGame';
 import { runSingleSeirSimulation } from './seirEngine';
@@ -11,9 +11,28 @@ export const FIELD_MISSIONS = {
   lab: { title: 'Protocolo Lázaro', role: 'Especialista de laboratorio', reward: 'Suma entre 5 y 10 puntos porcentuales a la cura.', objective: 'Gira los conductos para conectar la muestra de entrada con el sintetizador.', controls: 'Clic o Tab + Enter para girar una pieza · verifica el circuito al terminar. Sin límite de tiempo.' },
 } as const;
 
+export interface FieldOperation { nodeId: string; kind: FieldMissionKind }
+
+export function missionFitsZone(kind: FieldMissionKind, nodeId: string) {
+  const hospital = NODE_MAP[nodeId]?.category === 'Salud Crítica';
+  return Object.hasOwn(NODE_MAP, nodeId) && (kind === 'lab' ? hospital : !hospital);
+}
+
+export function randomFieldOperation(game: CureGame, rng = Math.random): FieldOperation | null {
+  if (game.status !== 'playing') return null;
+  const available = (Object.keys(FIELD_MISSIONS) as FieldMissionKind[]).map(kind => ({
+    kind,
+    nodes: MANTA_NODES.filter(node => !game.actions[game.day]?.fieldRewards?.[kind] && missionFitsZone(kind, node.id) && missionRewardAmount(game, kind, node.id) > 0),
+  })).filter(option => option.nodes.length > 0);
+  if (!available.length) return null;
+  const option = available[Math.floor(rng() * available.length)];
+  return { kind: option.kind, nodeId: option.nodes[Math.floor(rng() * option.nodes.length)].id };
+}
+
 export function missionRewardAmount(game: CureGame, kind: FieldMissionKind, nodeId: string) {
   const node = game.timeline[game.day].nodes[nodeId];
   if (!node) throw new Error('Zona de operación inválida.');
+  if (node.E + node.I <= 0) return 0;
   if (kind === 'shooter') return Math.min(node.I, 60, Math.ceil(node.I * 0.2));
   if (kind === 'parkour') return Math.min(node.S, 150);
   if (kind !== 'lab') throw new Error('Operación inválida.');
@@ -24,6 +43,7 @@ export function completeFieldMission(game: CureGame, kind: FieldMissionKind, nod
   if (!Object.hasOwn(FIELD_MISSIONS, kind) || !Object.hasOwn(NODE_MAP, nodeId)) throw new Error('Operación inválida.');
   if (game.actions[game.day]?.fieldRewards?.[kind]) return game;
   if (game.status !== 'playing') throw new Error('La partida ya terminó.');
+  if (!missionFitsZone(kind, nodeId)) throw new Error('Operación incompatible con esta zona.');
   const amount = missionRewardAmount(game, kind, nodeId);
   if (amount <= 0) throw new Error('No hay población elegible o la cura ya está completa.');
   const action: DailyAction = game.actions[game.day] ?? { day: game.day, vaccinatedNodes: {}, fumigatedNodes: [], cordonedNodes: [], cordonedEdges: [], budgetSpent: 0, summaryText: 'Operación de campo.' };

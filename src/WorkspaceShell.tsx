@@ -1,16 +1,16 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TacticalCameraBridge } from "./components/tacticalCamera";
-import App from "./App";
+import App, { type AppProps } from "./App";
 import { ResearchWorkspace } from "./research/ResearchWorkspace";
 import type { SimulationParams } from "./domain/types";
 import "./research/research.css";
 
-export default function WorkspaceShell(props: {
-  onLogout?: () => void;
-  loggingOut?: boolean;
-}) {
+export default function WorkspaceShell(props: AppProps) {
   const [mode, setMode] = useState<"game" | "research">("game");
   const [params, setParams] = useState<SimulationParams | null>(null);
+  useEffect(() => {
+    if (props.activeMode === "game" || props.activeMode === "campaign") setMode("game");
+  }, [props.activeMode]);
   const cameraBridge = useRef<TacticalCameraBridge["current"]>(null);
   return (
     <div className="workspace-shell">
@@ -21,7 +21,7 @@ export default function WorkspaceShell(props: {
       >
         <App
           {...props}
-          inactive={mode !== "game"}
+          inactive={props.inactive || mode !== "game"}
           cameraBridge={cameraBridge}
           onScenarioChange={setParams}
           onOpenResearch={() => {
@@ -30,7 +30,7 @@ export default function WorkspaceShell(props: {
         />
       </div>
       <ResearchWorkspace
-        visible={mode === "research"}
+        visible={!props.inactive && mode === "research"}
         gameParams={params}
         cameraBridge={cameraBridge}
         onBack={() => setMode("game")}

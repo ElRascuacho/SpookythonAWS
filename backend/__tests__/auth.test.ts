@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { scryptSync } from "node:crypto";
-import { authorize, hashInvitation, SESSION_SECONDS } from "../auth";
+import { authorize, hashInvitation, ownerHash, SESSION_SECONDS } from "../auth";
 
 const code = "MC-01234-56789-ABCDE-F0123";
 const env = {
@@ -227,5 +227,88 @@ describe("Invitation authentication", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toContain("manta_session=;");
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+});
+
+describe("ownerHash helper", () => {
+  test("derives distinct ownerHash for different nonces with the same codeHash", async () => {
+    const first = await login("owner-user-1");
+    const second = await login("owner-user-2");
+
+    const owner1 = ownerHash(first.cookie, env, now + 1000);
+    const owner2 = ownerHash(second.cookie, env, now + 1000);
+
+    expect(typeof owner1).toBe("string");
+    expect(typeof owner2).toBe("string");
+    expect(owner1).toMatch(/^[a-f0-9]{64}$/);
+    expect(owner2).toMatch(/^[a-f0-9]{64}$/);
+    expect(owner1).not.toBe(owner2);
+
+    // Calling again returns identical deterministic ownerHash
+    expect(ownerHash(first.cookie, env, now + 1000)).toBe(owner1);
+
+    // Works when passing a Request object containing the cookie
+    const req1 = new Request("https://manta.example/api/committee/jobs", {
+      headers: { cookie: first.cookie },
+    });
+    const req2 = new Request("https://manta.example/api/committee/jobs", {
+      headers: { cookie: second.cookie },
+    });
+    expect(ownerHash(req1, env, now + 1000)).toBe(owner1);
+    expect(ownerHash(req2, env, now + 1000)).toBe(owner2);
+
+    // Also works when passing just the raw token string
+    const rawToken1 = first.cookie.replace("manta_session=", "");
+    expect(ownerHash(rawToken1, env, now + 1000)).toBe(owner1);
+  });
+
+  test("invalid, forged, expired, or tampered cookie does not derive an owner", async () => {
+    const { cookie } = await login("owner-validation");
+
+    // Missing, empty, or garbage cookie
+    expect(ownerHash("", env, now)).toBeNull();
+    expect(ownerHash("manta_session=", env, now)).toBeNull();
+    expect(ownerHash("manta_session=garbage", env, now)).toBeNull();
+    expect(
+      ownerHash(
+        new Request("https://manta.example/api/committee/jobs"),
+        env,
+        now,
+      ),
+    ).toBeNull();
+
+    // Forged signature
+    expect(ownerHash(`${cookie}forged`, env, now)).toBeNull();
+
+    // Expired cookie
+    expect(ownerHash(cookie, env, now + SESSION_SECONDS * 1000)).toBeNull();
+
+    // Expiry too far in future
+    const token = cookie.replace("manta_session=", "");
+    const parts = token.split(".");
+    const futureExpiryToken = `${parts[0]}.${now + (SESSION_SECONDS + 100) * 1000}.${parts[2]}.${parts[3]}`;
+    expect(ownerHash(`manta_session=${futureExpiryToken}`, env, now)).toBeNull();
+
+    // Tampered nonce: split cookie, change nonce, keep old signature
+    const tamperedNonceToken = `${parts[0]}.${parts[1]}.${"0".repeat(32)}.${parts[3]}`;
+    expect(
+      ownerHash(`manta_session=${tamperedNonceToken}`, env, now),
+    ).toBeNull();
+
+    // Secret mismatch
+    expect(
+      ownerHash(cookie, { ...env, INVITE_SESSION_SECRET: "cd".repeat(32) }, now),
+    ).toBeNull();
+
+    // Code hash mismatch
+    expect(
+      ownerHash(cookie, { ...env, INVITE_CODE_HASHES: "0".repeat(64) }, now),
+    ).toBeNull();
+
+    // Absent / unsafe configuration
+    expect(ownerHash(cookie, {}, now)).toBeNull();
+    expect(
+      ownerHash(cookie, { ...env, INVITE_SESSION_SECRET: "short" }, now),
+    ).toBeNull();
   });
 });

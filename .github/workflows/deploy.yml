@@ -23,6 +23,12 @@ jobs:
       INVITE_CODE_HASHES: ${{ secrets.INVITE_CODE_HASHES }}
       INVITE_SESSION_SECRET: ${{ secrets.INVITE_SESSION_SECRET }}
       INVITE_APP_ORIGIN: ${{ secrets.INVITE_APP_ORIGIN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ENABLE_RESEARCH_AI: ${{ vars.ENABLE_RESEARCH_AI || 'true' }}
+      ENABLE_RESEARCH_VOICE: ${{ vars.ENABLE_RESEARCH_VOICE || 'true' }}
+      OPENAI_RESEARCH_MODEL: ${{ vars.OPENAI_RESEARCH_MODEL || 'gpt-6.1-terra' }}
+      OPENAI_RESEARCH_VOICE_MODEL: ${{ vars.OPENAI_RESEARCH_VOICE_MODEL || 'gpt-realtime-2.1-mini' }}
+      OPENAI_RESEARCH_VOICE: ${{ vars.OPENAI_RESEARCH_VOICE || 'alloy' }}
 
     steps:
       - name: Checkout Code
@@ -74,6 +80,12 @@ jobs:
               InviteCodeHashes="$INVITE_CODE_HASHES" \
               InviteSessionSecret="$INVITE_SESSION_SECRET" \
               InviteAppOrigin="$INVITE_APP_ORIGIN" \
+              OpenAiApiKey="${OPENAI_API_KEY:-}" \
+              OpenAiResearchModel="${OPENAI_RESEARCH_MODEL:-gpt-6.1-terra}" \
+              EnableResearchAi="${ENABLE_RESEARCH_AI:-false}" \
+              EnableResearchVoice="${ENABLE_RESEARCH_VOICE:-false}" \
+              OpenAiResearchVoiceModel="${OPENAI_RESEARCH_VOICE_MODEL:-gpt-realtime-2.1-mini}" \
+              OpenAiResearchVoice="${OPENAI_RESEARCH_VOICE:-alloy}" \
             --no-fail-on-empty-changeset
 
       - name: Sync Frontend Assets to S3

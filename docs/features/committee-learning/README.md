@@ -38,7 +38,7 @@ Reglas:
 - No despliegues AWS, no habilites entrenamiento, no gastes crédito, no hagas commit/push salvo petición explícita del operador.
 - No inventes cuotas, pools, semillas ni hashes. Usa algorithm.md, data-model.md y contracts/openapi.yaml.
 - Conserva el juego/campaña; ModeShell no debe desmontar App al alternar modos.
-- Paridad numérica del motor con cuatro argumentos de runSingleSeirSimulation debe permanecer idéntica; el 5º options es opcional compatible.
+- Paridad numérica del motor con las llamadas existentes de runSingleSeirSimulation debe permanecer idéntica: el quinto argumento puede ser el grafo o `options`; si se pasa un grafo, `options` ocupa el sexto argumento.
 - Auth: cookie manta_session vigente; ownerHash derivado del nonce de sesión, no del codeHash compartido.
 - Resultados en S3 privado; nunca URLs públicas ni signed URLs de larga vida en v1.
 - Perfil cloud real es gate externo; no inventes timings/costes.

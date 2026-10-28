@@ -17,9 +17,29 @@ import {
   StrategyType,
 } from './types';
 
+function isDifficultyGraph(
+  value: DifficultyGraph | SingleSimulationOptions | undefined,
+): value is DifficultyGraph {
+  return !!value && "nodes" in value && Array.isArray(value.nodes);
+}
+
 const FUMIGATION_REDUCTION_ALPHA = 0.80; // alpha_fum = 0.80
 const CORDON_REDUCTION_ALPHA = 0.92; // alpha_cierre = 0.92 on inter-barrio transit edges
 const CORDON_LOCAL_LOCKDOWN_FACTOR = 0.45; // Local contact reduction inside a cordoned barrio
+
+/**
+ * Optional execution options for runSingleSeirSimulation.
+ * Extends the engine with policy callback and environmental RNG override
+ * without modifying legacy StrategyType or 4-argument numerical output.
+ */
+export interface SingleSimulationOptions {
+  onDailyDecision?: (
+    day: number,
+    state: Record<string, CompartmentState>,
+    params: SimulationParams,
+  ) => DailyAction;
+  envNamespace?: string;
+}
 
 /**
  * Runs a single stochastic SEIR-V trajectory on the Manta urban graph for a given strategy and runIndex.
@@ -30,14 +50,22 @@ export function runSingleSeirSimulation(
   strategy: StrategyType,
   runIndex: number,
   manualActions?: Record<number, DailyAction>,
-  graph?: DifficultyGraph,
-  extensions?: SimulationExtensions,
+  graphOrOptions?: DifficultyGraph | SingleSimulationOptions,
+  extensionsOrOptions?: SimulationExtensions | SingleSimulationOptions,
+  trailingOptions?: SingleSimulationOptions,
 ): SingleSimulationRunResult {
+  const graph = isDifficultyGraph(graphOrOptions) ? graphOrOptions : undefined;
+  const fifthOptions: SingleSimulationOptions | undefined = isDifficultyGraph(graphOrOptions) ? undefined : graphOrOptions;
+  const sixthIsExtensions = !!extensionsOrOptions && "resolveDailyEffects" in extensionsOrOptions;
+  const extensions = sixthIsExtensions ? extensionsOrOptions : undefined;
+  const sixthOptions: SingleSimulationOptions | undefined = sixthIsExtensions ? undefined : (extensionsOrOptions as SingleSimulationOptions | undefined);
+  const options: SingleSimulationOptions | undefined = trailingOptions ?? sixthOptions ?? fifthOptions;
   if (extensions?.resolveDailyEffects && (manualActions || graph)) throw new Error('Las medidas de investigación requieren el grafo original y no admiten recompensas/acciones manuales del juego.');
   const MANTA_NODES = graph?.nodes ?? DEFAULT_NODES;
   const NODE_MAP = graph?.nodeMap ?? DEFAULT_NODE_MAP;
   const ADJACENCY_LIST = graph?.adjacencyList ?? DEFAULT_ADJACENCY_LIST;
-  const rng: RngFunction = createSeededRng(params.seed, strategy, runIndex);
+  const envNamespace = options?.envNamespace ?? strategy;
+  const rng: RngFunction = createSeededRng(params.seed, envNamespace, runIndex);
   const strategyRng: RngFunction = createSeededRng(
     params.seed ^ 0x13579bdf,
     `${strategy}_DECISION`,
@@ -86,7 +114,9 @@ export function runSingleSeirSimulation(
           day, vaccinatedNodes: {}, fumigatedNodes: [], cordonedNodes: [],
           cordonedEdges: [], budgetSpent: 0, summaryText: 'Sin intervención.',
         }
-      : decideDailyAction(day, state, decisionParams, strategy, strategyRng, graph);
+      : options?.onDailyDecision
+        ? options.onDailyDecision(day, state, decisionParams)
+        : decideDailyAction(day, state, decisionParams, strategy, strategyRng, graph);
     const action = effects ? { ...baseAction, budgetSpent: baseAction.budgetSpent + effects.cost, summaryText: `${baseAction.summaryText} Medidas experimentales: $${effects.cost.toFixed(2)}.` } : baseAction;
     totalBudgetSpent += action.budgetSpent;
 

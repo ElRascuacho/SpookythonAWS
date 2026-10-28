@@ -4,6 +4,7 @@ import { authorize, json } from "./auth";
 import { NEWS_BODY_LIMIT, NEWS_ROUTE, handleNewsRoute } from "./news";
 import { RESEARCH_VOICE_ROUTE, handleResearchVoice } from './researchVoice';
 import { RESEARCH_BODY_LIMIT, RESEARCH_ROUTE, handleResearchAgent } from './researchAgent';
+import { handleCommitteeRoute } from './committee/http';
 
 export function invitationAuth(env: Record<string, string>): Plugin {
   const middleware =
@@ -49,6 +50,7 @@ export function invitationAuth(env: Record<string, string>): Plugin {
           response = await handleNewsRoute(request, clientIp, serverEnv);
         if (!response && pathname === RESEARCH_ROUTE) response = await handleResearchAgent(request, clientIp, serverEnv);
         if (!response && pathname === RESEARCH_VOICE_ROUTE) response = await handleResearchVoice(request, clientIp, serverEnv);
+        if (!response && pathname.startsWith("/api/committee/")) response = await handleCommitteeRoute(request, serverEnv);
         response ??= json(404, { error: "Ruta no encontrada." });
         res.writeHead(
           response.status,

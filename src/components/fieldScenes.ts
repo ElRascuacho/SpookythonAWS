@@ -62,7 +62,7 @@ export function drawShooter(c: CanvasRenderingContext2D, s: ShooterState, reduce
   for (const z of [...s.enemies].sort((a, b) => b.depth - a.depth)) zombie(c, s, z, sprite);
   // Fixed first-person viewpoint; no pointer lock or camera shake is needed.
   const recoil = !reducedMotion && s.flashUntil > s.time ? 9 : 0;
-  c.save(); c.translate(0, recoil);
+  c.save(); c.translate(reducedMotion ? 0 : s.weaponX, recoil + (reducedMotion ? 0 : s.weaponY));
   if (weapon) c.drawImage(weapon, 475, 260 + (s.reloadUntil ? 60 : 0), 485, 323);
   else {
   polygon(c, '#15262d', [[553, 480], [589, 393], [620, 369], [677, 426], [723, 480]]);

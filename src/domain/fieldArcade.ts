@@ -2,11 +2,11 @@ export const VIEW_W = 960, VIEW_H = 480;
 export interface Zombie { id: number; lane: number; depth: number }
 export interface ShooterState {
   time: number; nextSpawn: number; serial: number; enemies: Zombie[];
-  aimX: number; aimY: number; ammo: number; reloadUntil: number; lastShot: number;
+  aimX: number; aimY: number; weaponX: number; weaponY: number; ammo: number; reloadUntil: number; lastShot: number;
   kills: number; health: number; flashUntil: number; hitUntil: number; hurtUntil: number;
   result: 'playing' | 'won' | 'lost';
 }
-export const createShooter = (): ShooterState => ({ time: 0, nextSpawn: 0.4, serial: 0, enemies: [], aimX: 480, aimY: 240, ammo: 6, reloadUntil: 0, lastShot: -1, kills: 0, health: 3, flashUntil: 0, hitUntil: 0, hurtUntil: 0, result: 'playing' });
+export const createShooter = (): ShooterState => ({ time: 0, nextSpawn: 0.4, serial: 0, enemies: [], aimX: 480, aimY: 240, weaponX: 0, weaponY: 0, ammo: 6, reloadUntil: 0, lastShot: -1, kills: 0, health: 3, flashUntil: 0, hitUntil: 0, hurtUntil: 0, result: 'playing' });
 export function zombieTarget(z: Zombie, time: number) {
   const progress = 1 - z.depth, height = 52 + progress * 168;
   return { x: 480 + z.lane * (100 + progress * 270) + Math.sin(time * 2 + z.id) * 16, y: 233 + progress * 205, w: height * 0.48, h: height };
@@ -29,6 +29,9 @@ export function stepShooter(s: ShooterState, dt: number) {
   if (s.result !== 'playing') return;
   dt = Math.min(0.05, Math.max(0, dt));
   s.time += dt;
+  const follow = 1 - Math.exp(-16 * dt);
+  s.weaponX += (Math.max(-1, Math.min(1, (s.aimX - VIEW_W / 2) / (VIEW_W / 2))) * 48 - s.weaponX) * follow;
+  s.weaponY += (Math.max(-1, Math.min(1, (s.aimY - VIEW_H / 2) / (VIEW_H / 2))) * 20 - s.weaponY) * follow;
   if (s.reloadUntil && s.time >= s.reloadUntil) { s.ammo = 6; s.reloadUntil = 0; }
   if (s.time >= s.nextSpawn) {
     const id = s.serial++;
