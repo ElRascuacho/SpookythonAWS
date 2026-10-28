@@ -28,7 +28,7 @@ function PlaybackMap({ snapshot }: { snapshot: DailyCitySnapshot }) {
   useEffect(() => {
     let alive = true;
     void import("../components/CureEarth3DMap").then((mod) => {
-      if (alive) setMapView(() => mod.default);
+      if (alive) setMapView(() => mod.CureEarth3DMap);
     });
     return () => {
       alive = false;
