@@ -21,7 +21,7 @@ import {
 
 const Game = lazy(() => import("./App"));
 
-async function access(path: string, code?: string) {
+async function access(path: string, credentials?: { email: string; password: string }) {
   const response = await fetch(`/api/auth/${path}`, {
     method: path === "session" ? "GET" : "POST",
     credentials: "same-origin",
@@ -30,7 +30,7 @@ async function access(path: string, code?: string) {
     body:
       path === "session"
         ? undefined
-        : JSON.stringify(code === undefined ? {} : { code }),
+        : JSON.stringify(credentials ?? {}),
     signal: AbortSignal.timeout(10_000),
     cache: "no-store",
   });
@@ -42,7 +42,8 @@ export default function InvitationGate() {
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
   const [checkFailed, setCheckFailed] = useState(false);
@@ -101,7 +102,7 @@ export default function InvitationGate() {
         requestId.current++;
         setExpiresAt(null);
         setError(
-          "Tu sesión terminó. Ingresa tu código para iniciar una nueva misión.",
+          "Tu sesión terminó. Inicia sesión para comenzar una nueva misión.",
         );
       },
       Math.max(0, expiresAt - Date.now()),
@@ -117,20 +118,20 @@ export default function InvitationGate() {
     setBusy(true);
     setError("");
     try {
-      const { response, data } = await access("login", code);
+      const { response, data } = await access("login", { email, password });
       if (id !== requestId.current) return;
       if (!response.ok) {
-        setError(data.error || "No pudimos verificar el código.");
+        setError(data.error || "No pudimos verificar tus credenciales.");
         return;
       }
-      setCode("");
+      setPassword("");
       setVisible(false);
       setExpiresAt(data.expiresAt);
       setCheckFailed(false);
     } catch {
       if (id === requestId.current)
         setError(
-          "No pudimos conectar. Tu código no se ha verificado; vuelve a intentarlo.",
+          "No pudimos conectar. Vuelve a intentarlo.",
         );
     } finally {
       mutating.current = false;
@@ -319,15 +320,14 @@ export default function InvitationGate() {
             <div className="access-fingerprint">
               <Fingerprint size={33} strokeWidth={1.3} />
             </div>
-            <p className="access-eyebrow">SOLO CON INVITACIÓN</p>
+            <p className="access-eyebrow">INICIA SESIÓN</p>
             <h2 id="access-title">
               Tu lugar está en
               <br />
               el centro de respuesta.
             </h2>
             <p className="access-description">
-              Ingresa el código que recibiste para tomar el mando de la
-              operación.
+              Ingresa tus credenciales para tomar el mando de la operación.
             </p>
             {checking ? (
               <div className="access-check" role="status">
@@ -336,45 +336,33 @@ export default function InvitationGate() {
               </div>
             ) : (
               <form onSubmit={login}>
-                <label htmlFor="invite-code">Código de invitación</label>
-                <div
-                  className={`access-input${error && !checkFailed ? " has-error" : ""}`}
-                >
-                  <input
-                    ref={input}
-                    id="invite-code"
-                    name="invitation"
-                    type={visible ? "text" : "password"}
-                    value={code}
-                    onChange={(event) => {
-                      setCode(event.target.value);
-                      if (!checkFailed) setError("");
-                    }}
-                    placeholder="MC-XXXXX-XXXXX-XXXXX-XXXXX"
-                    autoComplete="off"
-                    autoCapitalize="characters"
-                    spellCheck={false}
-                    maxLength={100}
-                    required
-                    disabled={busy || checkFailed}
-                    aria-invalid={!!error && !checkFailed}
-                    aria-describedby={`invite-hint${error ? " invite-error" : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setVisible(!visible)}
-                    aria-label={visible ? "Ocultar código" : "Mostrar código"}
-                    aria-pressed={visible}
-                    disabled={busy || checkFailed}
-                  >
+                <label htmlFor="login-email">Correo electrónico</label>
+                <div className={`access-input${error && !checkFailed ? " has-error" : ""}`}>
+                  <input ref={input} id="login-email" name="email" type="email"
+                    value={email} onChange={(event) => { setEmail(event.target.value); if (!checkFailed) setError(""); }}
+                    placeholder="tu@correo.com" autoComplete="username" maxLength={254}
+                    required disabled={busy || checkFailed} aria-invalid={!!error && !checkFailed}
+                    aria-describedby={error ? "login-error" : undefined} />
+                </div>
+                <label className="access-password-label" htmlFor="login-password">Contraseña</label>
+                <div className={`access-input${error && !checkFailed ? " has-error" : ""}`}>
+                  <input id="login-password" name="password" type={visible ? "text" : "password"}
+                    value={password} onChange={(event) => { setPassword(event.target.value); if (!checkFailed) setError(""); }}
+                    placeholder="Tu contraseña" autoComplete="current-password" maxLength={256}
+                    required disabled={busy || checkFailed} aria-invalid={!!error && !checkFailed}
+                    aria-describedby={error ? "login-error" : undefined} />
+                  <button type="button" onClick={() => setVisible(!visible)}
+                    aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-pressed={visible} disabled={busy || checkFailed}>
                     {visible ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p id="invite-hint" className="access-hint">
-                  Puedes pegarlo completo, incluidos los guiones.
-                </p>
+                <button className="access-demo" type="button" disabled={busy || checkFailed}
+                  onClick={() => { setEmail("demo@mantacero.com"); setPassword("Demo2026!"); setError(""); }}>
+                  Usar credenciales demo
+                </button>
                 {error && (
-                  <p id="invite-error" className="access-error" role="alert">
+                  <p id="login-error" className="access-error" role="alert">
                     {error}
                   </p>
                 )}
@@ -393,11 +381,11 @@ export default function InvitationGate() {
                   <button
                     className="access-submit"
                     type="submit"
-                    disabled={busy || !code.trim()}
+                    disabled={busy || !email.trim() || !password}
                   >
                     {busy ? (
                       <>
-                        Verificando código{" "}
+                        Iniciando sesión{" "}
                         <LoaderCircle className="access-spinner" size={18} />
                       </>
                     ) : (
@@ -409,18 +397,14 @@ export default function InvitationGate() {
                 )}
               </form>
             )}
-            <p className="access-help">
-              ¿Aún no tienes código?
-              <br />
-              <span>Pídeselo a la persona que te invitó.</span>
-            </p>
+
           </div>
           <div className="access-card-footer">
             <ShieldCheck size={17} />
             <span>
-              Sin correo. Sin contraseña.
+              Acceso a la simulación.
               <br />
-              <strong>Solo tu invitación y una misión por cumplir.</strong>
+              <strong>Una misión por cumplir.</strong>
             </span>
           </div>
         </section>
@@ -431,7 +415,7 @@ export default function InvitationGate() {
         </span>
         <span>Simulación ficticia · No es una herramienta clínica</span>
         <span>
-          ACCESO POR INVITACIÓN <ArrowRight size={12} />
+          CENTRO DE RESPUESTA <ArrowRight size={12} />
         </span>
       </footer>
     </main>

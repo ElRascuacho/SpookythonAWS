@@ -804,8 +804,7 @@ export default function App({
       {modal === "logout" && (
         <Dialog title="¿Cerrar sesión?" onClose={closeModal}>
           <p className="dialog-intro">
-            La partida actual no se guarda. Podrás volver a entrar con el mismo
-            código de invitación.
+            La partida actual no se guarda. Podrás volver a iniciar sesión con tus credenciales.
           </p>
           <button
             className="primary-button"

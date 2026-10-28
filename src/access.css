@@ -1,7 +1,7 @@
 .access-page {
-  height: 100svh;
+  min-height: 100svh;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-x: hidden;
   padding: 32px clamp(24px, 5vw, 80px) 22px;
   background:
     radial-gradient(ellipse at 28% 46%, #19313866, transparent 53%), var(--ink);
@@ -236,6 +236,16 @@
 .access-input button:hover {
   color: var(--mint);
 }
+.access-password-label { margin-top: 16px; }
+.access-demo {
+  display: block;
+  margin: 12px 0 16px;
+  color: #efb09a;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.access-demo:hover { color: #f7d0c2; }
 .access-hint {
   color: #8ca1a8;
   font-size: 10px;
@@ -454,7 +464,7 @@
 .access-page {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow-x: hidden;
   color: #edf1e9;
   background: #091114;
 }

@@ -6,8 +6,7 @@ Demo jugable para navegador de **Operación Manta Cero**, Track B: La Plaga Zomb
 
 ```bash
 bun install
-bun run invite
-# Lee .invite-code.local y usa ese código en la pantalla de acceso.
+# Crea .env.local con INVITE_SESSION_SECRET (ver sección de acceso).
 bun run dev
 # http://localhost:5173
 bun test
@@ -15,16 +14,15 @@ bun run build
 bun run preview
 ```
 
-## Acceso por invitación
+## Inicio de sesión
 
-Los códigos son **compartidos y reutilizables**: autorizan acceso a la demo, no identifican a una persona. No hay correo, registro ni cuentas.
+El botón **Usar credenciales demo** rellena el correo y la contraseña; después pulsa **Entrar a la operación**. Esta cuenta es pública y compartida: cualquiera con acceso a la aplicación puede usarla, incluidos los endpoints protegidos. Para deshabilitarla configura `DEMO_LOGIN_ENABLED=false` en el servidor y reinícialo; esto también invalida sus sesiones existentes. El botón permanece visible, pero el servidor rechazará esas credenciales.
 
-- `bun run invite` genera un código aleatorio de 80 bits en `.invite-code.local` y configura su hash SHA-256 y una clave de firma aleatoria en `.env.local`. Ambos archivos están ignorados por Git; el servidor de desarrollo bloquea su descarga. No sobrescribe archivos existentes.
-- Comparte únicamente el código con los invitados. Nunca compartas `.env.local` ni uses el prefijo `VITE_` para secretos: [Vite expone esas variables al cliente](https://vite.dev/guide/env-and-mode).
-- Vite sirve `/api/auth/login`, `/api/auth/session`, `/api/auth/logout` y `/api/news` tanto en desarrollo (`localhost:5173`) como en preview (`localhost:4173`). Abre **localhost**, no la IP de la red. Para otro origen, configura `INVITE_APP_ORIGIN` (HTTPS salvo localhost) y reinicia.
-- Validación en servidor; cookie firmada `HttpOnly`, `SameSite=Strict`, `Secure` en HTTPS y duración máxima de **8 horas**, sin tokens en localStorage. Comprobación de origen en POST, límites de tamaño y cinco intentos por IP/minuto. [Referencia de seguridad de sesiones: OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html).
-- **Salir** pide confirmación porque descarta la partida. Recargar conserva el acceso, pero no el progreso. Al caducar la sesión se vuelve al formulario.
-- Para revocar un código, elimina su hash de `INVITE_CODE_HASHES` (lista separada por comas). Para revocar todas las sesiones, cambia `INVITE_SESSION_SECRET` por 32 bytes aleatorios en hexadecimal. Reinicia el servidor tras cambiar variables. Para regenerar todo localmente, respalda fuera del repositorio y retira los dos archivos locales antes de repetir `bun run invite`.
+Para iniciar localmente, crea `.env.local` con `INVITE_SESSION_SECRET` de 32 bytes aleatorios en hexadecimal, por ejemplo con `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Conserva cualquier otra variable existente. Vite usa `http://localhost:5173` o `http://localhost:4173` como origen por defecto; para otro origen configura `INVITE_APP_ORIGIN` (HTTPS salvo localhost).
+
+Opcionalmente configura una cuenta propia con `LOGIN_EMAIL` y `LOGIN_PASSWORD_SCRYPT` en el servidor. Genera el valor `sal:hash` con `node -e "const c=require('crypto'), s=c.randomBytes(16); console.log(s.toString('hex')+':'+c.scryptSync(process.argv[1],s,64).toString('hex'))" 'CONTRASEÑA'` (evita exponer contraseñas reales en el historial del shell). Cambiar el correo o hash invalida sus sesiones. No hay registro ni recuperación de contraseña.
+
+La API anterior sigue aceptando códigos configurados en `INVITE_CODE_HASHES` para compatibilidad; elimina esa variable para revocarlos. No compartas `.env.local` ni uses `VITE_` para secretos. La cookie es `HttpOnly`, `SameSite=Strict`, `Secure` en HTTPS y dura hasta **8 horas**; hay comprobación de origen, límite de tamaño y cinco intentos por IP/minuto. **Salir** descarta la partida, mientras que recargar conserva el acceso, pero no el progreso. Rota `INVITE_SESSION_SECRET` para revocar todas las sesiones.
 
 **Límites de esta demo:** el rate limit es por proceso, no distribuido; antes de escalar necesita control compartido o WAF. Cerrar sesión borra la cookie del navegador, pero una copia robada del token sigue válida hasta caducar o revocar el código/clave. El JavaScript del juego es descargable y la simulación corre en cliente: esto controla el acceso normal y los endpoints, no es DRM ni protege código fuente o datos que se incluyan en assets públicos.
 
