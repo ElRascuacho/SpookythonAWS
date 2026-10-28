@@ -202,7 +202,6 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
   const [plan, setPlan] = useState<SimulationPlan | "COMMITTEE">("SMART_CORTAFUEGOS");
   const [difficulty, setDifficulty] = useState<GraphDifficulty>("normal");
   const [count, setCount] = useState(20);
-  const [seedMode, setSeedMode] = useState<"fixed" | "random">("fixed");
   const [seed, setSeed] = useState(game.config.seed);
   const [actualSeed, setActualSeed] = useState<number | null>(null);
   const [actualPlan, setActualPlan] = useState<SimulationPlan | "COMMITTEE">(plan);
@@ -226,17 +225,17 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
   useEffect(() => () => stop(), []);
 
   const start = async () => {
-    if (!Number.isInteger(count) || count < (plan === "COMMITTEE" ? 2 : 1) || count > 200 || (seedMode === "fixed" && (!Number.isInteger(seed) || seed < 0 || seed > 4294967295))) {
+    if (!Number.isInteger(count) || count < (plan === "COMMITTEE" ? 2 : 1) || count > 200 || (!Number.isInteger(seed) || seed < 0 || seed > 4294967295)) {
       setError("Ingresa entre 1 y 200 simulaciones (al menos 2 para el Comité) y una semilla entera válida (0 a 4294967295).");
       return;
     }
-    if (typeof Worker === "undefined" || (seedMode === "random" && !globalThis.crypto?.getRandomValues)) {
+    if (typeof Worker === "undefined") {
       setError("Este navegador no admite los recursos necesarios para ejecutar la simulación paralela.");
       return;
     }
     stop();
     const current = generation.current;
-    const chosenSeed = seedMode === "random" ? crypto.getRandomValues(new Uint32Array(1))[0] : seed;
+    const chosenSeed = seed;
     setActualSeed(chosenSeed); setActualPlan(plan); setActualDifficulty(difficulty); setTotal(count); setSamples([]); setPairs([]); setPolicy(null); setSelectedIndex(null); setError(""); setRunning(true);
     let selectedPolicy: PublishedPolicy | null = null;
     if (plan === "COMMITTEE") {
@@ -318,9 +317,8 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
         <label>Plan<select value={plan} disabled={running} onChange={(event) => { const selected = event.target.value as SimulationPlan | "COMMITTEE"; setPlan(selected); if (selected === "PLAYER" || selected === "COMMITTEE") setDifficulty("normal"); }}><option value="COMMITTEE">Política publicada del Comité</option><option value="SMART_CORTAFUEGOS">Cortafuegos automático</option><option value="RANDOM">Intervención al azar</option><option value="NO_INTERVENTION">Sin intervención</option><option value="PLAYER" disabled={game.day === 0}>Mi plan jugado hasta el día {game.day}</option></select></label>
         <label>Dificultad y sectores<select value={difficulty} disabled={running || plan === "PLAYER" || plan === "COMMITTEE"} onChange={(event) => setDifficulty(event.target.value as GraphDifficulty)}><option value="normal">Normal · 16 zonas</option><option value="hard">Difícil · 32 sectores</option><option value="extreme">Extremo · 48 sectores</option></select></label>
         <label>Simulaciones (1–200)<input type="number" min="1" max="200" step="1" value={count} disabled={running} onChange={(event) => setCount(Number(event.target.value))} /></label>
-        <label>Semilla<select value={seedMode} disabled={running} onChange={(event) => setSeedMode(event.target.value as "fixed" | "random")}><option value="fixed">Específica</option><option value="random">Aleatoria</option></select></label>
-        {seedMode === "fixed" && <label>Valor de semilla<input type="number" min="0" max="4294967295" step="1" value={seed} disabled={running} onChange={(event) => setSeed(Number(event.target.value))} /></label>}
-        <button className="primary-button" disabled={running} onClick={start}>Ejecutar simulaciones</button>
+        <div>Semilla: {seed} <button type="button" className="secondary-button" disabled={running} onClick={() => setSeed(Math.floor(Math.random() * 4294967296))}>Generar semilla aleatoria</button></div>
+                <button className="primary-button" disabled={running} onClick={start}>Ejecutar simulaciones</button>
         {running && <button className="secondary-button" onClick={() => { stop(); setRunning(false); setError("Simulación cancelada."); }}>Cancelar</button>}
       </section>
       {plan === "COMMITTEE" && (

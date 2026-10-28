@@ -214,17 +214,12 @@ export const SurpriseOutbreakPanel: React.FC<SurpriseOutbreakPanelProps> = ({
             Semilla Reproducible (Seed)
           </label>
           <div className="flex items-center gap-1">
-            <input
-              type="number"
-              value={params.seed}
-              onChange={(e) => updateField('seed', parseInt(e.target.value, 10) || 20261030)}
-              aria-label="Semilla aleatoria reproducible"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
-            />
+            <span className="text-xs font-mono text-emerald-400">{params.seed}</span>
             <button
               onClick={() => updateField('seed', Math.floor(10000000 + Math.random() * 90000000))}
               className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
               title="Generar nueva semilla aleatoria"
+              aria-label="Generar nueva semilla aleatoria"
             >
               <Dices className="w-3.5 h-3.5" />
             </button>
