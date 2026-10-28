@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactNode } from "react";
+import { createContext, lazy, Suspense, useContext, useState, type ReactNode } from "react";
 import CommitteePanel from "./committee/CommitteePanel";
 import { Activity, Clapperboard, Brain, LoaderCircle } from "lucide-react";
 import type { AppProps } from "./App";
@@ -15,6 +15,30 @@ export interface ModeShellProps {
 }
 
 const DefaultApp = lazy(() => import("./App"));
+
+const ModeContext = createContext<{
+  mode: Mode;
+  switchMode: (mode: Mode) => void;
+} | null>(null);
+
+export function ModeTabs() {
+  const ctx = useContext(ModeContext);
+  if (!ctx) return null;
+  const { mode, switchMode } = ctx;
+  return (
+    <nav className="mode-shell-nav" role="tablist" aria-label="Selector de modo">
+      <button type="button" role="tab" aria-selected={mode === "game"} className={`mode-shell-tab ${mode === "game" ? "active" : ""}`} onClick={() => switchMode("game")} data-testid="tab-game">
+        <Activity size={15} /><span>Juego</span>
+      </button>
+      <button type="button" role="tab" aria-selected={mode === "campaign"} className={`mode-shell-tab ${mode === "campaign" ? "active" : ""}`} onClick={() => switchMode("campaign")} data-testid="tab-campaign">
+        <Clapperboard size={15} /><span>Campaña</span>
+      </button>
+      <button type="button" role="tab" aria-selected={mode === "committee"} className={`mode-shell-tab ${mode === "committee" ? "active" : ""}`} onClick={() => switchMode("committee")} data-testid="tab-committee">
+        <Brain size={15} /><span>Comité</span>
+      </button>
+    </nav>
+  );
+}
 
 export default function ModeShell({
   onLogout,
@@ -52,6 +76,7 @@ export default function ModeShell({
   );
 
   return (
+    <ModeContext.Provider value={{ mode, switchMode }}>
     <div className="mode-shell" data-testid="mode-shell">
       <style>{`
         .mode-shell {
@@ -62,16 +87,13 @@ export default function ModeShell({
         /* A containing block keeps the fixed game UI below the shared mode tabs. */
         .mode-shell-app-slot {
           position: fixed;
-          inset: 56px 0 0;
+          inset: 0;
           transform: translateZ(0);
         }
         .mode-shell-nav {
-          position: fixed;
-          top: 14px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 45;
-          display: flex;
+          position: static;
+          z-index: 1;
+          display: inline-flex;
           align-items: center;
           gap: 4px;
           padding: 3px 4px;
@@ -184,49 +206,6 @@ export default function ModeShell({
         }
       `}</style>
 
-      {/* Top Chrome / Mode Navigation Switcher (SCR-01) */}
-      <nav
-        className="mode-shell-nav"
-        role="tablist"
-        aria-label="Selector de modo"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "game"}
-          className={`mode-shell-tab ${mode === "game" ? "active" : ""}`}
-          onClick={() => switchMode("game")}
-          data-testid="tab-game"
-        >
-          <Activity size={15} />
-          <span>Juego</span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "campaign"}
-          className={`mode-shell-tab ${mode === "campaign" ? "active" : ""}`}
-          onClick={() => switchMode("campaign")}
-          data-testid="tab-campaign"
-        >
-          <Clapperboard size={15} />
-          <span>Campaña</span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "committee"}
-          className={`mode-shell-tab ${mode === "committee" ? "active" : ""}`}
-          onClick={() => switchMode("committee")}
-          data-testid="tab-committee"
-        >
-          <Brain size={15} />
-          <span>Comité</span>
-        </button>
-      </nav>
-
       {/* App Container: kept mounted across all modes, hidden with CSS when in committee mode (ADR-0007 / AC-01) */}
       <div
         className={`mode-shell-app-slot ${mode === "committee" ? "mode-shell-hidden" : ""}`}
@@ -245,6 +224,11 @@ export default function ModeShell({
           role="tabpanel"
           aria-label="Comité de Aprendizaje"
         >
+          <header className="hub-topbar">
+            <nav className="header-actions" aria-label="Modos">
+              <ModeTabs />
+            </nav>
+          </header>
           {renderCommittee ? renderCommittee() : <CommitteePanel />}
           {onLogout && (
             <button type="button" className="secondary-button committee-logout" onClick={onLogout} disabled={loggingOut}>
@@ -254,5 +238,6 @@ export default function ModeShell({
         </section>
       )}
     </div>
+    </ModeContext.Provider>
   );
 }

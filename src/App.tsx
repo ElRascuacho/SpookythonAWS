@@ -62,6 +62,7 @@ import { computePercentile, runMonteCarloComparison } from "./domain/monteCarlo"
 import { requestNews } from "./domain/newsClient";
 import type { GameNews, NewsState } from "./domain/newsModel";
 import { runSingleSeirSimulation } from "./domain/seirEngine";
+import { ModeTabs } from "./ModeShell";
 import type { MonteCarloComparisonResult, SimulationParams } from "./domain/types";
 
 const DEFAULT_CONFIG: GameConfig = {
@@ -519,6 +520,7 @@ export default function App({
           <b>DEMO JUGABLE</b>
         </div>
         <nav className="header-actions" aria-label="Opciones de misión">
+          <ModeTabs />
           <button aria-label="Modo simulación múltiple" disabled={dayTransition !== null} onClick={() => setSimulationMode(true)}>
             <Activity size={16} /><span>Simulación</span>
           </button>
