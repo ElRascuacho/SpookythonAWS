@@ -67,6 +67,10 @@ Timeout proveedor 9 s; máximo 5000 tokens de salida; `store:false`. Cuatro inte
 
 SAM añade ruta, modelo y flag (deshabilitada por defecto). No se desplegó. La API key comparte la configuración server-side existente del boletín; no se modifica el comportamiento de respaldo de noticias.
 
+## Agente científico, evidencia y primera visita
+
+Texto y voz comparten contexto validado del experimento. El chat incluye evaluación exploratoria emparejada de 16/32 réplicas en worker local, ficha con hash/configuración congelada/exportación, invalidación tras cambios, variantes que solo preparan una petición y consulta manual de jobs del Comité sin iniciar búsquedas. La primera entrada muestra una bienvenida científica educativa (sin afirmar validación clínica), una vez por navegador. Ver [contratos, límites, metodología y pruebas](SCIENTIFIC-AGENT.md).
+
 ## Conversación por voz
 
 Conversación Realtime nativa al estilo Midas/TAWS: voz en español con interrupciones, transcripción progresiva y una tarjeta compacta con onda de audio dentro del chat (sin pantalla completa ni esfera). Terra interviene como herramienta únicamente para crear/revisar propuestas validadas; no en cada turno. Mantiene confirmación manual y libera captura/conexión al salir. La voz local está habilitada a petición del usuario; SAM queda deshabilitado por defecto. El nuevo flujo requiere verificación manual con audio real. Ver [arquitectura, configuración, límites y pruebas](VOICE.md).

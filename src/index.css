@@ -2141,6 +2141,16 @@ svg {
 }
 .mobile-zone-select {
   display: none;
+  color-scheme: dark;
+  background: #10212a;
+  color: var(--text);
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  padding: 9px;
+}
+.mobile-zone-select option {
+  background: #10212a;
+  color: var(--text);
 }
 @media (max-width: 680px) {
   .mobile-zone-select {
@@ -2150,7 +2160,7 @@ svg {
     font-size: 15px;
     background: #10212a;
     color: #c0d3cf;
-    border: 1px solid #3b565e;
+    border: 1px solid var(--control-border);
     border-radius: 4px;
     margin: 12px 0;
     padding: 9px;

@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Dna,
   FlaskConical,
+  Info,
   Settings2,
   FolderOpen,
   MessageSquare,
@@ -14,7 +15,17 @@ import {
   X,
 } from "lucide-react";
 import { ResearchVoiceControls } from "./ResearchVoiceControls";
-import { ModeTabs } from "../ModeShell";
+import { ResearchLiveReport, type ReportData } from "./ResearchLiveReport";
+import { ResearchWelcome } from "./ResearchWelcome";
+import {
+  ResearchEvidencePanel,
+  type EvidenceContext,
+} from "./ResearchEvidencePanel";
+import {
+  configurationIdentity,
+  evidenceSummary,
+  type ResearchContext,
+} from "../domain/researchEvidence";
 import { AgentReplyText } from "./AgentReplyText";
 import { CureEarth3DMap } from "../components/CureEarth3DMap";
 import { MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
@@ -91,7 +102,13 @@ export function ResearchWorkspace({
   const [draftId, setDraftId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [chat, setChat] = useState<
-    { id: string; role: string; text: string; evaluation?: MeasureEvaluation | null }[]
+    {
+      id: string;
+      role: string;
+      text: string;
+      evaluation?: MeasureEvaluation | null;
+      report?: { initial: ReportData; createdAt: string };
+    }[]
   >([]);
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const typingScrollUntil = useRef(0);
@@ -103,8 +120,16 @@ export function ResearchWorkspace({
     initialResult(loaded.workspace.params),
   );
   const [manifest, setManifest] = useState<Workspace | null>(null);
+  const [evidenceContext, setEvidenceContext] = useState<EvidenceContext>({
+    evidence: null,
+    evidenceCurrent: false,
+    identity: null,
+    committee: null,
+    committeeReadAt: null,
+  });
   const [view, setView] = useState<"scenario" | "measures">("measures");
   const [panelOpen, setPanelOpen] = useState(true);
+  const [welcomeRequest, setWelcomeRequest] = useState(0);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [inspecting, setInspecting] = useState(false);
   const [curveOpen, setCurveOpen] = useState(false);
@@ -119,6 +144,34 @@ export function ResearchWorkspace({
   const draft = w.drafts.find((d) => d.id === draftId) ?? null;
   const snapshot = result.timeline[Math.min(day, result.timeline.length - 1)];
   const stale = manifest && JSON.stringify(manifest) !== JSON.stringify(w);
+  const agentContext: ResearchContext = {
+    schemaVersion: 1,
+    selectedMeasure: draft?.definition ?? null,
+    editableParameters: w.params,
+    executionParameters: manifest?.params ?? null,
+    configurationChanged: Boolean(stale),
+    observed: {
+      day: snapshot.day,
+      infected: snapshot.totalI,
+      exposed: snapshot.totalE,
+      recovered: snapshot.totalR,
+      cumulativeInfected: snapshot.cumulativeInfected,
+      hospitalCollapsed: snapshot.hospitalCollapsed,
+    },
+    measures: w.drafts.map((d) => ({
+      id: d.id,
+      name: d.definition.name,
+      revision: d.revision,
+      enabled: d.enabled,
+      confirmed: Boolean(d.confirmed) && d.confirmedRevision === d.revision,
+    })),
+    evidence: evidenceSummary(evidenceContext.evidence),
+    evidenceCurrent:
+      evidenceContext.evidenceCurrent &&
+      evidenceContext.identity === configurationIdentity(w),
+    committee: evidenceContext.committee,
+    committeeReadAt: evidenceContext.committeeReadAt,
+  };
   useEffect(() => {
     if (!visible) {
       setRunning(false);
@@ -421,6 +474,7 @@ export function ResearchWorkspace({
         body: JSON.stringify({
           message,
           current: draft?.definition ?? null,
+          context: agentContext,
           history: chat.slice(-8).map((m) => ({
             role: m.role === "Tú" ? "user" : "assistant",
             text: m.text,
@@ -535,6 +589,11 @@ export function ResearchWorkspace({
     </label>
   );
   const observed = result.timeline.slice(0, day + 1);
+  const reportData: ReportData = {
+    context: agentContext,
+    identity: configurationIdentity(w),
+    points: observed.map((s) => ({ day: s.day, infected: s.totalI })),
+  };
   const max = Math.max(1, ...observed.map((s) => s.totalI));
   return (
     <section
@@ -544,6 +603,7 @@ export function ResearchWorkspace({
       aria-label="Espacio de investigación"
       tabIndex={-1}
     >
+      <ResearchWelcome active={visible} openRequest={welcomeRequest} />
       <header className="hub-topbar">
         <a
           className="brand"
@@ -571,7 +631,6 @@ export function ResearchWorkspace({
           className="header-actions"
           aria-label="Herramientas de investigación"
         >
-          <ModeTabs onSelect={onBack} />
           <button
             aria-label="Agente de investigación"
             aria-pressed={panelOpen && view === "measures"}
@@ -617,6 +676,17 @@ export function ResearchWorkspace({
           >
             <FolderOpen size={16} />
             <span>Archivo</span>
+          </button>
+          <button
+            type="button"
+            className="rw-research-info"
+            aria-label="Información de Investigación"
+            title="Acerca del módulo de Investigación"
+            aria-haspopup="dialog"
+            aria-controls="rw-research-welcome"
+            onClick={() => setWelcomeRequest((value) => value + 1)}
+          >
+            <Info size={16} />
           </button>
           <button aria-label="Volver al juego" onClick={onBack}>
             <ArrowLeft size={16} />
@@ -828,6 +898,12 @@ export function ResearchWorkspace({
                   if (followChat.current) setUnreadChat(false);
                 }}
               >
+                <ResearchEvidencePanel
+                  workspace={w}
+                  active={visible}
+                  onContext={setEvidenceContext}
+                  onSuggest={setPrompt}
+                />
                 <div
                   className="rw-chat"
                   role="log"
@@ -847,28 +923,42 @@ export function ResearchWorkspace({
                     </div>
                   )}
                   {chat.length
-                    ? chat.map((m) => (
-                        <article
-                          key={m.id}
-                          data-role={m.role === "Tú" ? "user" : "assistant"}
-                        >
-                          <small>{m.role}</small>
-                          {m.role === "Tú" ? (
-                            <p>{m.text}</p>
-                          ) : (
-                            <AgentReplyText
-                              text={m.text}
-                              animate={typingMessageId === m.id}
-                              onProgress={followTyping}
-                              onComplete={() =>
-                                setTypingMessageId((id) =>
-                                  id === m.id ? null : id,
-                                )
-                              }
-                            />
-                          )}
-                        </article>
-                      ))
+                    ? chat.map((m) =>
+                        m.report ? (
+                          <ResearchLiveReport
+                            key={m.id}
+                            initial={m.report.initial}
+                            createdAt={m.report.createdAt}
+                            current={reportData}
+                            onClose={() =>
+                              setChat((s) =>
+                                s.filter((entry) => entry.id !== m.id),
+                              )
+                            }
+                          />
+                        ) : (
+                          <article
+                            key={m.id}
+                            data-role={m.role === "Tú" ? "user" : "assistant"}
+                          >
+                            <small>{m.role}</small>
+                            {m.role === "Tú" ? (
+                              <p>{m.text}</p>
+                            ) : (
+                              <AgentReplyText
+                                text={m.text}
+                                animate={typingMessageId === m.id}
+                                onProgress={followTyping}
+                                onComplete={() =>
+                                  setTypingMessageId((id) =>
+                                    id === m.id ? null : id,
+                                  )
+                                }
+                              />
+                            )}
+                          </article>
+                        ),
+                      )
                     : null}
                 </div>
                 {busy && (
@@ -1140,21 +1230,35 @@ export function ResearchWorkspace({
                       applied: false,
                     });
                   }}
-                  getContext={() => ({
-                    engine: w.engineVersion,
-                    execution_prepared: Boolean(manifest),
-                    configuration_differs_from_execution: Boolean(stale),
-                    editable_parameters: w.params,
-                    execution_parameters: manifest?.params ?? null,
-                    observed_snapshot: snapshot,
-                    current_proposal: draft
-                      ? {
-                          definition: draft.definition,
-                          confirmed: draft.confirmedRevision === draft.revision,
-                        }
-                      : null,
-                    note: "Solo instantánea del día observado; no son resultados futuros ni observaciones clínicas. Las propuestas requieren confirmación manual.",
-                  })}
+                  getContext={() => agentContext}
+                  onReport={() => {
+                    const id = crypto.randomUUID(),
+                      createdAt = new Date().toISOString();
+                    followChat.current = true;
+                    setChat((s) =>
+                      [
+                        ...s,
+                        {
+                          id,
+                          role: "Reporte",
+                          text: `Reporte del experimento generado para el día ${day}; datos del simulador, no evidencia clínica.`,
+                          report: {
+                            initial: structuredClone(reportData),
+                            createdAt,
+                          },
+                        },
+                      ].slice(-20),
+                    );
+                    return {
+                      generated: true,
+                      reportId: id,
+                      observedDay: day,
+                      executionPrepared: Boolean(manifest),
+                      evidenceCurrent: agentContext.evidenceCurrent,
+                      observed: agentContext.observed,
+                      note: "Tarjeta de reporte abierta dentro del chat; se actualiza con el día observado. No se ejecutaron evaluaciones ni se confirmaron/aplicaron medidas.",
+                    };
+                  }}
                   onTranscript={(turn) => {
                     setTypingMessageId(null);
                     setChat((s) =>

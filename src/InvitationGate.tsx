@@ -205,7 +205,7 @@ export default function InvitationGate() {
           </span>
         </a>
         <span className="access-private">
-          <span /> DEMO PRIVADA
+          <span /> ACCESO A LA OPERACIÓN
         </span>
       </header>
       <div className="access-layout">
@@ -364,9 +364,9 @@ export default function InvitationGate() {
                     {visible ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <button className="access-demo" type="button" disabled={busy || checkFailed}
+                <button className="access-guest" type="button" disabled={busy || checkFailed}
                   onClick={() => { setEmail("demo@mantacero.com"); setPassword("Demo2026!"); setError(""); }}>
-                  Usar credenciales demo
+                  Usar acceso de invitado
                 </button>
                 {error && (
                   <p id="login-error" className="access-error" role="alert">

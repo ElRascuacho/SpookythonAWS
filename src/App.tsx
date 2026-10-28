@@ -19,7 +19,7 @@ import {
   HandHeart,
   SprayCan,
   TrendingDown,
-  Users,
+  Users, Volume2, VolumeX,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -36,7 +36,8 @@ import { FieldOperations } from "./components/FieldOperations";
 import { completeFieldMission, missionRewardAmount, randomFieldOperation, type FieldOperation } from "./domain/fieldMissions";
 import { SimulationDashboard } from "./components/SimulationDashboard";
 import { StrategyReport } from "./components/StrategyReport";
-import { TUTORIAL_SEEN_KEY } from "./domain/tutorial";
+import { hasCompletedTutorial, rememberTutorialCompletion } from "./domain/tutorialProgress";
+import { createTutorial, tutorialReducer, interactWithTutorial, type TutorialState, type TutorialInteraction } from "./domain/tutorial";
 import {
   advanceDay,
   createGame,
@@ -158,12 +159,14 @@ function Dialog({
   onClose,
   wide = false,
   className = "",
+  dismissible = true,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
   className?: string;
+  dismissible?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -233,13 +236,13 @@ function Dialog({
             <span className="eyebrow">OPERACIÓN MANTA CERO</span>
             <h2>{title}</h2>
           </div>
-          <button
+          {dismissible && <button
             className="icon-button"
             aria-label="Cerrar ventana"
             onClick={onClose}
           >
             <X size={20} />
-          </button>
+          </button>}
         </div>
         {children}
       </div>
@@ -270,21 +273,21 @@ export default function App({
   activeMode,
   onModeChange,
 }: AppProps = {}) {
-  const [game, setGame] = useState(() => createGame(DEFAULT_CONFIG));
-  useEffect(() => { onScenarioChange?.(structuredClone(game.params)); }, [game.params, onScenarioChange]);
+  const [playerGame, setGame] = useState(() => createGame(DEFAULT_CONFIG));
+  const [tutorial, setTutorial] = useState<TutorialState | null>(() => hasCompletedTutorial() ? null : createTutorial(DEFAULT_CONFIG));
+  const game = tutorial && tutorial.step >= 0 ? tutorial.game : playerGame;
+  useEffect(() => { if (!tutorial) onScenarioChange?.(structuredClone(game.params)); }, [game.params, onScenarioChange, tutorial]);
   useEffect(() => { if (inactive) setModal(null); }, [inactive]);
   const [simulationMode, setSimulationMode] = useState(false);
-  const [selectedNode, setSelectedNode] = useState("N01");
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [playerNode, setSelectedNode] = useState("N01");
+  const [playerOrders, setOrders] = useState<Order[]>([]);
   const [fieldOperation, setFieldOperation] = useState<FieldOperation | null>(null);
-  const [funding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
-  const [modal, setModal] = useState<Modal>(() => {
-    try {
-      return localStorage.getItem(TUTORIAL_SEEN_KEY) === "1" ? null : "help";
-    } catch {
-      return "help";
-    }
-  });
+  const [playerFunding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
+  const selectedNode = tutorial?.nodeId ?? (tutorial ? DEFAULT_CONFIG.patientZeroId : playerNode);
+  const orders: Order[] = tutorial ? tutorial.step < 4 && tutorial.protection && tutorial.nodeId ? [{ nodeId: tutorial.nodeId, kind: "prevention" }] : [] : playerOrders;
+  const funding = tutorial ? tutorial.funding : playerFunding;
+  const [tutorialRequired, setTutorialRequired] = useState(() => !hasCompletedTutorial());
+  const [modal, setModal] = useState<Modal>(() => tutorialRequired ? "help" : null);
   const [briefingChapter, setBriefingChapter] = useState<CampaignChapter>(0);
   const [draft, setDraft] = useState<GameConfig>(DEFAULT_CONFIG);
   const [notice, setNotice] = useState("");
@@ -294,15 +297,60 @@ export default function App({
   const [dayTransition, setDayTransition] =
     useState<DayTransitionReport | null>(null);
   const [news, setNews] = useState<GameNews | null>(null);
+  const [bgmPlaying, setBgmPlaying] = useState(false);
+  const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
+  const bgmUserToggledRef = useRef(false);
+  useEffect(() => {
+    const startOnFirstGesture = (event: Event) => {
+      if (bgmUserToggledRef.current) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-bgm-toggle="true"]')) return;
+      const audio = bgmAudioRef.current;
+      if (!audio || !audio.paused) return;
+      audio.volume = 0.35;
+      audio
+        .play()
+        .then(() => {
+          bgmUserToggledRef.current = true;
+          setBgmPlaying(true);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("pointerdown", startOnFirstGesture, { passive: true });
+    window.addEventListener("keydown", startOnFirstGesture);
+    return () => {
+      window.removeEventListener("pointerdown", startOnFirstGesture);
+      window.removeEventListener("keydown", startOnFirstGesture);
+    };
+  }, []);
+  const toggleBgm = () => {
+    bgmUserToggledRef.current = true;
+    const audio = bgmAudioRef.current;
+    if (!audio) return;
+    if (bgmPlaying || !audio.paused) {
+      audio.pause();
+      setBgmPlaying(false);
+      return;
+    }
+    audio.volume = 0.35;
+    audio
+      .play()
+      .then(() => setBgmPlaying(true))
+      .catch(() => {
+        setBgmPlaying(false);
+        setNotice("No se pudo reproducir la música de fondo.");
+      });
+  };
 
   useEffect(() => {
+    if (tutorial) return;
     if (activeMode === "campaign") {
       setBriefingChapter(0);
       setModal("campaign");
     } else if (activeMode === "game") {
       setModal((prev) => (prev === "campaign" ? null : prev));
     }
-  }, [activeMode]);
+  }, [activeMode, Boolean(tutorial)]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsFacts, setNewsFacts] = useState("");
   const commandBarRef = useRef<HTMLElement | null>(null);
@@ -326,14 +374,9 @@ export default function App({
     [],
   );
   const closeModal = () => {
+    if (tutorial?.step === -1 && tutorialRequired) return;
+    if (modal === "help") { finishTutorial(); return; }
     if (modal === "operations" && game.status !== "playing") { setModal("result"); return; }
-    if (modal === "help") {
-      try {
-        localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
-      } catch {
-        // Storage can be blocked; dismissing the tutorial must still work.
-      }
-    }
     if (modal === "operations" && fieldOperation && game.actions[game.day]?.fieldRewards?.[fieldOperation.kind]) setFieldOperation(null);
     if (modal === "campaign" && activeMode === "campaign") {
       onModeChange?.("game");
@@ -356,20 +399,38 @@ export default function App({
   const chapterId = game.config.campaignChapter;
   const chapter = chapterId === undefined ? null : CHAPTERS[chapterId];
 
-  const availableOperation = playing && fieldOperation && !game.actions[game.day]?.fieldRewards?.[fieldOperation.kind] && missionRewardAmount(game, fieldOperation.kind, fieldOperation.nodeId) > 0 ? fieldOperation : null;
-  useEffect(() => { setFieldOperation(null); }, [game.day, game.config]);
+  const availableOperation = !tutorial && playing && fieldOperation && !game.actions[game.day]?.fieldRewards?.[fieldOperation.kind] && missionRewardAmount(game, fieldOperation.kind, fieldOperation.nodeId) > 0 ? fieldOperation : null;
+  useEffect(() => { setFieldOperation(null); }, [playerGame.day, playerGame.config]);
   useEffect(() => {
-    if (!playing || inactive || simulationMode || modal || dayTransition || news || availableOperation) return;
+    if (tutorial || !playing || inactive || simulationMode || modal || dayTransition || news || availableOperation) return;
     const timer = window.setTimeout(() => setFieldOperation(randomFieldOperation(game)), 25000 + Math.random() * 30000);
     return () => window.clearTimeout(timer);
-  }, [game, playing, inactive, simulationMode, modal, dayTransition, news, availableOperation]);
+  }, [game, playing, inactive, simulationMode, modal, dayTransition, news, availableOperation, tutorial]);
+
+  const tutorialAction = (action: TutorialInteraction) => setTutorial(current => current ? interactWithTutorial(current, action) : null);
+  const finishTutorial = () => {
+    rememberTutorialCompletion();
+    setTutorialRequired(false);
+    setTutorial(null);
+    setModal(null);
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.game-shell [aria-label="Cómo jugar"]')?.focus());
+  };
 
   const selectZone = (id: string) => {
+    if (tutorial) {
+      if (tutorial.step === 0) { tutorialAction({ type: "zone", nodeId: id }); setModal("zone"); }
+      else if (tutorial.step === 1) setModal("zone");
+      return;
+    }
     setSelectedNode(id);
     setModal("zone");
   };
 
   const queueOrder = (kind: Intervention) => {
+    if (tutorial) {
+      if (tutorial.step === 1 && kind === "prevention") { tutorialAction({ type: "protect" }); setModal(null); }
+      return;
+    }
     setOrders((current) => [...current, { nodeId: selectedNode, kind }]);
     setNotice(
       `${INTERVENTIONS[kind].label} asignada a ${node.name}. Se ejecutará al avanzar el día.`,
@@ -392,6 +453,7 @@ export default function App({
     });
   };
   const nextDay = () => {
+    if (tutorial) { tutorialAction({ type: "advance" }); return; }
     if (advancing.current) return;
     try {
       const next = advanceDay(game, orders, funding);
@@ -509,8 +571,23 @@ export default function App({
 
   if (simulationMode) return <SimulationDashboard game={game} onBack={() => setSimulationMode(false)} />;
 
+  const showTutorialTarget = () => {
+    if (tutorial?.step === 1 && modal !== "zone") { setModal("zone"); return; }
+    const selector = tutorial?.step === 0 ? ".mobile-zone-select" : tutorial?.step === 1 ? ".quick-action.prevention" : tutorial?.step === 2 ? ".research-select button:not(:disabled)" : ".advance-button";
+    const control = document.querySelector<HTMLElement>(`.game-shell.is-training ${selector}`);
+    control?.scrollIntoView({ block: "center" });
+    control?.focus({ preventScroll: true });
+  };
+  const tutorialGuide = tutorial && <GameTutorial state={tutorial} required={tutorialRequired} inline={tutorial.step === -1 || modal === "zone"}
+    onStart={() => { setTutorial(current => current ? tutorialReducer(current, { type: "next" }) : null); setModal(null); }}
+    onTarget={showTutorialTarget} onClose={finishTutorial} onComplete={finishTutorial} />;
+
   return (
-    <div className="game-shell">
+    <div className={`game-shell ${tutorial ? "is-training" : ""}`} data-training-step={tutorial?.step}>
+      <audio ref={bgmAudioRef} loop preload="auto" aria-hidden="true">
+        <source src="/audio/bgm-manta-cero.m4a" type="audio/mp4" />
+        <source src="/audio/bgm-manta-cero.mp3" type="audio/mpeg" />
+      </audio>
       <header className="hub-topbar">
         <a className="brand" href="#" aria-label="Operación Manta Cero">
           <span className="brand-mark">
@@ -523,10 +600,10 @@ export default function App({
         </a>
         <div className="mission-badge">
           <span className="live-dot" />
-          OPERACIÓN NECRO-DENGUE <span className="badge-divider">/</span>
-          <b>DEMO JUGABLE</b>
+          OPERACIÓN NECRO-DENGUE
         </div>
         <nav className="header-actions" aria-label="Opciones de misión">
+          {!tutorial && <>
           <ModeTabs />
           <button aria-label="Modo simulación múltiple" disabled={dayTransition !== null} onClick={() => setSimulationMode(true)}>
             <Activity size={16} /><span>Simulación</span>
@@ -544,11 +621,24 @@ export default function App({
             <TrendingDown size={16} />
             <span>Evaluar</span>
           </button>
-          <button aria-label="Cómo jugar" onClick={() => setModal("help")}>
+          <button aria-label="Cómo jugar" onClick={() => { setTutorial(createTutorial(DEFAULT_CONFIG)); setModal("help"); }}>
             <CircleHelp size={16} />
             <span>Cómo jugar</span>
           </button>
-          <button aria-label="Nueva misión" onClick={openSettings}>
+          </>}
+          <button
+            type="button"
+            data-bgm-toggle="true"
+            aria-label={bgmPlaying ? "Silenciar música de fondo" : "Activar música de fondo"}
+            aria-pressed={bgmPlaying}
+            title={bgmPlaying ? "Silenciar música de fondo (Ecos del Refugio)" : "Activar música de fondo (Ecos del Refugio)"}
+            className={bgmPlaying ? "mint-text" : ""}
+            onClick={toggleBgm}
+          >
+            {bgmPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>Música</span>
+          </button>
+          {!tutorial && <><button aria-label="Nueva misión" onClick={openSettings}>
             <Settings2 size={16} />
             <span>Nueva misión</span>
           </button>
@@ -562,9 +652,11 @@ export default function App({
               <LogOut size={16} />
               <span>{loggingOut ? "Saliendo…" : "Salir"}</span>
             </button>
-          )}
+          )}</>}
         </nav>
       </header>
+
+      {tutorial && tutorial.step >= 0 && !(tutorial.step === 1 && modal === "zone") && tutorialGuide}
 
       <main className="map-stage">
         <CureEarth3DMap
@@ -626,7 +718,7 @@ export default function App({
         </div>
       </section>
 
-      {(news || newsLoading) && (
+      {!tutorial && (news || newsLoading) && (
         <NewsFlash
           news={news}
           loading={newsLoading}
@@ -675,9 +767,11 @@ export default function App({
             <select
               className="mobile-zone-select"
               aria-label="Seleccionar zona de intervención"
-              value={selectedNode}
+              value={tutorial?.step === 0 ? "" : selectedNode}
+              disabled={!!tutorial && tutorial.step !== 0 && tutorial.step !== 1}
               onChange={(event) => selectZone(event.target.value)}
             >
+              {tutorial?.step === 0 && <option value="" disabled>Elige una zona para practicar</option>}
               {MANTA_NODES.map((zone) => (
                 <option key={zone.id} value={zone.id}>
                   {zone.name}
@@ -716,7 +810,7 @@ export default function App({
           <button
             className="advance-button"
             onClick={nextDay}
-            disabled={!playing || dayTransition !== null}
+            disabled={!playing || dayTransition !== null || (!!tutorial && tutorial.step !== 3)}
             aria-busy={dayTransition !== null}
           >
             {playing
@@ -744,6 +838,7 @@ export default function App({
                     {NODE_MAP[order.nodeId].name}
                     <button
                       aria-label={`Retirar ${INTERVENTIONS[order.kind].label} de ${NODE_MAP[order.nodeId].name}`}
+                      disabled={!!tutorial}
                       onClick={() =>
                         setOrders((current) =>
                           current.filter((_, i) => i !== index),
@@ -775,9 +870,11 @@ export default function App({
                 className={funding === amount ? "active" : ""}
                 disabled={
                   !playing ||
+                  (!!tutorial && (tutorial.step !== 2 || amount === 0)) ||
                   getPlanCost(orders, amount) > game.params.dailyBudget
                 }
                 onClick={() => {
+                  if (tutorial) { tutorialAction({ type: "fund", amount }); return; }
                   setFunding(amount);
                   setNotice(`Investigación: $${format(amount)} por día.`);
                 }}
@@ -829,6 +926,7 @@ export default function App({
 
       {modal === "zone" && (
         <Dialog title={node.name} onClose={closeModal}>
+          {tutorial?.step === 1 && tutorialGuide}
           <p className="dialog-intro">
             {format(local.S)} susceptibles · {format(local.I)} infecciosos · ${format(remaining)} disponibles
           </p>
@@ -843,7 +941,7 @@ export default function App({
               return (
                 <button
                   key={kind}
-                  className={`quick-action ${assigned ? "assigned" : ""}`}
+                  className={`quick-action ${kind} ${assigned ? "assigned" : ""}`}
                   aria-pressed={assigned}
                   aria-label={`${action.label} en ${node.name}: $${action.cost}`}
                   onClick={() => {
@@ -856,6 +954,7 @@ export default function App({
                   }}
                   disabled={
                     !playing ||
+                    (!!tutorial && (tutorial.step !== 1 || kind !== "prevention")) ||
                     (!assigned && (remaining < action.cost ||
                       (kind === "vaccine" && local.S === 0)))
                   }
@@ -901,9 +1000,9 @@ export default function App({
           </button>
         </Dialog>
       )}
-      {modal === "help" && (
-        <Dialog title="Aprende a jugar." onClose={closeModal}>
-          <GameTutorial config={DEFAULT_CONFIG} onClose={closeModal} />
+      {modal === "help" && tutorial?.step === -1 && (
+        <Dialog title="Tu primer día al mando" onClose={closeModal} dismissible={!tutorialRequired}>
+          {tutorialGuide}
         </Dialog>
       )}
       {modal === "settings" && (

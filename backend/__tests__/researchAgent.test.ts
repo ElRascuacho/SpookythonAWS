@@ -70,9 +70,7 @@ describe("research agent server boundary (provider doubles only in tests)", () =
     expect(payload.instructions).toContain(
       "No eres un asistente de propósito general",
     );
-    expect(payload.instructions).toContain(
-      "no recibes el estado real del mapa",
-    );
+    expect(payload.instructions).toContain("Si context falta");
     // Parse the whole HTTP envelope with the same schema used by the UI.
     const body = AgentResponseSchema.parse(await response.json());
     expect(body.model).toBe("gpt-6.1-terra");
