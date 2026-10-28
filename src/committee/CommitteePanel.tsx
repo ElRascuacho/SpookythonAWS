@@ -23,6 +23,11 @@ interface JobView {
   note: string;
 }
 
+interface StartResponse extends Partial<JobView> {
+  message?: string;
+  error?: string;
+}
+
 function PlaybackMap({ snapshot }: { snapshot: DailyCitySnapshot }) {
   const [MapView, setMapView] = useState<ComponentType<MapProps> | null>(null);
   useEffect(() => {
@@ -58,23 +63,37 @@ export default function CommitteePanel() {
   async function start() {
     setBusy(true);
     setError("");
-    const response = await fetch("/api/committee/jobs", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "Content-Type": "application/json",
-        "Idempotency-Key": `local-${horizonDays}-${Date.now()}`,
-      },
-      body: JSON.stringify({ horizonDays, seed: 20261030 }),
-    });
-    const body = await response.json();
-    setBusy(false);
-    if (!response.ok) {
-      setError(body.message ?? "No se pudo iniciar");
-      return;
+    try {
+      const response = await fetch("/api/committee/jobs", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": `local-${horizonDays}-${Date.now()}`,
+        },
+        body: JSON.stringify({ horizonDays, seed: 20261030 }),
+      });
+      let body: StartResponse | null = null;
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
+      if (!response.ok) {
+        setError(body?.message ?? body?.error ?? "No se pudo iniciar");
+        return;
+      }
+      if (typeof body?.jobId !== "string") {
+        setError("No se pudo iniciar");
+        return;
+      }
+      setJob(body as JobView);
+      setDay(0);
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión y vuelve a intentar.");
+    } finally {
+      setBusy(false);
     }
-    setJob(body);
-    setDay(0);
   }
 
   useEffect(() => {

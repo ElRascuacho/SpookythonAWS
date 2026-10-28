@@ -25,8 +25,10 @@ import {
 import {
   configurationIdentity,
   evidenceSummary,
+  INVALID_WORKSPACE_MESSAGE,
   type ResearchContext,
 } from "../domain/researchEvidence";
+import { SimulationParamsSchema } from "../domain/schemas/simulationParams.schema";
 import { AgentReplyText } from "./AgentReplyText";
 import { CureEarth3DMap } from "../components/CureEarth3DMap";
 import { MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
@@ -151,6 +153,7 @@ export function ResearchWorkspace({
   const [inspecting, setInspecting] = useState(false);
   const [curveOpen, setCurveOpen] = useState(false);
   const [fileOpen, setFileOpen] = useState(false);
+  const [rawParams, setRawParams] = useState<Record<string, string>>({});
   const request = useRef<AbortController | null>(null);
   const chatScroll = useRef<HTMLDivElement | null>(null);
   const followChat = useRef(true);
@@ -158,6 +161,8 @@ export function ResearchWorkspace({
   const [unreadChat, setUnreadChat] = useState(false);
   const latest = useRef(w);
   latest.current = w;
+  const identity = configurationIdentity(w);
+  const valid = identity !== null;
   const draft = w.drafts.find((d) => d.id === draftId) ?? null;
   const snapshot = result.timeline[Math.min(day, result.timeline.length - 1)];
   const stale = manifest && JSON.stringify(manifest) !== JSON.stringify(w);
@@ -184,8 +189,7 @@ export function ResearchWorkspace({
     })),
     evidence: evidenceSummary(evidenceContext.evidence),
     evidenceCurrent:
-      evidenceContext.evidenceCurrent &&
-      evidenceContext.identity === configurationIdentity(w),
+      evidenceContext.evidenceCurrent && evidenceContext.identity === identity,
     committee: evidenceContext.committee,
     committeeReadAt: evidenceContext.committeeReadAt,
   };
@@ -295,7 +299,9 @@ export function ResearchWorkspace({
   function begin() {
     setRunning(false);
     try {
-      const config = WorkspaceSchema.parse(w);
+      const parsed = WorkspaceSchema.safeParse(w);
+      if (!parsed.success) throw Error(INVALID_WORKSPACE_MESSAGE);
+      const config = parsed.data;
       if (
         config.drafts.some(
           (d) =>
@@ -579,37 +585,64 @@ export function ResearchWorkspace({
       request.current = null;
     }
   }
-  const parameter = (key: string) => (
-    <label key={key}>
-      {labels[key]}
-      <input
-        type="number"
-        step={
-          [
-            "betaHuman",
-            "betaVector",
-            "sigma",
-            "gamma",
-            "vaccineEfficacy",
-          ].includes(key)
-            ? ".01"
-            : "1"
-        }
-        value={w.params[key as keyof SimulationParams] as number}
-        onChange={(e) => {
-          setRunning(false);
-          setW((s) => ({
-            ...s,
-            params: { ...s.params, [key]: Number(e.target.value) },
-          }));
-        }}
-      />
-    </label>
-  );
+  const parameter = (key: string) => {
+    const value = w.params[key as keyof SimulationParams] as number;
+    const raw = rawParams[key] ?? String(value);
+    const invalidRaw =
+      rawParams[key] !== undefined &&
+      (raw.trim() === "" ||
+        !SimulationParamsSchema.safeParse({
+          ...w.params,
+          [key]: Number(raw),
+        }).success);
+    return (
+      <label key={key}>
+        {labels[key]}
+        <input
+          type="number"
+          step={
+            [
+              "betaHuman",
+              "betaVector",
+              "sigma",
+              "gamma",
+              "vaccineEfficacy",
+            ].includes(key)
+              ? ".01"
+              : "1"
+          }
+          value={raw}
+          aria-invalid={invalidRaw || undefined}
+          onChange={(e) => {
+            const text = e.target.value;
+            setRunning(false);
+            setRawParams((d) => ({ ...d, [key]: text }));
+            if (text.trim() === "" || !Number.isFinite(Number(text))) return;
+            setW((s) =>
+              SimulationParamsSchema.safeParse({
+                ...s.params,
+                [key]: Number(text),
+              }).success
+                ? { ...s, params: { ...s.params, [key]: Number(text) } }
+                : s,
+            );
+          }}
+          onBlur={() =>
+            setRawParams((d) => {
+              if (!(key in d)) return d;
+              const next = { ...d };
+              delete next[key];
+              return next;
+            })
+          }
+        />
+      </label>
+    );
+  };
   const observed = result.timeline.slice(0, day + 1);
   const reportData: ReportData = {
     context: agentContext,
-    identity: configurationIdentity(w),
+    identity: identity ?? "",
     points: observed.map((s) => ({ day: s.day, infected: s.totalI })),
   };
   const max = Math.max(1, ...observed.map((s) => s.totalI));
@@ -758,6 +791,11 @@ export function ResearchWorkspace({
           {error}
         </p>
       )}
+      {!valid && (
+        <p role="alert" className="rw-error">
+          {INVALID_WORKSPACE_MESSAGE}
+        </p>
+      )}
       {!panelOpen && (
         <button
           className="rw-open-agent"
@@ -836,29 +874,46 @@ export function ResearchWorkspace({
               </div>
               <fieldset>
                 <legend>Orígenes del brote</legend>
-                {researchNodes.map((n) => (
-                  <label className="rw-check" key={n.id}>
-                    <input
-                      type="checkbox"
-                      checked={w.params.patientZeroIds.includes(n.id)}
-                      onChange={(e) => {
-                        setRunning(false);
-                        setW((s) => ({
-                          ...s,
-                          params: {
-                            ...s.params,
-                            patientZeroIds: e.target.checked
-                              ? [...s.params.patientZeroIds, n.id]
-                              : s.params.patientZeroIds.filter(
-                                  (id) => id !== n.id,
-                                ),
-                          },
-                        }));
-                      }}
-                    />
-                    {n.name}
-                  </label>
-                ))}
+                {researchNodes.map((n) => {
+                  const checked = w.params.patientZeroIds.includes(n.id);
+                  const lastOrigin =
+                    checked && w.params.patientZeroIds.length === 1;
+                  return (
+                    <label className="rw-check" key={n.id}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={lastOrigin}
+                        title={
+                          lastOrigin
+                            ? "Debe quedar al menos un origen del brote activo."
+                            : undefined
+                        }
+                        onChange={(e) => {
+                          if (
+                            !e.target.checked &&
+                            w.params.patientZeroIds.length === 1
+                          )
+                            return;
+                          setRunning(false);
+                          setW((s) => ({
+                            ...s,
+                            params: {
+                              ...s.params,
+                              patientZeroIds: e.target.checked
+                                ? [...s.params.patientZeroIds, n.id]
+                                : s.params.patientZeroIds.filter(
+                                    (id) => id !== n.id,
+                                  ),
+                            },
+                          }));
+                        }}
+                      />
+                      {n.name}
+                      {lastOrigin && <small> (obligatorio)</small>}
+                    </label>
+                  );
+                })}
               </fieldset>
               <details>
                 <summary>Parámetros avanzados</summary>
@@ -1453,7 +1508,7 @@ export function ResearchWorkspace({
               </div>
             </div>
             <div className="rw-actions">
-              <button onClick={begin}>
+              <button disabled={!valid} onClick={begin}>
                 Preparar ejecución real / reiniciar
               </button>
               <button

@@ -125,6 +125,36 @@ describe("committee http", () => {
     );
     expect(other!.status).toBe(401);
   });
+
+  test("DELETE cancels a job after the auth gate accepts the request", async () => {
+    resetCommitteeJobs();
+    const cookie = await sessionCookie();
+    const create = new Request("https://manta.example/api/committee/jobs", {
+      method: "POST",
+      headers: {
+        cookie,
+        origin: env.INVITE_APP_ORIGIN,
+        "Idempotency-Key": "cancel-gate-key-1",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ horizonDays: 40, seed: 20261030 }),
+    });
+    expect(await authorize(create, "delete-gate", env, now)).toBeNull();
+    const created = await handleCommitteeRoute(create, env, () => preview);
+    expect(created!.status).toBe(202);
+    const { jobId } = await created!.json();
+
+    const del = new Request(`https://manta.example/api/committee/jobs/${jobId}`, {
+      method: "DELETE",
+      headers: { cookie, origin: env.INVITE_APP_ORIGIN },
+    });
+    expect(await authorize(del, "delete-gate", env, now)).toBeNull();
+    const cancelled = await handleCommitteeRoute(del, env);
+    expect(cancelled!.status).toBe(200);
+    const body = await cancelled!.json();
+    expect(body.jobId).toBe(jobId);
+    expect(body.status).toBe("cancelled");
+  });
 });
 
 test("training remains disabled and latest policy requires authentication", async () => {

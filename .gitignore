@@ -34,8 +34,13 @@ samconfig.toml
 
 # Local agent / workspace metadata
 .atl/
+.commandcode/
 AGENTS.md
 hackathon_track_b.md
+Hackathon Track B - Guia Oficial y Requisitos.pdf
+handoff.md
+docs/qa/
+tests/ui/
 
 # SDD local settings / agent worktrees
 .claude/*.local.md

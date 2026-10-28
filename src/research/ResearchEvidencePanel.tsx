@@ -6,6 +6,7 @@ import {
   confirmedMeasures,
   EvidenceSchema,
   CommitteeSummarySchema,
+  INVALID_WORKSPACE_MESSAGE,
   type ResearchEvidence,
   type CommitteeSummary,
 } from "../domain/researchEvidence";
@@ -53,12 +54,21 @@ export function ResearchEvidencePanel({
     callbacks = useRef(onContext);
   callbacks.current = onContext;
   const identity = configurationIdentity(workspace),
-    current = hashed?.identity === identity && hashed.hash === evidence?.hash;
+    valid = identity !== null,
+    current =
+      identity !== null &&
+      hashed !== null &&
+      hashed.identity === identity &&
+      hashed.hash === evidence?.hash;
   useEffect(() => {
     let cancelled = false;
+    if (identity === null) {
+      setHashed(null);
+      return;
+    }
     void configurationHash(workspace)
       .then((hash) => {
-        if (!cancelled) setHashed({ identity, hash });
+        if (!cancelled && hash !== null) setHashed({ identity, hash });
       })
       .catch(() => {
         if (!cancelled)
@@ -115,6 +125,10 @@ export function ResearchEvidencePanel({
     setError("Evaluación cancelada; no se sustituyó la evidencia anterior.");
   }
   function evaluate() {
+    if (identity === null) {
+      setError(INVALID_WORKSPACE_MESSAGE);
+      return;
+    }
     try {
       confirmedMeasures(workspace);
       if (!hashed || hashed.identity !== identity)
@@ -233,13 +247,16 @@ export function ResearchEvidencePanel({
     allConfirmed =
       selected.length > 0 &&
       selected.every((d) => d.confirmed && d.confirmedRevision === d.revision);
-  const status = !allConfirmed
-    ? "Propuesta pendiente"
-    : current
-      ? "Evaluada"
-      : evidence
-        ? "Evidencia desactualizada"
-        : "Confirmada · sin evaluar";
+  const status =
+    identity === null
+      ? "Configuración inválida"
+      : !allConfirmed
+        ? "Propuesta pendiente"
+        : current
+          ? "Evaluada"
+          : evidence
+            ? "Evidencia desactualizada"
+            : "Confirmada · sin evaluar";
   return (
     <details className="rw-evidence">
       <summary>
@@ -250,6 +267,12 @@ export function ResearchEvidencePanel({
         las medidas confirmadas. Mismo escenario, presupuesto máximo y semillas
         ambientales emparejadas.
       </p>
+      {!valid && (
+        <p role="alert" className="rw-warning">
+          {INVALID_WORKSPACE_MESSAGE} La evaluación queda deshabilitada hasta
+          corregirla.
+        </p>
+      )}
       <div className="rw-evidence-actions">
         <label>
           Réplicas por alternativa
@@ -265,7 +288,7 @@ export function ResearchEvidencePanel({
         </label>
         <button
           type="button"
-          disabled={!active || progress !== null || !allConfirmed}
+          disabled={!active || !valid || progress !== null || !allConfirmed}
           onClick={evaluate}
         >
           Evaluar medidas confirmadas

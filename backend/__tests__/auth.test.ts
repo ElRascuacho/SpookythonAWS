@@ -230,6 +230,127 @@ describe("Invitation authentication", () => {
   });
 });
 
+describe("Local loopback Origin and DELETE gate (BUG-1/BUG-2)", () => {
+  const localEnv = { ...env, INVITE_APP_ORIGIN: "http://localhost:5173" };
+  const localRequest = (path: string, options: RequestInit) =>
+    new Request(`http://localhost:5173/api/auth/${path}`, options);
+  const localPost = (origin: string): RequestInit => ({
+    method: "POST",
+    headers: { origin, "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  let counter = 0;
+  const nextIp = () => `loopback-${++counter}`;
+
+  test("accepts localhost and 127.0.0.1 with the same port", async () => {
+    for (const origin of ["http://localhost:5173", "http://127.0.0.1:5173"]) {
+      const response = (await authorize(
+        localRequest("login", localPost(origin)),
+        nextIp(),
+        localEnv,
+        now,
+      ))!;
+      expect(response.status).toBe(200);
+    }
+  });
+
+  test("rejects a different port, host, or protocol with 403", async () => {
+    for (const origin of [
+      "http://localhost:5174",
+      "http://127.0.0.1:5174",
+      "http://evil.example:5173",
+      "https://localhost:5173",
+    ]) {
+      const response = (await authorize(
+        localRequest("login", localPost(origin)),
+        nextIp(),
+        localEnv,
+        now,
+      ))!;
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ error: "Origen no permitido." });
+    }
+  });
+
+  test("applies the same-port alias when the configured origin is 127.0.0.1", async () => {
+    const configured = { ...env, INVITE_APP_ORIGIN: "http://127.0.0.1:4173" };
+    const response = (await authorize(
+      new Request("http://127.0.0.1:4173/api/auth/login", {
+        method: "POST",
+        headers: {
+          origin: "http://localhost:4173",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+      }),
+      nextIp(),
+      configured,
+      now,
+    ))!;
+    expect(response.status).toBe(200);
+  });
+
+  test("keeps exact origin matching for HTTPS deployments", async () => {
+    const response = (await authorize(
+      request("login", localPost("http://127.0.0.1:5173")),
+      nextIp(),
+      env,
+      now,
+    ))!;
+    expect(response.status).toBe(403);
+  });
+
+  test("lets DELETE pass with Origin and no JSON content type", async () => {
+    const { cookie } = await login(nextIp());
+    const del = new Request("https://manta.example/api/committee/jobs/job-1", {
+      method: "DELETE",
+      headers: { origin: env.INVITE_APP_ORIGIN, cookie },
+    });
+    expect(await authorize(del, nextIp(), env, now)).toBeNull();
+    const foreign = (await authorize(
+      new Request("https://manta.example/api/committee/jobs/job-1", {
+        method: "DELETE",
+        headers: { origin: "https://evil.example", cookie },
+      }),
+      nextIp(),
+      env,
+      now,
+    ))!;
+    expect(foreign.status).toBe(403);
+  });
+
+  test("advertises GET, POST, DELETE and keeps auth routes POST-only", async () => {
+    const { cookie } = await login(nextIp());
+    const put = (await authorize(
+      new Request("https://manta.example/api/committee/jobs", {
+        method: "PUT",
+        headers: {
+          origin: env.INVITE_APP_ORIGIN,
+          "Content-Type": "application/json",
+          cookie,
+        },
+        body: "{}",
+      }),
+      nextIp(),
+      env,
+      now,
+    ))!;
+    expect(put.status).toBe(405);
+    expect(put.headers.get("allow")).toBe("GET, POST, DELETE");
+    const loginDelete = (await authorize(
+      request("login", {
+        method: "DELETE",
+        headers: { origin: env.INVITE_APP_ORIGIN },
+      }),
+      nextIp(),
+      env,
+      now,
+    ))!;
+    expect(loginDelete.status).toBe(405);
+    expect(loginDelete.headers.get("allow")).toBe("POST");
+  });
+});
+
 describe("ownerHash helper", () => {
   test("derives distinct ownerHash for different nonces with the same codeHash", async () => {
     const first = await login("owner-user-1");

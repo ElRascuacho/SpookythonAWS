@@ -98,8 +98,19 @@ export function canonical(value: unknown): string {
     );
   return JSON.stringify(value);
 }
-export function configurationIdentity(workspace: ResearchWorkspace) {
-  const w = WorkspaceSchema.parse(workspace);
+export const INVALID_WORKSPACE_MESSAGE =
+  "La configuración del experimento no es válida: revisa el horizonte, al menos un origen del brote y los valores numéricos.";
+/**
+ * Returns a canonical identity for a valid workspace, or null when the
+ * editable configuration is incomplete/invalid. Callers render with null
+ * instead of throwing during React render.
+ */
+export function configurationIdentity(
+  workspace: ResearchWorkspace,
+): string | null {
+  const parsed = WorkspaceSchema.safeParse(workspace);
+  if (!parsed.success) return null;
+  const w = parsed.data;
   return canonical({
     protocol: "research-paired-v1",
     engine: w.engineVersion,
@@ -117,17 +128,23 @@ export function configurationIdentity(workspace: ResearchWorkspace) {
       .sort((a, b) => a.id.localeCompare(b.id)),
   });
 }
-export async function configurationHash(w: ResearchWorkspace) {
+export async function configurationHash(
+  w: ResearchWorkspace,
+): Promise<string | null> {
+  const identity = configurationIdentity(w);
+  if (identity === null) return null;
   const bytes = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(configurationIdentity(w)),
+    new TextEncoder().encode(identity),
   );
   return Array.from(new Uint8Array(bytes), (n) =>
     n.toString(16).padStart(2, "0"),
   ).join("");
 }
 export function confirmedMeasures(workspace: ResearchWorkspace) {
-  const w = WorkspaceSchema.parse(workspace);
+  const parsed = WorkspaceSchema.safeParse(workspace);
+  if (!parsed.success) throw Error(INVALID_WORKSPACE_MESSAGE);
+  const w = parsed.data;
   const active = w.drafts.filter((d) => d.enabled);
   if (!active.length) throw Error("Activa al menos una medida para comparar.");
   if (
@@ -147,7 +164,9 @@ export function compareResearch(
   replicas: 16 | 32,
   onProgress: (done: number) => void = () => {},
 ) {
-  const w = WorkspaceSchema.parse(workspace),
+  const parsed = WorkspaceSchema.safeParse(workspace);
+  if (!parsed.success) throw Error(INVALID_WORKSPACE_MESSAGE);
+  const w = parsed.data,
     measures = confirmedMeasures(w);
   if (replicas !== 16 && replicas !== 32)
     throw Error("Solo se permiten 16 o 32 réplicas.");
