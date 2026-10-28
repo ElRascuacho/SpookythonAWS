@@ -268,6 +268,36 @@
   max-height: 32vh;
   overflow: auto;
 }
+.research-workspace.rw-agent-wide {
+  --agent-pane: clamp(420px, 33vw, 640px);
+}
+.research-workspace.rw-agent-wide .rw-controls {
+  width: var(--agent-pane);
+  top: 86px;
+  bottom: 18px;
+}
+.research-workspace.rw-agent-wide .rw-chat {
+  flex: 1;
+  max-height: none;
+  min-height: 240px;
+}
+.research-workspace.rw-agent-wide .rw-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.research-workspace.rw-agent-wide .rw-map .map-heading,
+.research-workspace.rw-agent-wide .rw-playback,
+.research-workspace.rw-agent-wide .rw-curve {
+  left: calc(var(--agent-pane) + 36px);
+}
+.research-workspace.rw-agent-wide .rw-playback {
+  right: 18px;
+}
+.rw-panel-title > span:last-child {
+  display: flex;
+  gap: 4px;
+}
 .rw-chat > div {
   padding: 10px;
   background: #152c34;

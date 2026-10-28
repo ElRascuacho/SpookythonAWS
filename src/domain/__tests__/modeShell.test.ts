@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import React, { createElement, useState, useEffect, useRef } from "react";
 import { renderToString } from "react-dom/server";
-import ModeShell, { type Mode } from "../../ModeShell";
+import ModeShell, { ModeTabs, type Mode } from "../../ModeShell";
 import { createGame, advanceDay, type CureGame } from "../cureGame";
 
 describe("ModeShell (T13 / ADR-0007 / AC-01)", () => {
@@ -9,7 +9,7 @@ describe("ModeShell (T13 / ADR-0007 / AC-01)", () => {
     const html = renderToString(
       createElement(ModeShell, {
         initialMode: "game",
-        renderApp: () => createElement("div", { id: "game-view" }, "Game Running"),
+        renderApp: () => createElement("div", { id: "game-view" }, createElement(ModeTabs), "Game Running"),
       }),
     );
 
@@ -26,7 +26,7 @@ describe("ModeShell (T13 / ADR-0007 / AC-01)", () => {
     const html = renderToString(
       createElement(ModeShell, {
         initialMode: "game",
-        renderApp: () => createElement("div", { id: "game-view" }, "Game Running"),
+        renderApp: () => createElement("div", { id: "game-view" }, createElement(ModeTabs), "Game Running"),
       }),
     );
 
@@ -45,7 +45,7 @@ describe("ModeShell (T13 / ADR-0007 / AC-01)", () => {
     const html = renderToString(
       createElement(ModeShell, {
         initialMode: "committee",
-        renderApp: () => createElement("div", { id: "game-view" }, "Preserved Game"),
+        renderApp: () => createElement("div", { id: "game-view" }, createElement(ModeTabs), "Preserved Game"),
       }),
     );
 

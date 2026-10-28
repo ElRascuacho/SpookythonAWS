@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 import { CureEarth3DMap } from "../components/CureEarth3DMap";
+import { ModeTabs } from "../ModeShell";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
 import { runSingleSeirSimulation } from "../domain/seirEngine";
 import {
@@ -94,6 +96,7 @@ export function ResearchWorkspace({
   const [manifest, setManifest] = useState<Workspace | null>(null);
   const [view, setView] = useState<"scenario" | "measures">("measures");
   const [panelOpen, setPanelOpen] = useState(true);
+  const [agentWide, setAgentWide] = useState(false);
   const [inspecting, setInspecting] = useState(false);
   const [curveOpen, setCurveOpen] = useState(false);
   const [fileOpen, setFileOpen] = useState(false);
@@ -397,7 +400,7 @@ export function ResearchWorkspace({
   const max = Math.max(1, ...observed.map((s) => s.totalI));
   return (
     <section
-      className={`research-workspace ${visible ? "is-active" : ""} ${panelOpen ? "rw-panel-open" : ""}`}
+      className={`research-workspace ${visible ? "is-active" : ""} ${panelOpen ? "rw-panel-open" : ""} ${agentWide ? "rw-agent-wide" : ""}`}
       inert={!visible}
       aria-hidden={!visible}
       aria-label="Espacio de investigación"
@@ -430,6 +433,7 @@ export function ResearchWorkspace({
           className="header-actions"
           aria-label="Herramientas de investigación"
         >
+          <ModeTabs />
           <button
             aria-label="Agente de investigación"
             aria-pressed={panelOpen && view === "measures"}
@@ -533,12 +537,22 @@ export function ResearchWorkspace({
             <span>
               <FlaskConical size={14} /> LABORATORIO
             </span>
-            <button
-              aria-label="Plegar panel del agente"
-              onClick={() => setPanelOpen(false)}
-            >
-              <PanelLeftClose size={16} />
-            </button>
+            <span>
+              <button
+                type="button"
+                aria-pressed={agentWide}
+                aria-label={agentWide ? "Reducir panel del agente" : "Ampliar panel del agente a un tercio"}
+                onClick={() => setAgentWide((open) => !open)}
+              >
+                {agentWide ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              <button
+                aria-label="Plegar panel del agente"
+                onClick={() => setPanelOpen(false)}
+              >
+                <PanelLeftClose size={16} />
+              </button>
+            </span>
           </div>
           <nav className="rw-subtabs">
             {[
