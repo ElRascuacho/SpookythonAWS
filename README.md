@@ -42,6 +42,14 @@ Cada **Avanzar un día** abre una tarjeta **Última transmisión** con un bolet�
 - Límites: 20 solicitudes por minuto por IP, cuerpo máximo de 8 KB, timeout de 8 s y caché en memoria por estado. Rate limit y caché son por proceso; antes de escalar necesitan un almacén compartido o un WAF.
 - Si la clave se expuso en un chat, un log o un repositorio, rótala en OpenAI. Rotar una clave no cambia el código: actualiza `.env.local` o el parámetro de la plantilla.
 
+## Laboratorio de Investigación y Asistente con Telemetría
+
+El botón **Investigación** abre el entorno de trabajo científico (`ResearchWorkspace`), donde es posible formular hipótesis, editar medidas de intervención personalizadas y dialogar con el asistente de investigación:
+
+- **Telemetría epidemiológica en vivo:** Al consultar al agente (`POST /api/research/agent`), el cliente envía el contexto operativo del día observado (casos activos, acumulados, porcentaje de saturación hospitalaria frente al umbral municipal de 1.200 camas, presupuesto restante y los tres focos urbanos de mayor prevalencia). Esto fundamenta las recomendaciones sin permitir alucinaciones sobre el estado de la epidemia.
+- **Pre-evaluación epidemiológica y fiscal en tiempo real:** Toda propuesta de medida generada por el agente o configurada por el usuario es pre-evaluada en memoria (<10 ms) frente a la línea base SEIR determinista (`evaluateMeasureImpact`). Reporta estimaciones inmediatas de contagios evitados, reducción porcentual del pico infeccioso, costo estimado en USD, viabilidad fiscal frente al presupuesto total y alivio del colapso hospitalario.
+- **Sesión de voz interactiva:** Admite interacción hablada con transcripción directa, control de interrupción (barge-in) y confirmación explícita antes de aplicar cualquier propuesta al borrador.
+
 ## Cómo jugar
 
 En el primer acceso aparece una **práctica interactiva de cuatro pasos**: elegir zona, asignar prevención, financiar la cura y simular un día. Usa el motor real en una partida de práctica separada: no consume recursos ni altera tu misión. Se puede omitir, cerrar con Escape y repetir desde **Cómo jugar**. Solo se recuerda en este navegador que ya cerraste la guía; no se guarda la partida. Si el navegador bloquea el almacenamiento, la guía sigue funcionando, pero vuelve a ofrecerse al recargar.
@@ -62,6 +70,15 @@ En el primer acceso aparece una **práctica interactiva de cuatro pasos**: elegi
 
 La evaluación de tu plan repite el calendario ya elegido; no representa una política adaptativa que tome nuevas decisiones en cada réplica. La gráfica contiene las tres estrategias automáticas, mientras tu plan se muestra en su tarjeta. Los percentiles son dispersión entre corridas, **no intervalos de confianza**. Contagios evitados **no son muertes evitadas**.
 
+## Simulación múltiple y Auditoría de Políticas
+
+El módulo de **Simulación múltiple** (`SimulationDashboard`) permite ejecutar análisis de Monte Carlo desacoplados del renderizado 3D para evaluar la robustez de los planes:
+
+- **Comparación pareada con la Política del Comité:** Si existe una política aprobada y registrada en el servidor, se evalúa contra la estrategia automática de referencia SGC (*Smart Cortafuegos*) usando pares con idéntica semilla e índice sobre el grafo normal de 16 zonas.
+- **Métricas e incertidumbre estadística:** Reporta la mejora porcentual frente a SGC, la diferencia pareada promedio (SGC − Candidata), el rango de dispersión P10–P90 y el intervalo de confianza bootstrap al 95% para la diferencia.
+- **Gráficas de bandas y auditoría:** Visualiza la evolución diaria con polígonos de banda P10–P90 y exporta las corridas individuales o los pares evaluados a formato CSV (`.csv`) con firma UTF-8 para verificación independiente.
+- **Dificultad y partición sintética:** Admite evaluar planes automáticos sobre grafos de 32 y 48 sectores sintéticos con conservación estricta de población.
+
 ## Modelo, parámetros y supuestos
 
 - Modelo ficticio educativo SEIR: susceptible, expuesto, infeccioso y recuperado/inmune; la vacuna solo se aplica a susceptibles. `R` incluye tanto recuperación como inmunización. No hay mortalidad modelada.
@@ -75,9 +92,13 @@ La evaluación de tu plan repite el calendario ya elegido; no representa una pol
 - PRNG Mulberry32 y transiciones binomiales (aproximación normal para grupos grandes). Misma configuración, semilla y decisiones producen la misma partida.
 - Requisitos versionados: [`docs/00-especificacion-reto.md`](./docs/00-especificacion-reto.md), contrastados con `hackathon_track_b.md` local. La entrega indicada es el 28 de octubre a las 10:00 (Ecuador); la región figura por confirmar.
 
-## Feature en planificación — modo Comité
+## Modo Comité — Aprendizaje de Políticas y Estado Actual
 
-El aprendizaje híbrido de estrategias (modo **Comité**) está documentado en [`docs/features/committee-learning/`](./docs/features/committee-learning/README.md): spec, arquitectura, contratos y `tasks.json`. Hay un primer corte local en curso; **el modo completo no está habilitado en producción** y no se debe desplegar entrenamiento sin autorización.
+El aprendizaje híbrido de estrategias mediante optimización por método de entropía cruzada (CEM) de cuatro pesos está especificado en [`docs/features/committee-learning/`](./docs/features/committee-learning/README.md):
+
+- **Entrenamiento local fuera de línea:** Implementado en `src/domain/committee/offline.ts` y ejecutable vía `scripts/train-committee.ts`. Utiliza un protocolo de 3.552 trayectorias con validación cruzada y auditoría final frente a SGC.
+- **Registro inmutable y evaluación serverless:** `backend/committee/policyRegistry.ts` gestiona versiones inmutables y metadatos protegidos fuera de prefijos efímeros de S3; `backend/committee/evaluation.ts` ejecuta evaluaciones pareadas en backend.
+- **Handoff y estado de producción:** Siguiendo la decisión de producto vigente, la Simulación múltiple evalúa versiones congeladas y aprobadas. Los endpoints duraderos de entrenamiento y evaluación en servidor se mantienen protegidos con 503 hasta completar el ciclo de admisión y cuotas en background. El estado detallado y la hoja de ruta se encuentran en [`docs/features/committee-learning/_audit/remaining-2026-10-28.md`](./docs/features/committee-learning/_audit/remaining-2026-10-28.md).
 
 ## Estructura
 
@@ -91,10 +112,17 @@ El aprendizaje híbrido de estrategias (modo **Comité**) está documentado en [
 - `src/domain/monteCarlo.ts` — baselines y agregación; la demo calcula solo al pedir evaluación.
 - `src/domain/newsModel.ts` — contrato, prompt editorial y boletín determinista de respaldo.
 - `src/domain/newsClient.ts` — llamada a `/api/news` con reserva local ante cualquier fallo.
-- `src/domain/__tests__/`, `backend/__tests__/`, `tests/e2e/` — reproducibilidad, economía, conservación, victoria/derrota, esquemas Zod, agregador, workers, reconciliación y smoke tests (pruebas automatizadas; ver el resultado actual de `bun test`).
+- `src/domain/__tests__/`, `backend/__tests__/`, `tests/e2e/` — reproducibilidad, economía, conservación, victoria/derrota, esquemas Zod, agregador, workers, reconciliación y smoke tests (288 pruebas automatizadas pasando en 53 archivos con `bun test`).
 - `src/InvitationGate.tsx`, `src/access.css` — pantalla de acceso y ciclo de sesión.
 - `backend/auth.ts`, `backend/devAuth.ts` — validación compartida y adaptador local Vite con `/api/news`.
 - `backend/news.ts`, `backend/handler.ts`, `infra/template.yaml` — generación del boletín, endpoints protegidos y plantilla AWS SAM desplegada en producción.
+- `src/research/ResearchWorkspace.tsx`, `src/research/research.css` — entorno interactivo de investigación, panel de medidas y diálogo con el agente.
+- `src/domain/researchEvaluation.ts` — pre-evaluación epidemiológica y de viabilidad presupuestaria de medidas experimentales.
+- `src/components/SimulationDashboard.tsx` — panel de simulación múltiple, bandas P10–P90 y comparador pareado con política del Comité.
+- `src/domain/policyEvaluation.ts`, `src/domain/simulationAudit.ts` — evaluación pareada, agregación de bandas y exportación CSV.
+- `src/domain/committee/offline.ts`, `scripts/train-committee.ts` — motor offline de optimización CEM de 4 pesos y CLI de entrenamiento.
+- `backend/committee/` — registro inmutable de políticas (`policyRegistry.ts`), almacén de evaluaciones (`evaluationStore.ts`, `resultStore.ts`) y evaluación pareada (`evaluation.ts`).
+- `backend/researchAgent.ts` — endpoint de investigación con telemetría en vivo y evaluación integrada.
 - `.github/workflows/deploy.yml` — pipeline de CI/CD para testeo y auto-despliegue continuo en AWS.
 
 ## Despliegue y Arquitectura Cloud en AWS (Producción)
