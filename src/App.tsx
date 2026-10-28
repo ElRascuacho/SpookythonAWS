@@ -241,6 +241,19 @@ function Dialog({
   );
 }
 
+export type Mode = "game" | "campaign" | "committee";
+
+export interface AppProps {
+  onLogout?: () => void;
+  loggingOut?: boolean;
+  activeMode?: Mode;
+  onModeChange?: (mode: Mode) => void;
+  inactive?: boolean;
+  onScenarioChange?: (params: SimulationParams) => void;
+  onOpenResearch?: () => void;
+  cameraBridge?: import("./components/tacticalCamera").TacticalCameraBridge;
+}
+
 export default function App({
   onLogout,
   loggingOut = false,
@@ -248,14 +261,9 @@ export default function App({
   onScenarioChange,
   onOpenResearch,
   cameraBridge,
-}: {
-  onLogout?: () => void;
-  loggingOut?: boolean;
-  inactive?: boolean;
-  onScenarioChange?: (params: SimulationParams) => void;
-  onOpenResearch?: () => void;
-  cameraBridge?: import('./components/tacticalCamera').TacticalCameraBridge;
-} = {}) {
+  activeMode,
+  onModeChange,
+}: AppProps = {}) {
   const [game, setGame] = useState(() => createGame(DEFAULT_CONFIG));
   useEffect(() => { onScenarioChange?.(structuredClone(game.params)); }, [game.params, onScenarioChange]);
   useEffect(() => { if (inactive) setModal(null); }, [inactive]);
@@ -280,6 +288,15 @@ export default function App({
   const [dayTransition, setDayTransition] =
     useState<DayTransitionReport | null>(null);
   const [news, setNews] = useState<GameNews | null>(null);
+
+  useEffect(() => {
+    if (activeMode === "campaign") {
+      setBriefingChapter(0);
+      setModal("campaign");
+    } else if (activeMode === "game") {
+      setModal((prev) => (prev === "campaign" ? null : prev));
+    }
+  }, [activeMode]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsFacts, setNewsFacts] = useState("");
   const transitionTimer = useRef<number | null>(null);
@@ -300,6 +317,9 @@ export default function App({
       } catch {
         // Storage can be blocked; dismissing the tutorial must still work.
       }
+    }
+    if (modal === "campaign" && activeMode === "campaign") {
+      onModeChange?.("game");
     }
     setModal(null);
   };
@@ -496,7 +516,7 @@ export default function App({
               <FlaskConical size={16} /><span>Investigación</span>
             </button>
           )}
-          <button aria-label="Campaña cinematográfica" onClick={() => { setBriefingChapter(0); setModal("campaign"); }}>
+          <button aria-label="Campaña cinematográfica" onClick={() => { setBriefingChapter(0); setModal("campaign"); onModeChange?.("campaign"); }}>
             <Clapperboard size={16} />
             <span>Campaña</span>
           </button>
