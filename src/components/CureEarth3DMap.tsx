@@ -4,7 +4,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import {
   Compass,
   Crosshair,
-  Globe,
   Layers,
   Map as MapIcon,
   Minus,
@@ -20,7 +19,7 @@ import { pointOnRoad, TRAFFIC_ROUTES, TRAFFIC_VEHICLES } from "../domain/traffic
 import type { CityNode, DailyCitySnapshot } from "../domain/types";
 import type { Order } from "../domain/cureGame";
 
-export type MapStyleMode = "satellite" | "tactical3d";
+import { northCamera, tacticalViewCamera, type TacticalView } from "./tacticalCamera";
 
 interface Props {
   paused?: boolean;
@@ -29,9 +28,6 @@ interface Props {
   onSelect: (nodeId: string) => void;
   orders: Order[];
   patientZeroId: string;
-  styleMode: MapStyleMode;
-  onChangeStyleMode: (mode: MapStyleMode) => void;
-  onSwitchTo2D: () => void;
 }
 
 const MANTA_CENTER: [number, number] = [-80.724, -0.9565];
@@ -45,7 +41,7 @@ const MANTA_BOUNDS: [[number, number], [number, number]] = [
   [-80.63, -0.9],
 ];
 
-/** Lowest zoom the city camera is ever allowed to reach (city-only, clean satellite tiles). */
+/** Lowest zoom the tactical city camera is ever allowed to reach. */
 const MANTA_MIN_ZOOM = 12.4;
 /** Highest zoom allowed (keeps the tactical 3D models readable). */
 const MANTA_MAX_ZOOM = 18;
@@ -426,14 +422,6 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       tileSize: 256,
       maxzoom: 14,
     },
-    "esri-world-satellite": {
-      type: "raster",
-      tiles: [
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      ],
-      tileSize: 256,
-      maxzoom: 18,
-    },
     openmaptiles: {
       type: "vector",
       url: "https://tiles.openfreemap.org/planet",
@@ -445,18 +433,6 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       type: "background",
       paint: {
         "background-color": "#08141a",
-      },
-    },
-    {
-      id: "satellite-earth-raster",
-      type: "raster",
-      source: "esri-world-satellite",
-      paint: {
-        "raster-opacity": 0.94,
-        "raster-brightness-max": 0.78,
-        "raster-brightness-min": 0.05,
-        "raster-contrast": 0.24,
-        "raster-saturation": -0.25,
       },
     },
     {
@@ -489,7 +465,7 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       "source-layer": "building",
       minzoom: 12,
       paint: {
-        "fill-extrusion-color": "#162d36",
+        "fill-extrusion-color": "#152932",
         "fill-extrusion-height": [
           "coalesce",
           ["get", "render_height"],
@@ -501,7 +477,7 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
           ["get", "render_min_height"],
           0,
         ],
-        "fill-extrusion-opacity": 0.62,
+        "fill-extrusion-opacity": 0.82,
       },
     },
   ],
@@ -514,9 +490,6 @@ export function CureEarth3DMap({
   onSelect,
   orders,
   patientZeroId,
-  styleMode,
-  onChangeStyleMode,
-  onSwitchTo2D,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -819,6 +792,7 @@ export function CureEarth3DMap({
       });
 
       setMapReady(true);
+      map.on("pitchend", () => setIsPitched(map.getPitch() > 1));
 
       if (!prefersReducedMotion) {
         map.flyTo({
@@ -844,32 +818,6 @@ export function CureEarth3DMap({
       mapRef.current = null;
     };
   }, []);
-
-  // Synchronize Satellite vs Tactical 3D City style layers
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapReady) return;
-    const isSat = styleMode === "satellite";
-    if (map.getLayer("satellite-earth-raster")) {
-      map.setPaintProperty(
-        "satellite-earth-raster",
-        "raster-opacity",
-        isSat ? 0.94 : 0,
-      );
-    }
-    if (map.getLayer("manta-real-3d-buildings")) {
-      map.setPaintProperty(
-        "manta-real-3d-buildings",
-        "fill-extrusion-opacity",
-        isSat ? 0.5 : 0.82,
-      );
-      map.setPaintProperty(
-        "manta-real-3d-buildings",
-        "fill-extrusion-color",
-        isSat ? "#19333d" : "#152932",
-      );
-    }
-  }, [styleMode, mapReady]);
 
   // Update 3D GeoJSON sources when game state or orders change
   useEffect(() => {
@@ -1249,37 +1197,46 @@ export function CureEarth3DMap({
     }, 1250);
   };
 
+  const stopCameraMotion = () => {
+    setIsOrbiting(false);
+    if (flyoverTimerRef.current !== null) {
+      window.clearTimeout(flyoverTimerRef.current);
+      flyoverTimerRef.current = null;
+    }
+    mapRef.current?.stop();
+  };
+
   const handleResetView = () => {
     const map = mapRef.current;
     if (!map) return;
-    setIsOrbiting(false);
+    stopCameraMotion();
     map.flyTo({
+      ...tacticalViewCamera(isPitched ? "3d" : "2d"),
       center: MANTA_CENTER,
       zoom: 13.15,
-      pitch: 58,
-      bearing: -18,
       duration: 850,
-      essential: true,
     });
-    setIsPitched(true);
   };
 
-  const handleTogglePitch = () => {
+  const handleChangeView = (view: TacticalView) => {
     const map = mapRef.current;
     if (!map) return;
-    const nextPitch = isPitched ? 0 : 58;
-    setIsPitched(!isPitched);
-    map.easeTo({
-      pitch: nextPitch,
-      bearing: isPitched ? 0 : -18,
-      duration: 650,
-    });
+    stopCameraMotion();
+    setIsPitched(view === "3d");
+    map.easeTo(tacticalViewCamera(view));
+  };
+
+  const handleNorth = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    stopCameraMotion();
+    map.easeTo(northCamera());
   };
 
   return (
     <section
       className="city-map earth-3d-map"
-      aria-label="Mapa 3D satelital e interactivo de Manta"
+      aria-label={`Mapa táctico ${isPitched ? "3D" : "2D"} e interactivo de Manta`}
     >
       {/* MapLibre 3D WebGL Surface */}
       <div ref={containerRef} className="earth-webgl-viewport" />
@@ -1403,11 +1360,10 @@ export function CureEarth3DMap({
       {/* Top-Left Theater Heading */}
       <div className="map-heading">
         <span className="eyebrow">
-          GEODATA 3D ·{" "}
-          {styleMode === "satellite" ? "SATÉLITE REAL" : "VECTORIAL 3D"}
+          GEODATA · {isPitched ? "3D TÁCTICO" : "2D TÁCTICO"}
         </span>
         <h2>
-          Manta, Ecuador <span>00°57&apos;S / 80°43&apos;O · RELIEVE 3D</span>
+          Manta, Ecuador <span>00°57&apos;S / 80°43&apos;O · {isPitched ? "RELIEVE 3D" : "VISTA CENITAL"}</span>
         </h2>
       </div>
 
@@ -1419,24 +1375,19 @@ export function CureEarth3DMap({
           aria-label="Modo de visualización del mapa"
         >
           <button
-            className={styleMode === "satellite" ? "active" : ""}
-            onClick={() => onChangeStyleMode("satellite")}
-            title="Imagen satelital tipo Google Earth con edificios y modelos 3D"
-          >
-            <Globe size={11} />
-            3D Satélite
-          </button>
-          <button
-            className={styleMode === "tactical3d" ? "active" : ""}
-            onClick={() => onChangeStyleMode("tactical3d")}
-            title="Ciudad 3D vectorial nocturna"
+            className={isPitched ? "active" : ""}
+            aria-pressed={isPitched}
+            onClick={() => handleChangeView("3d")}
+            title="Inclinar el mismo mapa táctico a 58°"
           >
             <Layers size={11} />
-            3D Ciudad
+            3D Táctico
           </button>
           <button
-            onClick={onSwitchTo2D}
-            title="Cambiar al mapa esquemático 2D SVG"
+            className={!isPitched ? "active" : ""}
+            aria-pressed={!isPitched}
+            onClick={() => handleChangeView("2d")}
+            title="Ver el mismo mapa táctico desde arriba"
           >
             <MapIcon size={11} />
             2D Táctico
@@ -1480,17 +1431,16 @@ export function CureEarth3DMap({
           <Minus size={15} />
         </button>
         <button
-          aria-label="Restablecer vista 3D de Manta"
-          title="Centrar en Manta 3D"
+          aria-label="Centrar vista táctica en Manta"
+          title="Centrar en Manta sin cambiar entre 2D y 3D"
           onClick={handleResetView}
         >
           <Crosshair size={15} />
         </button>
         <button
-          aria-label="Alternar inclinación 3D"
-          title={isPitched ? "Cambiar a vista cenital" : "Inclinación 3D (58°)"}
-          className={isPitched ? "active-cam" : ""}
-          onClick={handleTogglePitch}
+          aria-label="Orientar vista al norte"
+          title="Orientar al norte sin cambiar inclinación ni zoom"
+          onClick={handleNorth}
         >
           <Compass size={15} />
         </button>
@@ -1504,7 +1454,8 @@ export function CureEarth3DMap({
         </button>
         <button
           aria-label="Sobrevuelo cinematográfico de la ciudad de Manta"
-          title="Sobrevuelo local de Manta"
+          title={isPitched ? "Sobrevuelo local de Manta" : "Disponible en 3D Táctico"}
+          disabled={!isPitched}
           onClick={handleCityFlyover}
         >
           <Plane size={15} />
@@ -1528,7 +1479,7 @@ export function CureEarth3DMap({
 
       <div className="map-scale">
         <span />2 km
-        <small>Relieve AWS DEM · Ortofoto Satelital · Modelos 3D</small>
+        <small>Relieve AWS DEM · Cartografía vectorial · Vista táctica</small>
       </div>
       <div className="osm-attribution">Vías © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · buses referenciales</div>
 

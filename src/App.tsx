@@ -24,8 +24,7 @@ import {
   Gamepad2,
   type LucideIcon,
 } from "lucide-react";
-import { CureCityMap } from "./components/CureCityMap";
-import { CureEarth3DMap, type MapStyleMode } from "./components/CureEarth3DMap";
+import { CureEarth3DMap } from "./components/CureEarth3DMap";
 import { ComparisonChart } from "./components/ComparisonChart";
 import {
   DAY_TRANSITION_MS,
@@ -268,8 +267,6 @@ export default function App({
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [analysisDay, setAnalysisDay] = useState(0);
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [mapView, setMapView] = useState<"3d" | "2d">("3d");
-  const [styleMode, setStyleMode] = useState<MapStyleMode>("tactical3d");
   const [dayTransition, setDayTransition] =
     useState<DayTransitionReport | null>(null);
   const [news, setNews] = useState<GameNews | null>(null);
@@ -515,30 +512,14 @@ export default function App({
       </header>
 
       <main className="map-stage">
-        {mapView === "3d" ? (
-          <CureEarth3DMap
-            paused={modal === "operations"}
-            snapshot={snapshot}
-            selectedNode={selectedNode}
-            onSelect={selectZone}
-            orders={orders}
-            patientZeroId={game.config.patientZeroId}
-            styleMode={styleMode}
-            onChangeStyleMode={setStyleMode}
-            onSwitchTo2D={() => setMapView("2d")}
-          />
-        ) : (
-          <CureCityMap
-            snapshot={snapshot}
-            selectedNode={selectedNode}
-            onSelect={selectZone}
-            orders={orders}
-            onSwitchTo3D={(mode) => {
-              setStyleMode(mode);
-              setMapView("3d");
-            }}
-          />
-        )}
+        <CureEarth3DMap
+          paused={modal === "operations"}
+          snapshot={snapshot}
+          selectedNode={selectedNode}
+          onSelect={selectZone}
+          orders={orders}
+          patientZeroId={game.config.patientZeroId}
+        />
       </main>
 
       <section className="hud-situation" aria-label="Situación en tiempo real">
