@@ -16,6 +16,7 @@ import {
   SprayCan,
 } from "lucide-react";
 import { MANTA_EDGES, MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
+import { quadraticRoutePoint, TRAFFIC_VEHICLES } from "../domain/traffic";
 import type { CityNode, DailyCitySnapshot } from "../domain/types";
 import type { Order } from "../domain/cureGame";
 
@@ -49,6 +50,41 @@ const MANTA_MIN_ZOOM = 12.4;
 const MANTA_MAX_ZOOM = 18;
 /** Floor for the optional cinematic city flyover (stays city-scale). */
 const CITY_FLYOVER_MIN_ZOOM = 12.6;
+
+function drawTrafficVehicle(ctx: CanvasRenderingContext2D, type: "car" | "bus") {
+  const bus = type === "bus";
+  ctx.fillStyle = bus ? "#80e0bc" : "#f0c879";
+  ctx.strokeStyle = "#08141a";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  if (bus) {
+    ctx.rect(-13, -4, 26, 8);
+  } else {
+    ctx.moveTo(-9, -2.5);
+    ctx.lineTo(-6, -4);
+    ctx.lineTo(4, -4);
+    ctx.lineTo(8, -2);
+    ctx.lineTo(10, 0);
+    ctx.lineTo(9, 3);
+    ctx.lineTo(-9, 3);
+    ctx.closePath();
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#17313a";
+  if (bus) {
+    for (const x of [-10, -4, 2, 8]) ctx.fillRect(x, -3, 4, 3);
+    ctx.fillRect(-10, 2, 4, 1.5);
+    ctx.fillRect(7, 2, 4, 1.5);
+  } else {
+    ctx.fillRect(-5, -3, 8, 5);
+    ctx.fillStyle = "#071217";
+    ctx.fillRect(-7, -4, 4, 1.5);
+    ctx.fillRect(4, -4, 4, 1.5);
+    ctx.fillRect(-7, 3, 4, 1.5);
+    ctx.fillRect(4, 3, 4, 1.5);
+  }
+}
 
 const SHORT_NAMES: Record<string, string> = {
   N01: "TARQUI",
@@ -1021,6 +1057,37 @@ export function CureEarth3DMap({
                 ctx.shadowBlur = 0;
               }
             }
+          }
+
+          for (const vehicle of TRAFFIC_VEHICLES) {
+            const edge = MANTA_EDGES.find(({ id }) => id === vehicle.edge);
+            if (!edge) continue;
+            const p1 = projectedPts[edge.source];
+            const p2 = projectedPts[edge.target];
+            if (!p1 || !p2) continue;
+            const isClosed =
+              snap.action.cordonedEdges.includes(edge.id) ||
+              activeOrders.some(
+                (order) =>
+                  order.kind === "cordon" &&
+                  (order.nodeId === edge.source || order.nodeId === edge.target),
+              );
+            if (isClosed) continue;
+
+            const t = prefersReducedMotion
+              ? 0.5
+              : ((elapsed + vehicle.delay) % vehicle.duration) / vehicle.duration;
+            const point = quadraticRoutePoint(
+              p1,
+              { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
+              p2,
+              t,
+            );
+            ctx.save();
+            ctx.translate(point.x, point.y);
+            ctx.rotate(point.angle);
+            drawTrafficVehicle(ctx, vehicle.type);
+            ctx.restore();
           }
 
           for (const node of MANTA_NODES) {

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Crosshair, Globe, Layers, Map as MapIcon, Minus, Plus } from "lucide-react";
 import { MANTA_EDGES, MANTA_NODES } from "../domain/mantaGraph";
 import type { DailyCitySnapshot } from "../domain/types";
 import type { Order } from "../domain/cureGame";
+import { TRAFFIC_VEHICLES } from "../domain/traffic";
 
 const POSITIONS: Record<string, [number, number]> = {
   N01: [645, 350],
@@ -48,6 +49,12 @@ const BLOCKS = Array.from({ length: 450 }, (_, i) => ({
   w: 17 + ((i * 7) % 11),
   h: 14 + ((i * 3) % 11),
 }));
+const ROAD_PATHS = [
+  "M0 550Q270 510 340 440T680 410T960 270",
+  "M200 670Q300 460 500 380T960 190",
+  "M470 670Q510 490 620 350T700 120",
+  "M0 595Q400 565 960 540",
+];
 
 interface Props {
   snapshot: DailyCitySnapshot;
@@ -66,6 +73,16 @@ export function CureCityMap({
 }: Props) {
   const [layer, setLayer] = useState<"infection" | "protection">("infection");
   const [zoom, setZoom] = useState(1);
+  const [reducedMotion, setReducedMotion] = useState(() =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const trafficId = useId().replaceAll(":", "");
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const affected = MANTA_NODES.filter(
     (node) => snapshot.nodes[node.id].I > 0,
   ).length;
@@ -189,20 +206,12 @@ export function CureCityMap({
                 transform={`rotate(-12 ${b.x} ${b.y})`}
               />
             ))}
-            <path
-              d="M0 550Q270 510 340 440T680 410T960 270M200 670Q300 460 500 380T960 190M470 670Q510 490 620 350T700 120M0 595Q400 565 960 540"
-              fill="none"
-              stroke="#38505a"
-              strokeWidth="9"
-              opacity=".7"
-            />
-            <path
-              d="M0 550Q270 510 340 440T680 410T960 270M200 670Q300 460 500 380T960 190M470 670Q510 490 620 350T700 120M0 595Q400 565 960 540"
-              fill="none"
-              stroke="#52616a"
-              strokeWidth="1"
-              opacity=".5"
-            />
+            {ROAD_PATHS.map((d, i) => (
+              <path key={i} id={`traffic-road-${trafficId}-${i}`} d={d} fill="none" stroke="#38505a" strokeWidth="9" opacity=".7" />
+            ))}
+            {ROAD_PATHS.map((d, i) => (
+              <path key={i} d={d} fill="none" stroke="#52616a" strokeWidth="1" opacity=".5" />
+            ))}
           </g>
           <text
             x="145"
@@ -244,6 +253,44 @@ export function CureCityMap({
               />
             );
           })}
+          <g aria-hidden="true" pointerEvents="none">
+            {TRAFFIC_VEHICLES.map((vehicle) => (
+              <g key={`${vehicle.type}-${vehicle.route}`}>
+                {!reducedMotion && (
+                  <animateMotion dur={`${vehicle.duration}s`} begin={`-${vehicle.delay}s`} repeatCount="indefinite" rotate="auto">
+                    <mpath href={`#traffic-road-${trafficId}-${vehicle.route}`} />
+                  </animateMotion>
+                )}
+                <g
+                  transform={reducedMotion ? [
+                    "translate(0 550) rotate(-8)",
+                    "translate(200 670) rotate(-64)",
+                    "translate(470 670) rotate(-77)",
+                    "translate(0 595) rotate(-4)",
+                  ][vehicle.route] : undefined}
+                  fill={vehicle.type === "bus" ? "#80e0bc" : "#f0c879"}
+                  stroke="#0b1b23"
+                  strokeWidth="1"
+                >
+                  {vehicle.type === "bus" ? (
+                    <>
+                      <rect x="-14" y="-4" width="28" height="8" rx="1.5" />
+                      <path d="M-9 -3h4v3h-4zm6 0h4v3h-4zm6 0h4v3H3z" fill="#17313a" stroke="none" />
+                      <rect x="-11" y="3" width="4" height="2" rx=".5" fill="#071217" stroke="none" />
+                      <rect x="7" y="3" width="4" height="2" rx=".5" fill="#071217" stroke="none" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M-10 -2.5  -7 -4h10l4 2 2 2v2h-19V0z" />
+                      <path d="M-5 -3h7l2 3H-7z" fill="#17313a" stroke="none" />
+                      <rect x="-7" y="3" width="4" height="2" rx=".5" fill="#071217" stroke="none" />
+                      <rect x="5" y="3" width="4" height="2" rx=".5" fill="#071217" stroke="none" />
+                    </>
+                  )}
+                </g>
+              </g>
+            ))}
+          </g>
           {MANTA_NODES.map((node) => {
             const [x, y] = POSITIONS[node.id];
             const state = snapshot.nodes[node.id];
