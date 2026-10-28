@@ -1,0 +1,2861 @@
+{
+  "schema": "committee-learning-feasibility/v1",
+  "sourceRevision": "4bcdc6e251c4ad02c350a15e35e3af1bb5e0ab5d",
+  "measuredAt": "2026-10-28T04:21:37.379Z",
+  "runtime": {
+    "bun": "1.3.14",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "method": {
+    "name": "Smoothed diagonal Gaussian elite search (CEM-style)",
+    "generations": 8,
+    "population": 24,
+    "elites": 6,
+    "smoothingNewWeight": 0.7,
+    "minStd": 0.15,
+    "logWeightBounds": [
+      -3,
+      3
+    ],
+    "dimensions": [
+      "cordonLogMultiplierDays1To18",
+      "fumigateLogMultiplierDays1To18",
+      "cordonLogMultiplierDays19To40",
+      "fumigateLogMultiplierDays19To40"
+    ],
+    "vaccineRelativeMultiplier": 1,
+    "baselineWeights": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "sourcePhysicsUnchanged": true,
+    "environmentStrategyIdentity": "SMART_CORTAFUEGOS",
+    "note": "Seed-matched comparisons; action/state-dependent random draws may diverge, not guaranteed identical per-transition noise."
+  },
+  "runIndices": {
+    "training": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "validation": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015,
+      1016,
+      1017,
+      1018,
+      1019,
+      1020,
+      1021,
+      1022,
+      1023
+    ],
+    "final": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100005,
+      100006,
+      100007,
+      100008,
+      100009,
+      100010,
+      100011,
+      100012,
+      100013,
+      100014,
+      100015,
+      100016,
+      100017,
+      100018,
+      100019,
+      100020,
+      100021,
+      100022,
+      100023,
+      100024,
+      100025,
+      100026,
+      100027,
+      100028,
+      100029,
+      100030,
+      100031,
+      100032,
+      100033,
+      100034,
+      100035,
+      100036,
+      100037,
+      100038,
+      100039,
+      100040,
+      100041,
+      100042,
+      100043,
+      100044,
+      100045,
+      100046,
+      100047,
+      100048,
+      100049,
+      100050,
+      100051,
+      100052,
+      100053,
+      100054,
+      100055,
+      100056,
+      100057,
+      100058,
+      100059,
+      100060,
+      100061,
+      100062,
+      100063,
+      100064,
+      100065,
+      100066,
+      100067,
+      100068,
+      100069,
+      100070,
+      100071,
+      100072,
+      100073,
+      100074,
+      100075,
+      100076,
+      100077,
+      100078,
+      100079,
+      100080,
+      100081,
+      100082,
+      100083,
+      100084,
+      100085,
+      100086,
+      100087,
+      100088,
+      100089,
+      100090,
+      100091,
+      100092,
+      100093,
+      100094,
+      100095,
+      100096,
+      100097,
+      100098,
+      100099,
+      100100,
+      100101,
+      100102,
+      100103,
+      100104,
+      100105,
+      100106,
+      100107,
+      100108,
+      100109,
+      100110,
+      100111,
+      100112,
+      100113,
+      100114,
+      100115,
+      100116,
+      100117,
+      100118,
+      100119,
+      100120,
+      100121,
+      100122,
+      100123,
+      100124,
+      100125,
+      100126,
+      100127
+    ]
+  },
+  "equivalence": [
+    {
+      "seed": 0,
+      "strategy": "NO_INTERVENTION",
+      "exactMatch": true
+    },
+    {
+      "seed": 0,
+      "strategy": "RANDOM",
+      "exactMatch": true
+    },
+    {
+      "seed": 0,
+      "strategy": "SMART_CORTAFUEGOS",
+      "exactMatch": true
+    },
+    {
+      "seed": 20261030,
+      "strategy": "NO_INTERVENTION",
+      "exactMatch": true
+    },
+    {
+      "seed": 20261030,
+      "strategy": "RANDOM",
+      "exactMatch": true
+    },
+    {
+      "seed": 20261030,
+      "strategy": "SMART_CORTAFUEGOS",
+      "exactMatch": true
+    },
+    {
+      "seed": 987654321,
+      "strategy": "NO_INTERVENTION",
+      "exactMatch": true
+    },
+    {
+      "seed": 987654321,
+      "strategy": "RANDOM",
+      "exactMatch": true
+    },
+    {
+      "seed": 987654321,
+      "strategy": "SMART_CORTAFUEGOS",
+      "exactMatch": true
+    }
+  ],
+  "totalTrajectories": 4483,
+  "invariantTrajectories": 1027,
+  "wallSeconds": 107.4908002,
+  "cpuSeconds": 98.687,
+  "rssMiB": 111.296875,
+  "records": [
+    {
+      "scenario": "standard",
+      "params": {
+        "betaHuman": 0.3,
+        "betaVector": 0.045,
+        "sigma": 0.33,
+        "gamma": 0.1,
+        "hospitalCapacity": 2500,
+        "vaccineEfficacy": 0.85,
+        "dailyBudget": 7500,
+        "vaccineCost": 2400,
+        "vaccineBatchSize": 850,
+        "fumigationCost": 1100,
+        "cordonCost": 1900,
+        "days": 40,
+        "seed": 20261030,
+        "monteCarloRuns": 60,
+        "patientZeroIds": [
+          "N01"
+        ],
+        "initialInfectedPerNode": 35,
+        "initialExposedPerNode": 50
+      },
+      "warmStartWeights": null,
+      "trainingTrajectoryCount": 1536,
+      "finalistCount": 8,
+      "validationTrajectoryCount": 192,
+      "selectedWeights": [
+        -0.01340424525163432,
+        -0.1745013690347266,
+        0.2966632010140791,
+        1.088351239916618
+      ],
+      "selectedValidationMean": 162684.83333333334,
+      "history": [
+        {
+          "generation": 0,
+          "bestTrainingMean": 169810.25,
+          "bestWeights": [
+            -0.22532951198962456,
+            -0.2934659892796324,
+            1.6293754164528371,
+            0.11474334975006648
+          ]
+        },
+        {
+          "generation": 1,
+          "bestTrainingMean": 169810.25,
+          "bestWeights": [
+            -0.22532951198962456,
+            -0.2934659892796324,
+            1.6293754164528371,
+            0.11474334975006648
+          ]
+        },
+        {
+          "generation": 2,
+          "bestTrainingMean": 169810.25,
+          "bestWeights": [
+            -0.22532951198962456,
+            -0.2934659892796324,
+            1.6293754164528371,
+            0.11474334975006648
+          ]
+        },
+        {
+          "generation": 3,
+          "bestTrainingMean": 169810.25,
+          "bestWeights": [
+            -0.22532951198962456,
+            -0.2934659892796324,
+            1.6293754164528371,
+            0.11474334975006648
+          ]
+        },
+        {
+          "generation": 4,
+          "bestTrainingMean": 169810.25,
+          "bestWeights": [
+            -0.22532951198962456,
+            -0.2934659892796324,
+            1.6293754164528371,
+            0.11474334975006648
+          ]
+        },
+        {
+          "generation": 5,
+          "bestTrainingMean": 169810.25,
+          "bestWeights": [
+            -0.22532951198962456,
+            -0.2934659892796324,
+            1.6293754164528371,
+            0.11474334975006648
+          ]
+        },
+        {
+          "generation": 6,
+          "bestTrainingMean": 169810.25,
+          "bestWeights": [
+            -0.22532951198962456,
+            -0.2934659892796324,
+            1.6293754164528371,
+            0.11474334975006648
+          ]
+        },
+        {
+          "generation": 7,
+          "bestTrainingMean": 169810.25,
+          "bestWeights": [
+            -0.22532951198962456,
+            -0.2934659892796324,
+            1.6293754164528371,
+            0.11474334975006648
+          ]
+        }
+      ],
+      "final": {
+        "count": 128,
+        "meanInfections": {
+          "learned": 164576.5625,
+          "sgc": 164576.5625,
+          "random": 232753.0546875,
+          "noIntervention": 267138.9609375
+        },
+        "pairedDifferenceLearnedMinusSGC": 0,
+        "pairedStandardError": 0,
+        "pairedBootstrap95Interval": [
+          0,
+          0
+        ],
+        "relativeReductionPercent": 0,
+        "candidateBeatsSgcMean": false,
+        "bootstrapIntervalBelowZero": false,
+        "meanBudget": {
+          "learned": 281931.25,
+          "sgc": 281931.25
+        }
+      },
+      "finalRows": [
+        {
+          "runIndex": 100000,
+          "learned": 146738,
+          "sgc": 146738,
+          "random": 237344,
+          "noIntervention": 267411,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100001,
+          "learned": 156765,
+          "sgc": 156765,
+          "random": 236327,
+          "noIntervention": 267358,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100002,
+          "learned": 153073,
+          "sgc": 153073,
+          "random": 230459,
+          "noIntervention": 267296,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100003,
+          "learned": 167229,
+          "sgc": 167229,
+          "random": 231920,
+          "noIntervention": 266410,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100004,
+          "learned": 162585,
+          "sgc": 162585,
+          "random": 234536,
+          "noIntervention": 267283,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100005,
+          "learned": 159751,
+          "sgc": 159751,
+          "random": 234136,
+          "noIntervention": 267072,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100006,
+          "learned": 163154,
+          "sgc": 163154,
+          "random": 236056,
+          "noIntervention": 267162,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100007,
+          "learned": 164607,
+          "sgc": 164607,
+          "random": 235968,
+          "noIntervention": 267309,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100008,
+          "learned": 171471,
+          "sgc": 171471,
+          "random": 235155,
+          "noIntervention": 267410,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100009,
+          "learned": 158678,
+          "sgc": 158678,
+          "random": 232963,
+          "noIntervention": 266997,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100010,
+          "learned": 166388,
+          "sgc": 166388,
+          "random": 227501,
+          "noIntervention": 266933,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100011,
+          "learned": 169151,
+          "sgc": 169151,
+          "random": 230327,
+          "noIntervention": 266886,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100012,
+          "learned": 172208,
+          "sgc": 172208,
+          "random": 238545,
+          "noIntervention": 267260,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100013,
+          "learned": 175207,
+          "sgc": 175207,
+          "random": 230981,
+          "noIntervention": 267273,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100014,
+          "learned": 164758,
+          "sgc": 164758,
+          "random": 230868,
+          "noIntervention": 266279,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100015,
+          "learned": 156915,
+          "sgc": 156915,
+          "random": 226750,
+          "noIntervention": 267252,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100016,
+          "learned": 161574,
+          "sgc": 161574,
+          "random": 230268,
+          "noIntervention": 267097,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100017,
+          "learned": 163599,
+          "sgc": 163599,
+          "random": 229796,
+          "noIntervention": 267015,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100018,
+          "learned": 163924,
+          "sgc": 163924,
+          "random": 226459,
+          "noIntervention": 267265,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100019,
+          "learned": 160841,
+          "sgc": 160841,
+          "random": 232976,
+          "noIntervention": 267308,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100020,
+          "learned": 159684,
+          "sgc": 159684,
+          "random": 231080,
+          "noIntervention": 266836,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100021,
+          "learned": 170748,
+          "sgc": 170748,
+          "random": 231334,
+          "noIntervention": 267138,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100022,
+          "learned": 160529,
+          "sgc": 160529,
+          "random": 235801,
+          "noIntervention": 267148,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100023,
+          "learned": 179413,
+          "sgc": 179413,
+          "random": 233190,
+          "noIntervention": 267314,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100024,
+          "learned": 168082,
+          "sgc": 168082,
+          "random": 232747,
+          "noIntervention": 267490,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100025,
+          "learned": 171510,
+          "sgc": 171510,
+          "random": 230265,
+          "noIntervention": 267363,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100026,
+          "learned": 171678,
+          "sgc": 171678,
+          "random": 230587,
+          "noIntervention": 267108,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100027,
+          "learned": 164405,
+          "sgc": 164405,
+          "random": 233280,
+          "noIntervention": 267117,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100028,
+          "learned": 152116,
+          "sgc": 152116,
+          "random": 233707,
+          "noIntervention": 266699,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100029,
+          "learned": 164179,
+          "sgc": 164179,
+          "random": 238615,
+          "noIntervention": 267421,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100030,
+          "learned": 163745,
+          "sgc": 163745,
+          "random": 227235,
+          "noIntervention": 267138,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100031,
+          "learned": 170545,
+          "sgc": 170545,
+          "random": 231818,
+          "noIntervention": 267085,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100032,
+          "learned": 164318,
+          "sgc": 164318,
+          "random": 236250,
+          "noIntervention": 266841,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100033,
+          "learned": 161036,
+          "sgc": 161036,
+          "random": 236208,
+          "noIntervention": 267229,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100034,
+          "learned": 158613,
+          "sgc": 158613,
+          "random": 233009,
+          "noIntervention": 267514,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100035,
+          "learned": 164008,
+          "sgc": 164008,
+          "random": 237776,
+          "noIntervention": 267267,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100036,
+          "learned": 156264,
+          "sgc": 156264,
+          "random": 230240,
+          "noIntervention": 266970,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100037,
+          "learned": 173189,
+          "sgc": 173189,
+          "random": 229321,
+          "noIntervention": 267112,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100038,
+          "learned": 179801,
+          "sgc": 179801,
+          "random": 228357,
+          "noIntervention": 267059,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100039,
+          "learned": 166239,
+          "sgc": 166239,
+          "random": 239632,
+          "noIntervention": 267104,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100040,
+          "learned": 175273,
+          "sgc": 175273,
+          "random": 238538,
+          "noIntervention": 267397,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100041,
+          "learned": 167266,
+          "sgc": 167266,
+          "random": 232179,
+          "noIntervention": 266835,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100042,
+          "learned": 171353,
+          "sgc": 171353,
+          "random": 238921,
+          "noIntervention": 267321,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100043,
+          "learned": 163241,
+          "sgc": 163241,
+          "random": 235629,
+          "noIntervention": 267138,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100044,
+          "learned": 149439,
+          "sgc": 149439,
+          "random": 233234,
+          "noIntervention": 267699,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100045,
+          "learned": 167246,
+          "sgc": 167246,
+          "random": 234989,
+          "noIntervention": 267241,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100046,
+          "learned": 167819,
+          "sgc": 167819,
+          "random": 227634,
+          "noIntervention": 266666,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100047,
+          "learned": 172001,
+          "sgc": 172001,
+          "random": 230748,
+          "noIntervention": 266958,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100048,
+          "learned": 167127,
+          "sgc": 167127,
+          "random": 237248,
+          "noIntervention": 267181,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100049,
+          "learned": 171102,
+          "sgc": 171102,
+          "random": 236409,
+          "noIntervention": 267281,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100050,
+          "learned": 175470,
+          "sgc": 175470,
+          "random": 227840,
+          "noIntervention": 267137,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100051,
+          "learned": 166181,
+          "sgc": 166181,
+          "random": 236280,
+          "noIntervention": 267148,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100052,
+          "learned": 168766,
+          "sgc": 168766,
+          "random": 232892,
+          "noIntervention": 267467,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100053,
+          "learned": 161286,
+          "sgc": 161286,
+          "random": 227881,
+          "noIntervention": 267200,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100054,
+          "learned": 169640,
+          "sgc": 169640,
+          "random": 227703,
+          "noIntervention": 267369,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100055,
+          "learned": 164194,
+          "sgc": 164194,
+          "random": 233032,
+          "noIntervention": 266946,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100056,
+          "learned": 172982,
+          "sgc": 172982,
+          "random": 229708,
+          "noIntervention": 267356,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100057,
+          "learned": 151763,
+          "sgc": 151763,
+          "random": 228179,
+          "noIntervention": 266959,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100058,
+          "learned": 170809,
+          "sgc": 170809,
+          "random": 232750,
+          "noIntervention": 267738,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100059,
+          "learned": 157593,
+          "sgc": 157593,
+          "random": 230616,
+          "noIntervention": 267146,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100060,
+          "learned": 169258,
+          "sgc": 169258,
+          "random": 231380,
+          "noIntervention": 267295,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100061,
+          "learned": 163057,
+          "sgc": 163057,
+          "random": 233500,
+          "noIntervention": 267085,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100062,
+          "learned": 157823,
+          "sgc": 157823,
+          "random": 237754,
+          "noIntervention": 267506,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100063,
+          "learned": 157827,
+          "sgc": 157827,
+          "random": 234157,
+          "noIntervention": 266947,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100064,
+          "learned": 159103,
+          "sgc": 159103,
+          "random": 235597,
+          "noIntervention": 267338,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100065,
+          "learned": 171763,
+          "sgc": 171763,
+          "random": 235979,
+          "noIntervention": 266742,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100066,
+          "learned": 176172,
+          "sgc": 176172,
+          "random": 230727,
+          "noIntervention": 267463,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100067,
+          "learned": 168317,
+          "sgc": 168317,
+          "random": 234310,
+          "noIntervention": 267393,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100068,
+          "learned": 160477,
+          "sgc": 160477,
+          "random": 230514,
+          "noIntervention": 267357,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100069,
+          "learned": 151867,
+          "sgc": 151867,
+          "random": 238247,
+          "noIntervention": 267123,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100070,
+          "learned": 169245,
+          "sgc": 169245,
+          "random": 226164,
+          "noIntervention": 267303,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100071,
+          "learned": 161711,
+          "sgc": 161711,
+          "random": 231961,
+          "noIntervention": 267184,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100072,
+          "learned": 177793,
+          "sgc": 177793,
+          "random": 234364,
+          "noIntervention": 266879,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100073,
+          "learned": 172620,
+          "sgc": 172620,
+          "random": 233263,
+          "noIntervention": 267255,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100074,
+          "learned": 150178,
+          "sgc": 150178,
+          "random": 231793,
+          "noIntervention": 266950,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100075,
+          "learned": 162904,
+          "sgc": 162904,
+          "random": 233574,
+          "noIntervention": 267254,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100076,
+          "learned": 153967,
+          "sgc": 153967,
+          "random": 230064,
+          "noIntervention": 266818,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100077,
+          "learned": 162651,
+          "sgc": 162651,
+          "random": 233020,
+          "noIntervention": 267004,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100078,
+          "learned": 164321,
+          "sgc": 164321,
+          "random": 234882,
+          "noIntervention": 266944,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100079,
+          "learned": 160807,
+          "sgc": 160807,
+          "random": 233091,
+          "noIntervention": 266926,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100080,
+          "learned": 172697,
+          "sgc": 172697,
+          "random": 230295,
+          "noIntervention": 267171,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100081,
+          "learned": 162921,
+          "sgc": 162921,
+          "random": 236194,
+          "noIntervention": 267217,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100082,
+          "learned": 163141,
+          "sgc": 163141,
+          "random": 236924,
+          "noIntervention": 267030,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100083,
+          "learned": 158523,
+          "sgc": 158523,
+          "random": 236266,
+          "noIntervention": 267223,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100084,
+          "learned": 171227,
+          "sgc": 171227,
+          "random": 236397,
+          "noIntervention": 266961,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100085,
+          "learned": 164481,
+          "sgc": 164481,
+          "random": 236487,
+          "noIntervention": 267459,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100086,
+          "learned": 160321,
+          "sgc": 160321,
+          "random": 229582,
+          "noIntervention": 267561,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100087,
+          "learned": 162669,
+          "sgc": 162669,
+          "random": 235008,
+          "noIntervention": 266838,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100088,
+          "learned": 170818,
+          "sgc": 170818,
+          "random": 228069,
+          "noIntervention": 266838,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100089,
+          "learned": 166553,
+          "sgc": 166553,
+          "random": 232871,
+          "noIntervention": 267081,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100090,
+          "learned": 169081,
+          "sgc": 169081,
+          "random": 234538,
+          "noIntervention": 266852,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100091,
+          "learned": 160534,
+          "sgc": 160534,
+          "random": 233811,
+          "noIntervention": 266879,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100092,
+          "learned": 162615,
+          "sgc": 162615,
+          "random": 234464,
+          "noIntervention": 267387,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100093,
+          "learned": 167834,
+          "sgc": 167834,
+          "random": 235188,
+          "noIntervention": 266779,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100094,
+          "learned": 158639,
+          "sgc": 158639,
+          "random": 230555,
+          "noIntervention": 267384,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100095,
+          "learned": 170230,
+          "sgc": 170230,
+          "random": 236934,
+          "noIntervention": 267112,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100096,
+          "learned": 174336,
+          "sgc": 174336,
+          "random": 233233,
+          "noIntervention": 267155,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100097,
+          "learned": 169045,
+          "sgc": 169045,
+          "random": 233827,
+          "noIntervention": 267445,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100098,
+          "learned": 164734,
+          "sgc": 164734,
+          "random": 231029,
+          "noIntervention": 266736,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100099,
+          "learned": 154708,
+          "sgc": 154708,
+          "random": 233329,
+          "noIntervention": 267036,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100100,
+          "learned": 163928,
+          "sgc": 163928,
+          "random": 231151,
+          "noIntervention": 267202,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100101,
+          "learned": 166224,
+          "sgc": 166224,
+          "random": 233435,
+          "noIntervention": 267216,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100102,
+          "learned": 162754,
+          "sgc": 162754,
+          "random": 235785,
+          "noIntervention": 266978,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100103,
+          "learned": 163175,
+          "sgc": 163175,
+          "random": 227299,
+          "noIntervention": 267418,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100104,
+          "learned": 155737,
+          "sgc": 155737,
+          "random": 229879,
+          "noIntervention": 266996,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100105,
+          "learned": 174941,
+          "sgc": 174941,
+          "random": 229933,
+          "noIntervention": 267183,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100106,
+          "learned": 177033,
+          "sgc": 177033,
+          "random": 238027,
+          "noIntervention": 267009,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100107,
+          "learned": 146785,
+          "sgc": 146785,
+          "random": 230852,
+          "noIntervention": 266700,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100108,
+          "learned": 160991,
+          "sgc": 160991,
+          "random": 229093,
+          "noIntervention": 267090,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100109,
+          "learned": 165985,
+          "sgc": 165985,
+          "random": 227123,
+          "noIntervention": 267623,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100110,
+          "learned": 175800,
+          "sgc": 175800,
+          "random": 234549,
+          "noIntervention": 267086,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100111,
+          "learned": 153816,
+          "sgc": 153816,
+          "random": 232909,
+          "noIntervention": 267017,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100112,
+          "learned": 165190,
+          "sgc": 165190,
+          "random": 232184,
+          "noIntervention": 266965,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100113,
+          "learned": 152101,
+          "sgc": 152101,
+          "random": 228406,
+          "noIntervention": 267139,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100114,
+          "learned": 176510,
+          "sgc": 176510,
+          "random": 232833,
+          "noIntervention": 267524,
+          "learnedBudget": 283000,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100115,
+          "learned": 155103,
+          "sgc": 155103,
+          "random": 232939,
+          "noIntervention": 267263,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100116,
+          "learned": 165917,
+          "sgc": 165917,
+          "random": 236114,
+          "noIntervention": 267475,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100117,
+          "learned": 155949,
+          "sgc": 155949,
+          "random": 232844,
+          "noIntervention": 266997,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100118,
+          "learned": 165958,
+          "sgc": 165958,
+          "random": 236421,
+          "noIntervention": 267359,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100119,
+          "learned": 155334,
+          "sgc": 155334,
+          "random": 233523,
+          "noIntervention": 267106,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        },
+        {
+          "runIndex": 100120,
+          "learned": 161245,
+          "sgc": 161245,
+          "random": 227827,
+          "noIntervention": 266744,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100121,
+          "learned": 162789,
+          "sgc": 162789,
+          "random": 228201,
+          "noIntervention": 267513,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100122,
+          "learned": 173682,
+          "sgc": 173682,
+          "random": 229889,
+          "noIntervention": 267387,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100123,
+          "learned": 165189,
+          "sgc": 165189,
+          "random": 231852,
+          "noIntervention": 267237,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100124,
+          "learned": 172510,
+          "sgc": 172510,
+          "random": 231355,
+          "noIntervention": 266503,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100125,
+          "learned": 166077,
+          "sgc": 166077,
+          "random": 231273,
+          "noIntervention": 267148,
+          "learnedBudget": 281800,
+          "sgcBudget": 281800
+        },
+        {
+          "runIndex": 100126,
+          "learned": 164663,
+          "sgc": 164663,
+          "random": 235277,
+          "noIntervention": 266902,
+          "learnedBudget": 282400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100127,
+          "learned": 154177,
+          "sgc": 154177,
+          "random": 229879,
+          "noIntervention": 266685,
+          "learnedBudget": 281200,
+          "sgcBudget": 281200
+        }
+      ]
+    },
+    {
+      "scenario": "double-transmission-half-vaccines",
+      "params": {
+        "betaHuman": 0.6,
+        "betaVector": 0.045,
+        "sigma": 0.33,
+        "gamma": 0.1,
+        "hospitalCapacity": 2500,
+        "vaccineEfficacy": 0.85,
+        "dailyBudget": 7500,
+        "vaccineCost": 2400,
+        "vaccineBatchSize": 425,
+        "fumigationCost": 1100,
+        "cordonCost": 1900,
+        "days": 40,
+        "seed": 20261030,
+        "monteCarloRuns": 60,
+        "patientZeroIds": [
+          "N01"
+        ],
+        "initialInfectedPerNode": 35,
+        "initialExposedPerNode": 50
+      },
+      "warmStartWeights": [
+        -0.01340424525163432,
+        -0.1745013690347266,
+        0.2966632010140791,
+        1.088351239916618
+      ],
+      "trainingTrajectoryCount": 1536,
+      "finalistCount": 8,
+      "validationTrajectoryCount": 192,
+      "selectedWeights": [
+        -0.03083664645151274,
+        -2.1621414839219604,
+        -3,
+        -0.9441411219381044
+      ],
+      "selectedValidationMean": 239756.375,
+      "history": [
+        {
+          "generation": 0,
+          "bestTrainingMean": 244397.25,
+          "bestWeights": [
+            -1.173547655022762,
+            0.4378505829406357,
+            -2.114814970583606,
+            -0.8011332384441612
+          ]
+        },
+        {
+          "generation": 1,
+          "bestTrainingMean": 242509.875,
+          "bestWeights": [
+            -1.0861363914001883,
+            -0.2612047226599571,
+            -2.5253528790906836,
+            1.762692002408759
+          ]
+        },
+        {
+          "generation": 2,
+          "bestTrainingMean": 239532,
+          "bestWeights": [
+            -0.060583196393631356,
+            -2.6285784674825177,
+            -3,
+            0.1692449225746686
+          ]
+        },
+        {
+          "generation": 3,
+          "bestTrainingMean": 239532,
+          "bestWeights": [
+            -0.060583196393631356,
+            -2.6285784674825177,
+            -3,
+            0.1692449225746686
+          ]
+        },
+        {
+          "generation": 4,
+          "bestTrainingMean": 239532,
+          "bestWeights": [
+            -0.060583196393631356,
+            -2.6285784674825177,
+            -3,
+            0.1692449225746686
+          ]
+        },
+        {
+          "generation": 5,
+          "bestTrainingMean": 239532,
+          "bestWeights": [
+            -0.060583196393631356,
+            -2.6285784674825177,
+            -3,
+            0.1692449225746686
+          ]
+        },
+        {
+          "generation": 6,
+          "bestTrainingMean": 239532,
+          "bestWeights": [
+            -0.060583196393631356,
+            -2.6285784674825177,
+            -3,
+            0.1692449225746686
+          ]
+        },
+        {
+          "generation": 7,
+          "bestTrainingMean": 239532,
+          "bestWeights": [
+            -0.060583196393631356,
+            -2.6285784674825177,
+            -3,
+            0.1692449225746686
+          ]
+        }
+      ],
+      "final": {
+        "count": 128,
+        "meanInfections": {
+          "learned": 239930.453125,
+          "sgc": 247397.34375,
+          "random": 257766.5078125,
+          "noIntervention": 269978.515625
+        },
+        "pairedDifferenceLearnedMinusSGC": -7466.890625,
+        "pairedStandardError": 53.39797541888182,
+        "pairedBootstrap95Interval": [
+          -7570.8203125,
+          -7361.828125
+        ],
+        "relativeReductionPercent": 3.0181773627066275,
+        "candidateBeatsSgcMean": true,
+        "bootstrapIntervalBelowZero": true,
+        "meanBudget": {
+          "learned": 267617.1875,
+          "sgc": 283045.3125
+        }
+      },
+      "finalRows": [
+        {
+          "runIndex": 100000,
+          "learned": 238856,
+          "sgc": 246500,
+          "random": 260924,
+          "noIntervention": 269972,
+          "learnedBudget": 272400,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100001,
+          "learned": 239697,
+          "sgc": 248116,
+          "random": 259359,
+          "noIntervention": 269978,
+          "learnedBudget": 264100,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100002,
+          "learned": 239277,
+          "sgc": 245138,
+          "random": 256908,
+          "noIntervention": 269977,
+          "learnedBudget": 273800,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100003,
+          "learned": 238818,
+          "sgc": 245265,
+          "random": 258489,
+          "noIntervention": 269981,
+          "learnedBudget": 278600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100004,
+          "learned": 240756,
+          "sgc": 248535,
+          "random": 258147,
+          "noIntervention": 269984,
+          "learnedBudget": 259600,
+          "sgcBudget": 282900
+        },
+        {
+          "runIndex": 100005,
+          "learned": 239769,
+          "sgc": 247279,
+          "random": 259709,
+          "noIntervention": 269969,
+          "learnedBudget": 272500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100006,
+          "learned": 241260,
+          "sgc": 247928,
+          "random": 259303,
+          "noIntervention": 269983,
+          "learnedBudget": 265400,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100007,
+          "learned": 238737,
+          "sgc": 246501,
+          "random": 259150,
+          "noIntervention": 269975,
+          "learnedBudget": 271300,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100008,
+          "learned": 240275,
+          "sgc": 248023,
+          "random": 259098,
+          "noIntervention": 269968,
+          "learnedBudget": 265200,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100009,
+          "learned": 239333,
+          "sgc": 247699,
+          "random": 258551,
+          "noIntervention": 269983,
+          "learnedBudget": 272500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100010,
+          "learned": 239486,
+          "sgc": 246327,
+          "random": 255731,
+          "noIntervention": 269979,
+          "learnedBudget": 271900,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100011,
+          "learned": 240914,
+          "sgc": 248021,
+          "random": 255678,
+          "noIntervention": 269983,
+          "learnedBudget": 268900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100012,
+          "learned": 240449,
+          "sgc": 248033,
+          "random": 260003,
+          "noIntervention": 269981,
+          "learnedBudget": 265300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100013,
+          "learned": 239714,
+          "sgc": 248032,
+          "random": 257161,
+          "noIntervention": 269983,
+          "learnedBudget": 264600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100014,
+          "learned": 239516,
+          "sgc": 247644,
+          "random": 257009,
+          "noIntervention": 269977,
+          "learnedBudget": 264600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100015,
+          "learned": 240176,
+          "sgc": 247231,
+          "random": 256356,
+          "noIntervention": 269976,
+          "learnedBudget": 264100,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100016,
+          "learned": 239162,
+          "sgc": 246798,
+          "random": 258198,
+          "noIntervention": 269978,
+          "learnedBudget": 271900,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100017,
+          "learned": 239400,
+          "sgc": 247371,
+          "random": 256983,
+          "noIntervention": 269982,
+          "learnedBudget": 264000,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100018,
+          "learned": 239795,
+          "sgc": 247104,
+          "random": 255501,
+          "noIntervention": 269962,
+          "learnedBudget": 269000,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100019,
+          "learned": 239649,
+          "sgc": 246506,
+          "random": 258584,
+          "noIntervention": 269981,
+          "learnedBudget": 272500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100020,
+          "learned": 240573,
+          "sgc": 248049,
+          "random": 255900,
+          "noIntervention": 269983,
+          "learnedBudget": 261500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100021,
+          "learned": 239112,
+          "sgc": 247407,
+          "random": 256380,
+          "noIntervention": 269976,
+          "learnedBudget": 271300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100022,
+          "learned": 240871,
+          "sgc": 247726,
+          "random": 258847,
+          "noIntervention": 269984,
+          "learnedBudget": 268300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100023,
+          "learned": 240157,
+          "sgc": 247527,
+          "random": 258073,
+          "noIntervention": 269979,
+          "learnedBudget": 264700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100024,
+          "learned": 240609,
+          "sgc": 247567,
+          "random": 256414,
+          "noIntervention": 269976,
+          "learnedBudget": 265300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100025,
+          "learned": 239565,
+          "sgc": 247715,
+          "random": 256227,
+          "noIntervention": 269981,
+          "learnedBudget": 270800,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100026,
+          "learned": 240128,
+          "sgc": 247412,
+          "random": 257443,
+          "noIntervention": 269979,
+          "learnedBudget": 264700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100027,
+          "learned": 240163,
+          "sgc": 248400,
+          "random": 259424,
+          "noIntervention": 269978,
+          "learnedBudget": 260300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100028,
+          "learned": 240103,
+          "sgc": 247383,
+          "random": 258596,
+          "noIntervention": 269980,
+          "learnedBudget": 261700,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100029,
+          "learned": 238937,
+          "sgc": 246325,
+          "random": 260536,
+          "noIntervention": 269979,
+          "learnedBudget": 274300,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100030,
+          "learned": 239201,
+          "sgc": 246367,
+          "random": 256941,
+          "noIntervention": 269972,
+          "learnedBudget": 271900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100031,
+          "learned": 239880,
+          "sgc": 247548,
+          "random": 255016,
+          "noIntervention": 269984,
+          "learnedBudget": 265200,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100032,
+          "learned": 240442,
+          "sgc": 247886,
+          "random": 259198,
+          "noIntervention": 269972,
+          "learnedBudget": 265800,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100033,
+          "learned": 241134,
+          "sgc": 246848,
+          "random": 259432,
+          "noIntervention": 269985,
+          "learnedBudget": 264800,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100034,
+          "learned": 240539,
+          "sgc": 248187,
+          "random": 257341,
+          "noIntervention": 269980,
+          "learnedBudget": 261500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100035,
+          "learned": 239402,
+          "sgc": 247374,
+          "random": 258964,
+          "noIntervention": 269984,
+          "learnedBudget": 267000,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100036,
+          "learned": 239784,
+          "sgc": 247329,
+          "random": 257210,
+          "noIntervention": 269982,
+          "learnedBudget": 271400,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100037,
+          "learned": 240207,
+          "sgc": 247163,
+          "random": 257227,
+          "noIntervention": 269979,
+          "learnedBudget": 271500,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100038,
+          "learned": 240106,
+          "sgc": 248366,
+          "random": 257008,
+          "noIntervention": 269986,
+          "learnedBudget": 266300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100039,
+          "learned": 240027,
+          "sgc": 248241,
+          "random": 261523,
+          "noIntervention": 269963,
+          "learnedBudget": 265200,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100040,
+          "learned": 239840,
+          "sgc": 247668,
+          "random": 260666,
+          "noIntervention": 269972,
+          "learnedBudget": 267600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100041,
+          "learned": 239869,
+          "sgc": 247618,
+          "random": 256875,
+          "noIntervention": 269981,
+          "learnedBudget": 264100,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100042,
+          "learned": 239961,
+          "sgc": 247197,
+          "random": 260816,
+          "noIntervention": 269985,
+          "learnedBudget": 269600,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100043,
+          "learned": 239638,
+          "sgc": 246884,
+          "random": 258250,
+          "noIntervention": 269972,
+          "learnedBudget": 271400,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100044,
+          "learned": 239124,
+          "sgc": 246495,
+          "random": 257491,
+          "noIntervention": 269986,
+          "learnedBudget": 274100,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100045,
+          "learned": 240021,
+          "sgc": 248508,
+          "random": 258296,
+          "noIntervention": 269973,
+          "learnedBudget": 263300,
+          "sgcBudget": 282900
+        },
+        {
+          "runIndex": 100046,
+          "learned": 239228,
+          "sgc": 246427,
+          "random": 254612,
+          "noIntervention": 269971,
+          "learnedBudget": 276800,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100047,
+          "learned": 239694,
+          "sgc": 246751,
+          "random": 256942,
+          "noIntervention": 269984,
+          "learnedBudget": 272000,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100048,
+          "learned": 240238,
+          "sgc": 247403,
+          "random": 259284,
+          "noIntervention": 269977,
+          "learnedBudget": 264700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100049,
+          "learned": 239585,
+          "sgc": 247276,
+          "random": 259252,
+          "noIntervention": 269976,
+          "learnedBudget": 271900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100050,
+          "learned": 239061,
+          "sgc": 246995,
+          "random": 255811,
+          "noIntervention": 269977,
+          "learnedBudget": 271900,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100051,
+          "learned": 240896,
+          "sgc": 248394,
+          "random": 259615,
+          "noIntervention": 269982,
+          "learnedBudget": 265300,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100052,
+          "learned": 240239,
+          "sgc": 247266,
+          "random": 258292,
+          "noIntervention": 269986,
+          "learnedBudget": 264700,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100053,
+          "learned": 239718,
+          "sgc": 246651,
+          "random": 256009,
+          "noIntervention": 269975,
+          "learnedBudget": 273600,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100054,
+          "learned": 239125,
+          "sgc": 247866,
+          "random": 256469,
+          "noIntervention": 269985,
+          "learnedBudget": 265100,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100055,
+          "learned": 239268,
+          "sgc": 247048,
+          "random": 256600,
+          "noIntervention": 269965,
+          "learnedBudget": 263500,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100056,
+          "learned": 240725,
+          "sgc": 247716,
+          "random": 257457,
+          "noIntervention": 269974,
+          "learnedBudget": 265300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100057,
+          "learned": 239964,
+          "sgc": 247730,
+          "random": 256058,
+          "noIntervention": 269984,
+          "learnedBudget": 264100,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100058,
+          "learned": 239175,
+          "sgc": 247550,
+          "random": 258132,
+          "noIntervention": 269988,
+          "learnedBudget": 267000,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100059,
+          "learned": 239326,
+          "sgc": 247391,
+          "random": 257077,
+          "noIntervention": 269976,
+          "learnedBudget": 271900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100060,
+          "learned": 239777,
+          "sgc": 247930,
+          "random": 257235,
+          "noIntervention": 269983,
+          "learnedBudget": 265700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100061,
+          "learned": 239919,
+          "sgc": 245783,
+          "random": 255978,
+          "noIntervention": 269979,
+          "learnedBudget": 270900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100062,
+          "learned": 240305,
+          "sgc": 247766,
+          "random": 260278,
+          "noIntervention": 269988,
+          "learnedBudget": 264700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100063,
+          "learned": 239691,
+          "sgc": 247672,
+          "random": 259017,
+          "noIntervention": 269981,
+          "learnedBudget": 267600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100064,
+          "learned": 240158,
+          "sgc": 247750,
+          "random": 258033,
+          "noIntervention": 269985,
+          "learnedBudget": 269300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100065,
+          "learned": 241660,
+          "sgc": 248785,
+          "random": 258206,
+          "noIntervention": 269991,
+          "learnedBudget": 258100,
+          "sgcBudget": 282900
+        },
+        {
+          "runIndex": 100066,
+          "learned": 240864,
+          "sgc": 248741,
+          "random": 255437,
+          "noIntervention": 269982,
+          "learnedBudget": 261500,
+          "sgcBudget": 282900
+        },
+        {
+          "runIndex": 100067,
+          "learned": 239724,
+          "sgc": 247951,
+          "random": 259920,
+          "noIntervention": 269982,
+          "learnedBudget": 265200,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100068,
+          "learned": 239633,
+          "sgc": 247379,
+          "random": 257368,
+          "noIntervention": 269973,
+          "learnedBudget": 264600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100069,
+          "learned": 239757,
+          "sgc": 248650,
+          "random": 260251,
+          "noIntervention": 269980,
+          "learnedBudget": 258900,
+          "sgcBudget": 282900
+        },
+        {
+          "runIndex": 100070,
+          "learned": 240996,
+          "sgc": 248427,
+          "random": 256054,
+          "noIntervention": 269979,
+          "learnedBudget": 261000,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100071,
+          "learned": 239320,
+          "sgc": 246764,
+          "random": 255227,
+          "noIntervention": 269974,
+          "learnedBudget": 270800,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100072,
+          "learned": 239208,
+          "sgc": 247226,
+          "random": 258601,
+          "noIntervention": 269971,
+          "learnedBudget": 268900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100073,
+          "learned": 239887,
+          "sgc": 247352,
+          "random": 257466,
+          "noIntervention": 269973,
+          "learnedBudget": 265200,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100074,
+          "learned": 238511,
+          "sgc": 245455,
+          "random": 258340,
+          "noIntervention": 269987,
+          "learnedBudget": 273700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100075,
+          "learned": 239626,
+          "sgc": 246180,
+          "random": 257064,
+          "noIntervention": 269990,
+          "learnedBudget": 274900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100076,
+          "learned": 239593,
+          "sgc": 246705,
+          "random": 256277,
+          "noIntervention": 269982,
+          "learnedBudget": 267000,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100077,
+          "learned": 240887,
+          "sgc": 247518,
+          "random": 257085,
+          "noIntervention": 269986,
+          "learnedBudget": 264700,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100078,
+          "learned": 239409,
+          "sgc": 246683,
+          "random": 258749,
+          "noIntervention": 269980,
+          "learnedBudget": 274400,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100079,
+          "learned": 239512,
+          "sgc": 246943,
+          "random": 259056,
+          "noIntervention": 269983,
+          "learnedBudget": 271400,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100080,
+          "learned": 240083,
+          "sgc": 248148,
+          "random": 257065,
+          "noIntervention": 269980,
+          "learnedBudget": 265800,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100081,
+          "learned": 240436,
+          "sgc": 247345,
+          "random": 259284,
+          "noIntervention": 269987,
+          "learnedBudget": 270700,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100082,
+          "learned": 239884,
+          "sgc": 247673,
+          "random": 258419,
+          "noIntervention": 269970,
+          "learnedBudget": 263600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100083,
+          "learned": 239392,
+          "sgc": 246147,
+          "random": 260115,
+          "noIntervention": 269974,
+          "learnedBudget": 272500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100084,
+          "learned": 240334,
+          "sgc": 247599,
+          "random": 259221,
+          "noIntervention": 269982,
+          "learnedBudget": 267700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100085,
+          "learned": 240304,
+          "sgc": 247377,
+          "random": 258677,
+          "noIntervention": 269980,
+          "learnedBudget": 272000,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100086,
+          "learned": 239678,
+          "sgc": 246462,
+          "random": 256477,
+          "noIntervention": 269971,
+          "learnedBudget": 272500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100087,
+          "learned": 239646,
+          "sgc": 247730,
+          "random": 257970,
+          "noIntervention": 269985,
+          "learnedBudget": 266300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100088,
+          "learned": 239027,
+          "sgc": 247233,
+          "random": 256750,
+          "noIntervention": 269990,
+          "learnedBudget": 268900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100089,
+          "learned": 239753,
+          "sgc": 248311,
+          "random": 257294,
+          "noIntervention": 269962,
+          "learnedBudget": 266500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100090,
+          "learned": 239776,
+          "sgc": 247175,
+          "random": 258027,
+          "noIntervention": 269983,
+          "learnedBudget": 264600,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100091,
+          "learned": 239883,
+          "sgc": 247855,
+          "random": 257642,
+          "noIntervention": 269969,
+          "learnedBudget": 267600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100092,
+          "learned": 240896,
+          "sgc": 247440,
+          "random": 257351,
+          "noIntervention": 269982,
+          "learnedBudget": 270800,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100093,
+          "learned": 241832,
+          "sgc": 249168,
+          "random": 259602,
+          "noIntervention": 269980,
+          "learnedBudget": 250800,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100094,
+          "learned": 239830,
+          "sgc": 247926,
+          "random": 257155,
+          "noIntervention": 269979,
+          "learnedBudget": 264600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100095,
+          "learned": 240271,
+          "sgc": 247028,
+          "random": 259534,
+          "noIntervention": 269966,
+          "learnedBudget": 269000,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100096,
+          "learned": 239923,
+          "sgc": 247357,
+          "random": 256813,
+          "noIntervention": 269963,
+          "learnedBudget": 272500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100097,
+          "learned": 240241,
+          "sgc": 247640,
+          "random": 258992,
+          "noIntervention": 269973,
+          "learnedBudget": 264700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100098,
+          "learned": 238697,
+          "sgc": 246093,
+          "random": 257480,
+          "noIntervention": 269977,
+          "learnedBudget": 271300,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100099,
+          "learned": 239167,
+          "sgc": 246782,
+          "random": 257136,
+          "noIntervention": 269978,
+          "learnedBudget": 271900,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100100,
+          "learned": 239418,
+          "sgc": 247207,
+          "random": 256836,
+          "noIntervention": 269975,
+          "learnedBudget": 271400,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100101,
+          "learned": 240219,
+          "sgc": 246662,
+          "random": 258217,
+          "noIntervention": 269976,
+          "learnedBudget": 271500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100102,
+          "learned": 239722,
+          "sgc": 247666,
+          "random": 257872,
+          "noIntervention": 269971,
+          "learnedBudget": 266500,
+          "sgcBudget": 282400
+        },
+        {
+          "runIndex": 100103,
+          "learned": 239816,
+          "sgc": 247296,
+          "random": 256894,
+          "noIntervention": 269969,
+          "learnedBudget": 269000,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100104,
+          "learned": 239693,
+          "sgc": 245869,
+          "random": 258047,
+          "noIntervention": 269985,
+          "learnedBudget": 270900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100105,
+          "learned": 239845,
+          "sgc": 247722,
+          "random": 256921,
+          "noIntervention": 269981,
+          "learnedBudget": 267600,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100106,
+          "learned": 239801,
+          "sgc": 247552,
+          "random": 260131,
+          "noIntervention": 269977,
+          "learnedBudget": 273100,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100107,
+          "learned": 240928,
+          "sgc": 248244,
+          "random": 256279,
+          "noIntervention": 269972,
+          "learnedBudget": 264800,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100108,
+          "learned": 238862,
+          "sgc": 246568,
+          "random": 255688,
+          "noIntervention": 269983,
+          "learnedBudget": 270800,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100109,
+          "learned": 239729,
+          "sgc": 248088,
+          "random": 255258,
+          "noIntervention": 269978,
+          "learnedBudget": 267100,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100110,
+          "learned": 240495,
+          "sgc": 248051,
+          "random": 258260,
+          "noIntervention": 269982,
+          "learnedBudget": 263400,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100111,
+          "learned": 239698,
+          "sgc": 247588,
+          "random": 258310,
+          "noIntervention": 269979,
+          "learnedBudget": 265700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100112,
+          "learned": 240312,
+          "sgc": 247299,
+          "random": 257521,
+          "noIntervention": 269975,
+          "learnedBudget": 264700,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100113,
+          "learned": 239355,
+          "sgc": 245630,
+          "random": 256383,
+          "noIntervention": 269985,
+          "learnedBudget": 271400,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100114,
+          "learned": 241546,
+          "sgc": 249296,
+          "random": 258122,
+          "noIntervention": 269977,
+          "learnedBudget": 257500,
+          "sgcBudget": 282900
+        },
+        {
+          "runIndex": 100115,
+          "learned": 240433,
+          "sgc": 246708,
+          "random": 256949,
+          "noIntervention": 269980,
+          "learnedBudget": 271500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100116,
+          "learned": 241782,
+          "sgc": 249106,
+          "random": 259923,
+          "noIntervention": 269979,
+          "learnedBudget": 259200,
+          "sgcBudget": 283500
+        },
+        {
+          "runIndex": 100117,
+          "learned": 241432,
+          "sgc": 248474,
+          "random": 258142,
+          "noIntervention": 269972,
+          "learnedBudget": 257500,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100118,
+          "learned": 240645,
+          "sgc": 247647,
+          "random": 259004,
+          "noIntervention": 269984,
+          "learnedBudget": 268800,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100119,
+          "learned": 239880,
+          "sgc": 246903,
+          "random": 258210,
+          "noIntervention": 269973,
+          "learnedBudget": 264100,
+          "sgcBudget": 283600
+        },
+        {
+          "runIndex": 100120,
+          "learned": 239263,
+          "sgc": 246870,
+          "random": 255824,
+          "noIntervention": 269987,
+          "learnedBudget": 275400,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100121,
+          "learned": 239911,
+          "sgc": 246912,
+          "random": 256402,
+          "noIntervention": 269975,
+          "learnedBudget": 273100,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100122,
+          "learned": 240856,
+          "sgc": 247913,
+          "random": 254470,
+          "noIntervention": 269974,
+          "learnedBudget": 265900,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100123,
+          "learned": 239714,
+          "sgc": 247075,
+          "random": 256976,
+          "noIntervention": 269982,
+          "learnedBudget": 272000,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100124,
+          "learned": 239844,
+          "sgc": 247778,
+          "random": 256377,
+          "noIntervention": 269986,
+          "learnedBudget": 265700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100125,
+          "learned": 240084,
+          "sgc": 248206,
+          "random": 257499,
+          "noIntervention": 269983,
+          "learnedBudget": 264700,
+          "sgcBudget": 283000
+        },
+        {
+          "runIndex": 100126,
+          "learned": 240396,
+          "sgc": 248449,
+          "random": 257357,
+          "noIntervention": 269971,
+          "learnedBudget": 262800,
+          "sgcBudget": 282900
+        },
+        {
+          "runIndex": 100127,
+          "learned": 239255,
+          "sgc": 246227,
+          "random": 257049,
+          "noIntervention": 269976,
+          "learnedBudget": 272500,
+          "sgcBudget": 283600
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Scratch adapter and four-parameter policy family only, not implemented product.",
+    "Two scenario-specific training runs; second uses first selected policy as a warm candidate, not a general transfer guarantee.",
+    "Single base seed and bounded disjoint run-index pools; more base seeds/scenarios required.",
+    "Final results never tune the candidate; repeated product promotions need fresh evaluation and sequential-testing control.",
+    "Bun Windows x64 timing is not Node ARM Lambda billed duration or AWS cost.",
+    "No AWS profile performed; USD5/month enforcement remains a release gate.",
+    "No global optimum, clinical validity or lifetime outbreak-prevention claim."
+  ],
+  "source": "https://arxiv.org/abs/1703.03864"
+}

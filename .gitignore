@@ -36,3 +36,7 @@ samconfig.toml
 .atl/
 AGENTS.md
 hackathon_track_b.md
+
+# SDD local settings / agent worktrees
+.claude/*.local.md
+.worktrees/

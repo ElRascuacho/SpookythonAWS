@@ -1,0 +1,315 @@
+openapi: 3.1.0
+info:
+  title: Committee Learning API
+  version: 0.1.0
+  description: >
+    API autenticada del modo Comité. Cookie de sesión existente; propiedad por ownerHash
+    derivado del nonce. El cómputo pesado corre en worker async.
+servers:
+  - url: /api
+    description: Same-origin via CloudFront / Vite proxy
+security:
+  - CookieAuth: []
+tags:
+  - name: committee
+    description: Jobs de búsqueda Comité
+paths:
+  /committee/jobs:
+    post:
+      operationId: startCommitteeJob
+      tags: [committee]
+      summary: Admitir y encolar una búsqueda privada
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartCommitteeJobRequest'
+            examples:
+              standard:
+                value:
+                  scenarioKey: standard
+                  horizonDays: 40
+                  seed: 20261030
+                  originNodeId: N01
+                  dailyBudgetUsd: 7500
+                  vaccineLotSize: 850
+                  betaHuman: 0.3
+                  betaVector: 0.045
+      responses:
+        '202':
+          description: Job admitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeJobAccepted'
+              examples:
+                ok:
+                  value:
+                    jobId: 11111111-1111-4111-8111-111111111111
+                    status: queued
+                    stateRevision: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/QuotaExhausted'
+        '503':
+          $ref: '#/components/responses/TrainingDisabled'
+  /committee/jobs/{jobId}:
+    get:
+      operationId: getCommitteeJob
+      tags: [committee]
+      summary: Estado de un job propio
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Estado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeJobStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundHidden'
+    delete:
+      operationId: cancelCommitteeJob
+      tags: [committee]
+      summary: Solicitar cancelación acotada
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Cancelación registrada o ya terminal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeJobStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundHidden'
+  /committee/jobs/{jobId}/manifest:
+    get:
+      operationId: getCommitteeManifest
+      tags: [committee]
+      summary: Manifiesto reproducible del job propio
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Manifest JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunManifest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundHidden'
+  /committee/jobs/{jobId}/playback/{day}:
+    get:
+      operationId: getCommitteePlaybackDay
+      tags: [committee]
+      summary: Snapshot diario para visualización
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+        - name: day
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+      responses:
+        '200':
+          description: Daily snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybackDay'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundHidden'
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: manta_session
+  parameters:
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    StartCommitteeJobRequest:
+      type: object
+      additionalProperties: false
+      required: [scenarioKey, horizonDays, seed, originNodeId, dailyBudgetUsd]
+      properties:
+        scenarioKey:
+          type: string
+          enum: [standard, double_transmission, vaccine_escape, custom]
+        horizonDays:
+          type: integer
+          minimum: 20
+          maximum: 60
+        seed:
+          type: integer
+        originNodeId:
+          type: string
+          minLength: 1
+          maxLength: 8
+        dailyBudgetUsd:
+          type: number
+          exclusiveMinimum: 0
+        vaccineLotSize:
+          type: integer
+          minimum: 10
+          maximum: 5000
+        betaHuman:
+          type: number
+        betaVector:
+          type: number
+        vaccineEfficacy:
+          type: number
+      description: >
+        El cliente NO puede enviar pools, cuotas, candidatos CEM ni pesos libres.
+    CommitteeJobAccepted:
+      type: object
+      required: [jobId, status, stateRevision]
+      properties:
+        jobId: { type: string, format: uuid }
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        stateRevision: { type: integer, minimum: 1 }
+    CommitteeJobStatus:
+      type: object
+      required: [jobId, status, stateRevision, finalAuditStatus]
+      properties:
+        jobId: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/JobStatus' }
+        stateRevision: { type: integer, minimum: 1 }
+        phase:
+          type: string
+          enum: [queued, baseline, training, selection, promotion, final_audit, terminal]
+        progressPolicyVersion: { type: integer, minimum: 0 }
+        recommendedPolicyVersion: { type: integer, minimum: 0 }
+        finalAuditStatus:
+          type: string
+          enum: [not-run, passed, failed]
+        meanInfections:
+          type: [number, 'null']
+        message:
+          type: [string, 'null']
+        cancelRequested: { type: boolean }
+    JobStatus:
+      type: string
+      enum: [queued, running, completed, no-improvement, cancelled, timed-out, failed]
+    RunManifest:
+      type: object
+      required: [jobId, versions, pools, librarySnapshot, protocolBudget]
+      properties:
+        jobId: { type: string, format: uuid }
+        versions:
+          type: object
+          additionalProperties: { type: string }
+        pools:
+          type: object
+          additionalProperties: true
+        librarySnapshot:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        protocolBudget:
+          type: integer
+          maximum: 3552
+        weights:
+          type: object
+          additionalProperties: true
+    PlaybackDay:
+      type: object
+      required: [day, snapshot]
+      properties:
+        day: { type: integer }
+        snapshot:
+          type: object
+          additionalProperties: true
+        policyVersion: { type: integer }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+  responses:
+    BadRequest:
+      description: Parámetros inválidos o campos internos prohibidos
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            invalid:
+              value: { code: committee.invalid_request, message: Invalid scenario fields }
+    Unauthorized:
+      description: Sesión ausente o inválida
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            unauth:
+              value: { code: auth.unauthorized, message: Unauthorized }
+    NotFoundHidden:
+      description: No encontrado o no autorizado (misma respuesta)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            hidden:
+              value: { code: committee.not_found, message: Not found }
+    Conflict:
+      description: Idempotency o conflicto de estado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            slot:
+              value: { code: committee.slot_busy, message: Another committee job is active }
+    QuotaExhausted:
+      description: Cuota de sesión o global agotada
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            quota:
+              value: { code: committee.quota_exhausted, message: Quota exhausted }
+    TrainingDisabled:
+      description: Aprendizaje deshabilitado hasta perfil/autorización
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            disabled:
+              value: { code: committee.training_disabled, message: Training disabled until profile approval }

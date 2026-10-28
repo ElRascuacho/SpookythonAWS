@@ -1,0 +1,32 @@
+﻿[
+    {
+        "file":  "REPORT.md",
+        "sha256":  "5a9dad5ec8343da962893952d2f0ec3b7042257ade44d59f71248dd86f7a66ab",
+        "identical":  true
+    },
+    {
+        "file":  "results.json",
+        "sha256":  "ecb141edd7a0be671803a7546923c42129872cd3f07046641662d84e6e28af85",
+        "identical":  true
+    },
+    {
+        "file":  "checks.json",
+        "sha256":  "1ac09ad236ab57b1d352e341d6f7c2ccc298921d1f969e25217e254efa045f50",
+        "identical":  true
+    },
+    {
+        "file":  "provenance.json",
+        "sha256":  "95860e6e47bfbe4ca25c6e9f5a70e60b7657add09cccacc266b7fe661a68868a",
+        "identical":  true
+    },
+    {
+        "file":  "frozen-standard.json",
+        "sha256":  "d2199c4b58b0d9536399a1195013cc64bf64aea80ba6e02f4d8d910a74143d68",
+        "identical":  true
+    },
+    {
+        "file":  "frozen-double-transmission-half-vaccines.json",
+        "sha256":  "d37bad321e80ac0efec16bc1f560869ee3a0fbefa2ba03cc249cf616367e4e33",
+        "identical":  true
+    }
+]
