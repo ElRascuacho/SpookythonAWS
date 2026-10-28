@@ -5,7 +5,7 @@
   --ink: #0d1b22;
   --panel: #122129;
   --line: #293940;
-  --muted: #92a4aa;
+  --muted: #b4c5cc;
   --text: #e9e8df;
   --mint: #b1dfc8;
   --coral: #f58a72;
@@ -20,7 +20,8 @@ body {
   background: var(--ink);
   color: var(--text);
   font-family: var(--body);
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 button,
@@ -101,7 +102,7 @@ svg {
 .map-legend,
 .scenario-footnote {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 1.2px;
 }
 .eyebrow {
@@ -114,7 +115,7 @@ svg {
   color: var(--coral) !important;
 }
 .muted {
-  color: #68838b;
+  color: #b4c5cc;
 }
 .dot,
 .live-dot {
@@ -160,7 +161,7 @@ svg {
 }
 .brand small {
   display: block;
-  font: 8px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 1.65px;
   color: #8fa2aa;
   margin-top: 8px;
@@ -180,11 +181,11 @@ svg {
   align-items: center;
   gap: 12px;
   color: #a9b8bd;
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 1.2px;
 }
 .mission-badge b {
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 400;
   border: 1px solid #42524c;
   background: #b1dfc808;
@@ -204,7 +205,7 @@ svg {
   gap: 8px;
   align-items: center;
   color: #a4b4bb;
-  font-size: 11px;
+  font-size: 15px;
 }
 .header-actions button:hover {
   color: var(--mint);
@@ -227,12 +228,12 @@ svg {
   justify-content: space-between;
 }
 .operation-label .eyebrow {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.5px;
 }
 .operation-index {
   color: #6b868f;
-  font-size: 8px;
+  font-size: 12px;
 }
 .mission-title {
   margin: 27px 0 24px;
@@ -250,7 +251,7 @@ svg {
   font-weight: 400;
 }
 .mission-title p {
-  font-size: 11px;
+  font-size: 15px;
   color: #9dabb0;
   line-height: 1.75;
   margin-top: 17px;
@@ -268,12 +269,12 @@ svg {
 }
 .mission-objective span {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1px;
   color: #c1cec9;
 }
 .mission-objective p {
-  font-size: 10px;
+  font-size: 14px;
   color: #93a7af;
   line-height: 1.8;
   margin-top: 7px;
@@ -283,7 +284,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   color: #81969f;
-  font-size: 8px;
+  font-size: 12px;
   gap: 5px;
   letter-spacing: 1px;
 }
@@ -294,7 +295,7 @@ svg {
 }
 .section-title > b {
   font-weight: 400;
-  font-size: 8px;
+  font-size: 12px;
   color: var(--mint);
 }
 .situation-stat {
@@ -322,7 +323,7 @@ svg {
   flex: 1;
 }
 .situation-stat span {
-  font-size: 10px;
+  font-size: 14px;
   color: #97a9b0;
   display: block;
 }
@@ -347,7 +348,7 @@ svg {
   align-items: center;
   gap: 7px;
   color: #91a9b2;
-  font-size: 9px;
+  font-size: 14px;
 }
 .hospital-status b {
   margin-left: auto;
@@ -368,7 +369,7 @@ svg {
   transition: width 0.5s;
 }
 .hospital-status small {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.2px;
   color: #6f8b95;
 }
@@ -381,12 +382,12 @@ svg {
   margin-top: 14px;
 }
 .transmission-day {
-  font: 8px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 1px;
   color: var(--mint);
 }
 .transmission-content p {
-  font-size: 11px;
+  font-size: 15px;
   color: #b2c0c4;
   line-height: 1.75;
   margin: 7px 0 11px;
@@ -397,7 +398,7 @@ svg {
   align-items: center;
   gap: 5px;
   color: #66808b;
-  font: 7px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 0.5px;
 }
 .analysis-link {
@@ -413,11 +414,11 @@ svg {
 }
 .analysis-link > span {
   flex: 1;
-  font-size: 11px;
+  font-size: 15px;
 }
 .analysis-link small {
   display: block;
-  font-size: 8px;
+  font-size: 12px;
   color: #7d949d;
   margin-top: 4px;
 }
@@ -429,7 +430,7 @@ svg {
   align-items: center;
   gap: 6px;
   color: #6f8791;
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.3px;
   margin-top: auto;
   padding-top: 14px;
@@ -452,7 +453,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   padding: 0 22px;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.6px;
   border-bottom: 1px solid #24383f;
   background: #102129;
@@ -467,7 +468,7 @@ svg {
 }
 .map-statusbar > span {
   color: #6e8b96;
-  font-size: 7px;
+  font-size: 12px;
 }
 .status-muted {
   color: #5c7e8b;
@@ -494,7 +495,7 @@ svg {
   pointer-events: none;
 }
 .map-heading .eyebrow {
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 1.5px;
   color: #72939f;
 }
@@ -507,7 +508,7 @@ svg {
 .map-heading h2 span {
   display: block;
   color: #62828e;
-  font: 8px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 1.5px;
   margin-top: 7px;
 }
@@ -523,7 +524,7 @@ svg {
   padding: 3px;
 }
 .map-layers button {
-  font-size: 9px;
+  font-size: 14px;
   padding: 7px 11px;
   color: #7f9ba6;
   border-radius: 2px;
@@ -537,17 +538,17 @@ svg {
 }
 .ocean-label {
   fill: #567a88;
-  font: 11px var(--mono);
+  font: 15px var(--mono);
   letter-spacing: 4px;
 }
 .ocean-sub {
   fill: #426875;
-  font: 7px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 3px;
 }
 .district-label {
   fill: #59737a;
-  font: 7px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 2px;
 }
 .graph-route {
@@ -577,7 +578,7 @@ svg {
   stroke-width: 2;
 }
 .node-label {
-  font: 8px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 0.8px;
   paint-order: stroke;
   stroke: #152a33;
@@ -586,7 +587,7 @@ svg {
 }
 .node-cases {
   fill: #fa957f;
-  font: 6px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 0.7px;
   paint-order: stroke;
   stroke: #182830;
@@ -606,7 +607,7 @@ svg {
   align-items: center;
   gap: 8px;
   color: #7c99a3;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0;
 }
 .map-scale > span {
@@ -617,7 +618,7 @@ svg {
 }
 .map-scale small {
   display: block;
-  font-size: 7px;
+  font-size: 12px;
   position: absolute;
   top: 17px;
   left: 0;
@@ -633,7 +634,7 @@ svg {
   align-items: center;
   gap: 7px;
   color: #9bb5b9;
-  font: 9px var(--mono);
+  font: 14px var(--mono);
 }
 .map-compass i {
   width: 0;
@@ -681,7 +682,7 @@ svg {
   border-top: 1px solid #2c42494d;
   color: #9bb1b7;
   letter-spacing: 0;
-  font-size: 8px;
+  font-size: 12px;
   background: #10222a80;
 }
 .map-legend > span {
@@ -692,7 +693,7 @@ svg {
 .map-legend .map-count {
   margin-left: auto;
   color: #6b8c98;
-  font-size: 7px;
+  font-size: 12px;
 }
 .map-tip {
   position: absolute;
@@ -712,19 +713,19 @@ svg {
   animation: fade-in 0.6s;
 }
 .tip-number {
-  font: 11px var(--mono);
+  font: 15px var(--mono);
   color: var(--mint);
   border: 1px solid #54776b;
   padding: 5px;
   border-radius: 50%;
 }
 .map-tip strong {
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 500;
   color: #d4e7dd;
 }
 .map-tip p {
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.7;
   color: #90adb5;
   margin-top: 5px;
@@ -741,7 +742,7 @@ svg {
   gap: 10px;
   padding: 0 23px;
   border-top: 1px solid var(--line);
-  font-size: 8px;
+  font-size: 12px;
   color: #78949e;
   background: #102129;
 }
@@ -760,7 +761,7 @@ svg {
   gap: 0;
 }
 .actions-heading .eyebrow {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.7px;
 }
 .actions-heading h2 {
@@ -779,7 +780,7 @@ svg {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font: 8px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 0.8px;
   color: #95a7ae;
 }
@@ -787,7 +788,7 @@ svg {
   color: #849b99;
   border: 1px solid #344a48;
   border-radius: 2px;
-  font-size: 6px;
+  font-size: 12px;
   padding: 3px 4px;
 }
 .budget-card > strong {
@@ -798,7 +799,7 @@ svg {
   margin-top: 10px;
 }
 .budget-card > strong small {
-  font-size: 14px;
+  font-size: 16px;
   color: #5c787f;
   letter-spacing: -0.6px;
 }
@@ -817,7 +818,7 @@ svg {
   background: var(--mint);
 }
 .budget-card p {
-  font-size: 8px;
+  font-size: 12px;
   color: #6f8993;
   margin-top: 9px;
 }
@@ -833,7 +834,7 @@ svg {
   justify-content: center;
   gap: 7px;
   color: #7b949e;
-  font-size: 10px;
+  font-size: 14px;
   padding: 0 0 12px;
   border-bottom: 2px solid transparent;
 }
@@ -846,7 +847,7 @@ svg {
   align-items: center;
   gap: 5px;
   color: #758f9a;
-  font: 7px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 0.8px;
 }
 .selected-zone > span b {
@@ -858,14 +859,14 @@ svg {
   border-radius: 2px;
 }
 .selected-zone h3 {
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: -0.2px;
   font-weight: 500;
   line-height: 1.4;
   margin-top: 8px;
 }
 .selected-zone p {
-  font-size: 8px;
+  font-size: 12px;
   color: #77939c;
   display: flex;
   gap: 6px;
@@ -924,22 +925,22 @@ svg {
 }
 .intervention strong {
   display: block;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 500;
 }
 .intervention small {
-  font-size: 8px;
+  font-size: 12px;
   color: #819ba5;
   display: block;
   line-height: 1.55;
   margin: 4px 0 6px;
 }
 .intervention b {
-  font: 10px var(--mono);
+  font: 14px var(--mono);
   color: #c6d4cd;
 }
 .intervention b > span {
-  font-size: 7px;
+  font-size: 12px;
   color: #768c92;
 }
 .intervention-add {
@@ -962,7 +963,7 @@ svg {
   border-top: 1px solid var(--line);
 }
 .research-funding .section-title {
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.4px;
 }
 .funding-options {
@@ -976,11 +977,11 @@ svg {
   border-radius: 4px;
   padding: 9px 5px;
   color: #b1c0c3;
-  font: 12px var(--mono);
+  font: 15px var(--mono);
 }
 .funding-options button small {
   display: block;
-  font: 8px var(--body);
+  font: 12px var(--body);
   color: #728e98;
   margin-top: 4px;
 }
@@ -998,11 +999,11 @@ svg {
   padding-top: 17px;
 }
 .orders-section .section-title {
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.6px;
 }
 .empty-orders {
-  font-size: 9px;
+  font-size: 14px;
   color: #6e8790;
   line-height: 1.8;
   margin-top: 12px;
@@ -1018,7 +1019,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 9px;
+  font-size: 14px;
   color: var(--mint);
   padding: 8px 0;
   border-bottom: 1px solid #273940;
@@ -1028,7 +1029,7 @@ svg {
 }
 .orders-list small {
   display: block;
-  font-size: 8px;
+  font-size: 12px;
   color: #7e98a3;
   margin-top: 4px;
 }
@@ -1054,18 +1055,18 @@ svg {
   color: var(--mint);
 }
 .lab-art > span {
-  font: 7px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 1.5px;
   color: #678e80;
 }
 .laboratory-panel h3 {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 400;
   margin-top: 20px;
   line-height: 1.5;
 }
 .laboratory-panel p {
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.8;
   color: #8ea4ab;
   margin-top: 10px;
@@ -1074,7 +1075,7 @@ svg {
   margin-top: 20px;
 }
 .research-stages > div {
-  font-size: 9px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1088,7 +1089,7 @@ svg {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font: 8px var(--mono);
+  font: 12px var(--mono);
 }
 .research-stages .current {
   color: var(--text);
@@ -1139,7 +1140,7 @@ svg {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font: 8px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 1.3px;
   color: #b4c8c2;
 }
@@ -1149,7 +1150,7 @@ svg {
   letter-spacing: -1px;
 }
 .cure-track strong small {
-  font-size: 12px;
+  font-size: 15px;
   margin-left: 3px;
 }
 .cure-progress-line {
@@ -1172,7 +1173,7 @@ svg {
   top: -2px;
 }
 .cure-track > small {
-  font-size: 8px;
+  font-size: 12px;
   color: #7e9c9e;
 }
 .turn-instruction {
@@ -1183,13 +1184,13 @@ svg {
   margin-left: auto;
 }
 .turn-instruction > span {
-  font-size: 10px;
+  font-size: 14px;
   color: #b1c0c1;
 }
 .turn-instruction small {
   display: block;
   color: #6c8892;
-  font-size: 8px;
+  font-size: 12px;
   margin-top: 5px;
 }
 .day-counter {
@@ -1199,7 +1200,7 @@ svg {
   white-space: nowrap;
 }
 .day-counter > span {
-  font: 9px var(--mono);
+  font: 14px var(--mono);
   color: #7b959e;
 }
 .day-counter > strong {
@@ -1217,7 +1218,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   padding: 17px 22px;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 650;
   white-space: nowrap;
   min-width: 194px;
@@ -1273,7 +1274,7 @@ svg {
   padding-bottom: 20px;
 }
 .dialog-heading .eyebrow {
-  font-size: 8px;
+  font-size: 12px;
   color: var(--mint);
 }
 .dialog-heading h2 {
@@ -1292,13 +1293,13 @@ svg {
   color: var(--text);
 }
 .dialog-intro {
-  font-size: 12px;
+  font-size: 15px;
   color: #a7b9be;
   line-height: 1.9;
   margin: 21px 0;
 }
 .model-disclaimer {
-  font-size: 9px;
+  font-size: 14px;
   line-height: 1.8;
   color: #8ca4ad;
   margin: 20px 0;
@@ -1315,7 +1316,7 @@ svg {
   gap: 10px;
   padding: 14px 17px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 15px;
   margin-top: 20px;
 }
 .primary-button {
@@ -1342,14 +1343,14 @@ svg {
   margin: 25px 0;
 }
 .settings-fields label {
-  font-size: 10px;
+  font-size: 14px;
   color: #a8bbc1;
 }
 .settings-fields input,
 .settings-fields select {
   width: 100%;
   padding: 12px 10px;
-  font-size: 11px;
+  font-size: 15px;
   background: #0f2028;
   border: 1px solid #3a535b;
   border-radius: 4px;
@@ -1374,7 +1375,7 @@ svg {
 }
 .result-kicker {
   text-align: center;
-  font: 9px var(--mono);
+  font: 14px var(--mono);
   letter-spacing: 1.7px;
   color: #b0d8c4;
 }
@@ -1391,7 +1392,7 @@ svg {
   border-radius: 4px;
 }
 .result-stats span {
-  font-size: 10px;
+  font-size: 14px;
   color: #98aeb5;
 }
 .result-stats strong {
@@ -1416,7 +1417,7 @@ svg {
   background: #b1dfc80a;
 }
 .evaluation-grid span {
-  font: 8px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 1px;
   color: #91acae;
 }
@@ -1427,11 +1428,11 @@ svg {
   margin-top: 15px;
 }
 .evaluation-grid small {
-  font-size: 9px;
+  font-size: 14px;
   color: #74929e;
 }
 .evaluation-grid p {
-  font-size: 9px;
+  font-size: 14px;
   color: #9aafb5;
   line-height: 1.8;
   margin-top: 11px;
@@ -1448,7 +1449,7 @@ svg {
   color: var(--mint);
 }
 .evaluation-verdict p {
-  font-size: 11px;
+  font-size: 15px;
   line-height: 1.7;
 }
 .analysis-loading {
@@ -1461,7 +1462,7 @@ svg {
   animation: infection-pulse 2s infinite;
 }
 .analysis-loading p {
-  font-size: 12px;
+  font-size: 15px;
   color: #9ab3b9;
 }
 .game-dialog .bg-slate-900\/90 {
@@ -1508,13 +1509,13 @@ svg {
     margin-bottom: 30px;
   }
   .mission-title p {
-    font-size: 12px;
+    font-size: 15px;
   }
   .mission-objective p {
-    font-size: 11px;
+    font-size: 15px;
   }
   .transmission-content p {
-    font-size: 12px;
+    font-size: 15px;
   }
   .situation-stat {
     padding: 20px 0 14px;
@@ -1543,7 +1544,7 @@ svg {
     font-size: 35px;
   }
   .mission-badge {
-    font-size: 8px;
+    font-size: 12px;
     gap: 8px;
   }
   .topbar {
@@ -1571,13 +1572,13 @@ svg {
     padding: 16px;
   }
   .map-legend .map-count {
-    font-size: 6px;
+    font-size: 12px;
   }
   .map-heading {
     left: 20px;
   }
   .map-heading h2 {
-    font-size: 17px;
+    font-size: 20px;
   }
   .map-layers button {
     padding: 6px 7px;
@@ -1621,7 +1622,7 @@ svg {
     padding: 7px 11px;
   }
   .map-legend .map-count {
-    font-size: 7px;
+    font-size: 12px;
   }
   .map-tip {
     max-width: 340px;
@@ -1644,7 +1645,7 @@ svg {
     gap: 12px;
   }
   .brand {
-    font-size: 18px;
+    font-size: 20px;
     gap: 9px;
   }
   .brand-mark {
@@ -1655,7 +1656,7 @@ svg {
     width: 22px;
   }
   .brand small {
-    font-size: 6px;
+    font-size: 12px;
     letter-spacing: 1.1px;
     margin-top: 6px;
   }
@@ -1663,7 +1664,7 @@ svg {
     gap: 13px;
   }
   .header-actions button {
-    font-size: 9px;
+    font-size: 14px;
     gap: 5px;
   }
   .header-actions button span {
@@ -1691,27 +1692,27 @@ svg {
   }
   .map-statusbar {
     height: 34px;
-    font-size: 7px;
+    font-size: 12px;
   }
   .map-heading {
     top: 17px;
     left: 17px;
   }
   .map-heading .eyebrow {
-    font-size: 6px;
+    font-size: 12px;
   }
   .map-heading h2 {
-    font-size: 17px;
+    font-size: 20px;
   }
   .map-heading h2 span {
-    font-size: 6px;
+    font-size: 12px;
   }
   .map-layers {
     top: 17px;
     right: 14px;
   }
   .map-layers button {
-    font-size: 8px;
+    font-size: 12px;
     padding: 6px 8px;
   }
   .map-zoom {
@@ -1724,25 +1725,25 @@ svg {
   }
   .map-legend {
     padding: 12px 17px;
-    font-size: 7px;
+    font-size: 12px;
     gap: 12px;
   }
   .map-legend .map-count {
-    font-size: 6px;
+    font-size: 12px;
   }
   .map-scale {
     left: 17px;
     bottom: 51px;
-    font-size: 6px;
+    font-size: 12px;
   }
   .map-scale small {
-    font-size: 5px;
+    font-size: 12px;
     top: 13px;
   }
   .map-compass {
     bottom: 50px;
     right: 23px;
-    font-size: 7px;
+    font-size: 12px;
   }
   .map-compass i {
     border-bottom-width: 15px;
@@ -1756,17 +1757,17 @@ svg {
     max-width: 300px;
   }
   .map-tip strong {
-    font-size: 10px;
+    font-size: 14px;
   }
   .map-tip p {
-    font-size: 9px;
+    font-size: 14px;
   }
   .tip-number {
-    font-size: 9px;
+    font-size: 14px;
   }
   .map-bottomline {
     height: 31px;
-    font-size: 7px;
+    font-size: 12px;
     padding: 0 17px;
   }
   .actions-panel {
@@ -1794,14 +1795,14 @@ svg {
     font-size: 29px;
   }
   .budget-card > div:first-child {
-    font-size: 6px;
+    font-size: 12px;
     letter-spacing: 0.3px;
   }
   .budget-card > strong small {
-    font-size: 12px;
+    font-size: 15px;
   }
   .budget-card p {
-    font-size: 7px;
+    font-size: 12px;
   }
   .budget-segments {
     gap: 2px;
@@ -1812,7 +1813,7 @@ svg {
     margin-bottom: 19px;
   }
   .action-tabs button {
-    font-size: 9px;
+    font-size: 14px;
     gap: 4px;
     padding-bottom: 9px;
   }
@@ -1837,10 +1838,10 @@ svg {
     justify-content: flex-start;
   }
   .intervention strong {
-    font-size: 10px;
+    font-size: 14px;
   }
   .intervention small {
-    font-size: 7px;
+    font-size: 12px;
     min-height: 28px;
   }
   .intervention-add {
@@ -1854,7 +1855,7 @@ svg {
     width: 12px;
   }
   .intervention b {
-    font-size: 10px;
+    font-size: 14px;
   }
   .research-funding {
     grid-column: 1 / -1;
@@ -1871,7 +1872,7 @@ svg {
     max-height: 150px;
   }
   .empty-orders {
-    font-size: 10px;
+    font-size: 14px;
   }
   .turnbar {
     position: sticky;
@@ -1895,13 +1896,13 @@ svg {
     width: 20px;
   }
   .cure-track > div:first-child {
-    font-size: 7px;
+    font-size: 12px;
   }
   .cure-track strong {
-    font-size: 18px;
+    font-size: 20px;
   }
   .cure-track > small {
-    font-size: 7px;
+    font-size: 12px;
   }
   .cure-progress-line {
     margin: 4px 0;
@@ -1915,12 +1916,12 @@ svg {
     font-size: 27px;
   }
   .day-counter > span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .advance-button {
     margin-left: auto;
     padding: 12px 18px;
-    font-size: 11px;
+    font-size: 15px;
     min-width: 195px;
   }
   .laboratory-panel {
@@ -1930,7 +1931,7 @@ svg {
     display: none;
   }
   .laboratory-panel h3 {
-    font-size: 18px;
+    font-size: 20px;
     margin-top: 0;
   }
   .research-stages {
@@ -1939,7 +1940,7 @@ svg {
     gap: 8px;
   }
   .research-stages > div {
-    font-size: 8px;
+    font-size: 12px;
     line-height: 1.5;
   }
   .settings-fields {
@@ -1956,7 +1957,7 @@ svg {
     font-size: 22px;
   }
   .dialog-intro {
-    font-size: 11px;
+    font-size: 15px;
   }
   .evaluation-grid {
     grid-template-columns: 1fr 1fr;
@@ -2057,7 +2058,7 @@ svg {
     margin: 18px 0 12px;
   }
   .mission-title p {
-    font-size: 10px;
+    font-size: 14px;
     line-height: 1.6;
   }
   .mission-objective {
@@ -2074,7 +2075,7 @@ svg {
     padding: 12px 0 15px;
   }
   .transmission-content p {
-    font-size: 10px;
+    font-size: 14px;
   }
   .actions-heading {
     display: none;
@@ -2090,14 +2091,14 @@ svg {
     padding: 8px;
   }
   .intervention small {
-    font-size: 7px;
+    font-size: 12px;
     margin: 3px 0 4px;
   }
   .interventions {
     margin-top: 12px;
   }
   .selected-zone h3 {
-    font-size: 14px;
+    font-size: 16px;
   }
   .action-tabs {
     margin-bottom: 12px;
@@ -2124,12 +2125,12 @@ svg {
     gap: 10px;
     padding: 12px 17px;
     border-bottom: 1px solid var(--line);
-    font: 8px var(--mono);
+    font: 12px var(--mono);
     letter-spacing: 0.7px;
     color: var(--mint);
   }
   .mobile-objective span {
-    font: 8px var(--body);
+    font: 12px var(--body);
     color: #a0b3ba;
     letter-spacing: 0;
   }
@@ -2145,7 +2146,7 @@ svg {
     display: block;
     width: 100%;
     min-height: 44px;
-    font-size: 12px;
+    font-size: 15px;
     background: #10212a;
     color: #c0d3cf;
     border: 1px solid #3b565e;
@@ -2162,29 +2163,29 @@ svg {
     height: 34px;
   }
   .funding-options button {
-    font-size: 14px;
+    font-size: 16px;
   }
   .funding-options button small {
-    font-size: 10px;
+    font-size: 14px;
   }
   .intervention strong {
-    font-size: 11px;
+    font-size: 15px;
   }
   .intervention small {
-    font-size: 9px;
+    font-size: 14px;
     min-height: 40px;
   }
   .selected-zone p {
-    font-size: 10px;
+    font-size: 14px;
   }
   .empty-orders {
-    font-size: 11px;
+    font-size: 15px;
   }
   .actions-heading h2 {
     font-size: 19px;
   }
   .map-legend {
-    font-size: 8px;
+    font-size: 12px;
   }
   .map-legend .map-count {
     display: none;
@@ -2370,7 +2371,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
@@ -2400,7 +2401,7 @@ svg {
   font-weight: 500;
 }
 .earth-node-pin .pin-badge {
-  font-size: 7px;
+  font-size: 12px;
   padding: 1px 4px;
   border-radius: 2px;
   background: #1b333c;
@@ -2418,20 +2419,20 @@ svg {
 }
 .earth-node-pin .pin-tag {
   font-style: normal;
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1;
   padding: 1px 2px;
   border-radius: 2px;
 }
 .earth-node-pin .pin-tag.origin {
-  font-size: 7px;
+  font-size: 12px;
   font-weight: 700;
   background: #f58a7233;
   color: var(--coral);
   border: 1px solid #f58a7280;
 }
 .earth-node-pin .pin-detail {
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.4px;
   color: #9dc2b6;
   margin-top: 3px;
@@ -2453,7 +2454,7 @@ svg {
   background: #0e2028db;
   border: 1px solid #35525a;
   border-radius: 4px;
-  font: 8px var(--mono);
+  font: 12px var(--mono);
   letter-spacing: 0.8px;
   color: #89a6af;
   pointer-events: none;
@@ -2556,7 +2557,7 @@ svg {
 .day-transition-kicker {
   display: block;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 2.1px;
   color: #9fb9bd;
 }
@@ -2575,7 +2576,7 @@ svg {
 .day-transition-day > span,
 .day-transition-day > small {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 1.6px;
   color: #7f9ba3;
 }
@@ -2593,7 +2594,7 @@ svg {
   align-items: center;
   gap: 7px;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.5px;
   color: var(--mint);
   border: 1px solid #4e7264;
@@ -2648,7 +2649,7 @@ svg {
   align-items: center;
   gap: 6px;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.2px;
   color: #8ba6ad;
   white-space: nowrap;
@@ -2665,13 +2666,13 @@ svg {
 }
 .day-transition-readout dd small {
   display: block;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.6px;
   color: #7d949b;
   margin-top: 5px;
 }
 .day-transition-unit {
-  font-size: 12px;
+  font-size: 15px;
   letter-spacing: 0;
   color: #9fb6b5;
   margin-left: 2px;
@@ -2786,7 +2787,7 @@ svg {
     padding: 0 12px;
   }
   .day-transition-readout dt {
-    font-size: 7px;
+    font-size: 12px;
     letter-spacing: 0.7px;
     gap: 4px;
   }
@@ -2794,7 +2795,7 @@ svg {
     font-size: 19px;
   }
   .day-transition-readout dd small {
-    font-size: 7px;
+    font-size: 12px;
   }
   .day-transition-timer {
     bottom: 24px;
@@ -2824,7 +2825,7 @@ svg {
   border-bottom: 1px solid #2b4148;
 }
 .hub-topbar .brand {
-  font-size: 18px;
+  font-size: 20px;
   gap: 10px;
 }
 .hub-topbar .brand-mark {
@@ -2835,7 +2836,7 @@ svg {
   width: 21px;
 }
 .hub-topbar .brand small {
-  font-size: 7px;
+  font-size: 12px;
   margin-top: 6px;
 }
 .hub-topbar .header-actions {
@@ -2872,7 +2873,7 @@ svg {
   padding: 5px 7px;
   background: #102129ed;
   color: #d0ded9;
-  font-size: 10px;
+  font-size: 14px;
 }
 .osm-attribution a { color: #b1dfc8; text-decoration: underline; }
 .map-stage .map-compass {
@@ -2908,7 +2909,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 1.3px;
   color: #8aa2aa;
 }
@@ -2940,7 +2941,7 @@ svg {
 }
 .hud-metric > span:not(.hud-icon) {
   grid-area: label;
-  font-size: 9px;
+  font-size: 14px;
   color: #93a7ae;
   white-space: nowrap;
   overflow: hidden;
@@ -2949,7 +2950,7 @@ svg {
 .hud-metric > strong {
   grid-area: value;
   font-family: var(--mono);
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 400;
   letter-spacing: -0.4px;
   color: #e4eee7;
@@ -2958,7 +2959,7 @@ svg {
 .hud-metric > small {
   grid-area: sub;
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.4px;
   color: #7f99a1;
   margin-top: 3px;
@@ -3018,7 +3019,7 @@ svg {
   justify-content: space-between;
   gap: 10px;
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 1.4px;
   color: #8aa2aa;
 }
@@ -3044,7 +3045,7 @@ svg {
 }
 .news-headline {
   margin: 10px 0 8px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.15px;
@@ -3052,7 +3053,7 @@ svg {
   text-wrap: balance;
 }
 .news-body {
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.75;
   color: #a9bcc1;
   text-wrap: pretty;
@@ -3060,7 +3061,7 @@ svg {
 .news-facts {
   margin-top: 9px;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.35px;
   line-height: 1.6;
   color: #9fb6b5;
@@ -3074,7 +3075,7 @@ svg {
   padding-top: 9px;
   border-top: 1px solid #ffffff10;
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.7px;
   color: #7b959d;
 }
@@ -3131,12 +3132,12 @@ svg {
 }
 .campaign-objective > span {
   color: var(--coral);
-  font: 9px var(--mono);
+  font: 14px var(--mono);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.campaign-objective > strong { font-size: 12px; font-weight: 500; }
-.campaign-objective > small { color: var(--mint); font: 10px var(--mono); }
+.campaign-objective > strong { font-size: 15px; font-weight: 500; }
+.campaign-objective > small { color: var(--mint); font: 14px var(--mono); }
 .campaign-briefing {
   margin-block: 20px;
   padding: 24px;
@@ -3147,7 +3148,7 @@ svg {
 .campaign-briefing > p { margin-block: 18px; line-height: 1.7; }
 .campaign-briefing > strong { color: var(--mint); font-weight: 500; }
 .campaign-briefing ol { list-style: none; padding: 18px 0 0; margin: 0; }
-.campaign-briefing li { padding: 7px 0; color: #9cacae; font: 11px var(--mono); }
+.campaign-briefing li { padding: 7px 0; color: #9cacae; font: 15px var(--mono); }
 .campaign-briefing li[aria-current] { color: var(--coral); }
 @media (prefers-reduced-motion: reduce) {
   .campaign-briefing { animation: none; }
@@ -3168,7 +3169,7 @@ svg {
   justify-content: space-between;
   gap: 8px;
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 1.1px;
   color: #8ba3aa;
 }
@@ -3189,7 +3190,7 @@ svg {
   color: var(--mint);
 }
 .cash-block > strong small {
-  font-size: 11px;
+  font-size: 15px;
   color: #5f7b82;
   letter-spacing: -0.3px;
 }
@@ -3217,7 +3218,7 @@ svg {
 .zone-block > strong {
   display: block;
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -3227,7 +3228,7 @@ svg {
   display: block;
   margin-top: 3px;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   color: #8ea5ac;
 }
 .zone-block > small b {
@@ -3240,7 +3241,7 @@ svg {
 .plan-row > span {
   flex-shrink: 0;
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 1px;
   color: #8ba3aa;
 }
@@ -3270,7 +3271,7 @@ svg {
   border-radius: 3px;
   background: #b1dfc80f;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   color: #c9dcd2;
   white-space: nowrap;
 }
@@ -3283,7 +3284,7 @@ svg {
 }
 .plan-empty {
   margin-top: 6px;
-  font-size: 9px;
+  font-size: 14px;
   line-height: 1.5;
   color: #748f97;
 }
@@ -3299,7 +3300,7 @@ svg {
 }
 .cure-block > small {
   display: block;
-  font-size: 7px;
+  font-size: 12px;
   color: #7d99a0;
 }
 .cure-block > small b {
@@ -3316,7 +3317,7 @@ svg {
 }
 .day-block > span {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   color: #7b959e;
 }
 .day-block > strong {
@@ -3331,7 +3332,7 @@ svg {
   min-width: 172px;
   padding: 11px 16px;
   gap: 16px;
-  font-size: 11px;
+  font-size: 15px;
 }
 .command-row.actions {
   align-items: stretch;
@@ -3352,11 +3353,11 @@ svg {
   padding: 10px;
 }
 .game-dialog .quick-action strong {
-  font-size: 12px;
+  font-size: 15px;
 }
 .game-dialog .quick-action small {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.4;
   white-space: normal;
 }
@@ -3412,7 +3413,7 @@ svg {
 }
 .quick-action strong {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -3422,7 +3423,7 @@ svg {
   display: block;
   margin-top: 2px;
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.3px;
   color: #86a0a7;
   white-space: nowrap;
@@ -3433,7 +3434,7 @@ svg {
   margin-left: auto;
   flex-shrink: 0;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 14px;
   color: #c6d4cd;
 }
 .quick-action .qa-check {
@@ -3450,7 +3451,7 @@ svg {
 }
 .research-select .rs-label {
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 1px;
   color: #8ba3aa;
   margin-right: 3px;
@@ -3467,14 +3468,14 @@ svg {
   border: 1px solid #31434b;
   border-radius: 4px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 14px;
   color: #b1c0c3;
 }
 .research-select button small {
   display: block;
   margin-top: 2px;
   font-family: var(--body);
-  font-size: 7px;
+  font-size: 12px;
   color: #728e98;
 }
 .research-select button.active {
@@ -3521,7 +3522,7 @@ svg {
     width: 176px;
   }
   .hud-metric > strong {
-    font-size: 15px;
+    font-size: 16px;
   }
   .quick-action small {
     display: none;
@@ -3545,7 +3546,7 @@ svg {
     gap: 8px;
   }
   .hub-topbar .brand {
-    font-size: 15px;
+    font-size: 16px;
     gap: 7px;
     min-width: 0;
   }
@@ -3621,11 +3622,11 @@ svg {
     width: 12px;
   }
   .hud-metric > span {
-    font-size: 7px;
+    font-size: 12px;
   }
   .hud-metric > strong {
     justify-self: start;
-    font-size: 14px;
+    font-size: 16px;
   }
   .hud-metric > small,
   .hud-hospital-track {
@@ -3639,10 +3640,10 @@ svg {
     padding: 12px;
   }
   .news-headline {
-    font-size: 13px;
+    font-size: 15px;
   }
   .news-body {
-    font-size: 9.5px;
+    font-size: 14px;
   }
   .command-bar {
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
@@ -3666,7 +3667,7 @@ svg {
     padding: 0;
   }
   .cure-block > span {
-    font-size: 7px;
+    font-size: 12px;
   }
   .cash-block {
     grid-area: cash;
@@ -3704,14 +3705,14 @@ svg {
     margin: 0;
     min-height: 30px;
     padding: 4px 7px;
-    font-size: 10px;
+    font-size: 14px;
   }
   .command-bar .advance-button {
     grid-area: advance;
     margin: 0;
     min-width: 0;
     padding: 9px 12px;
-    font-size: 10px;
+    font-size: 14px;
     gap: 10px;
   }
   .research-select {
@@ -3726,7 +3727,7 @@ svg {
   .research-select button {
     min-width: 0;
     padding: 5px 6px;
-    font-size: 9px;
+    font-size: 14px;
   }
   .research-select button small {
     display: none;
@@ -3749,13 +3750,13 @@ svg {
     width: 12px;
   }
   .quick-action strong {
-    font-size: 9px;
+    font-size: 14px;
     white-space: normal;
     line-height: 1.25;
   }
   .quick-action .qa-cost {
     margin-left: 0;
-    font-size: 9px;
+    font-size: 14px;
   }
   .quick-action .qa-check {
     position: absolute;
@@ -3766,3 +3767,125 @@ svg {
     display: none;
   }
 }
+
+/* Operation bubbles share the zone pin projection in every map view. */
+.field-operation-bubble {
+  position: absolute;
+  bottom: calc(var(--pin-stem-h, 22px) + 50px);
+  left: -22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #fff1bb;
+  background: #ffc857;
+  color: #17232a;
+  font-size: 28px;
+  font-weight: 900;
+  box-shadow: 0 0 0 6px #ffc85726, 0 6px 20px #0008;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 10;
+  animation: operation-arrive .4s ease-out;
+}
+.field-operation-bubble::after { content: ''; position: absolute; bottom: -7px; left: 15px; border: 6px solid transparent; border-top-color: #ffc857; border-bottom: 0; }
+.field-operation-bubble:hover { background: #ffe39a; }
+.field-operation-bubble:focus-visible { outline: 3px solid white; outline-offset: 7px; }
+.earth-marker-host:has(.field-operation-bubble) { z-index: 12; }
+@keyframes operation-arrive { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .field-operation-bubble { animation: none; } }
+
+/* Readable command UI: grow controls, not the whole map canvas. */
+.hub-topbar { height: 76px; padding-inline: 24px; background: #0b1a21f5; }
+.hub-topbar .brand { font-size: 22px; }
+.hub-topbar .brand small { letter-spacing: .5px; }
+.hub-topbar .header-actions { gap: 8px; }
+.hub-topbar .header-actions button { min-height: 44px; padding: 8px 10px; font-size: 14px; color: #d1dee2; }
+.hub-topbar .header-actions button svg { width: 20px; height: 20px; }
+.map-stage .map-heading { top: 92px; }
+.map-heading .eyebrow, .map-heading h2 span { color: #b4c5cc; letter-spacing: .6px; }
+.map-stage .earth-top-controls { top: 90px; }
+.map-stage .earth-camera-controls { top: 150px; }
+.earth-top-controls button, .earth-camera-controls button { min-height: 44px; min-width: 44px; }
+.earth-node-pin { padding: 6px 9px; background: #0b1a21fa; }
+.earth-node-pin .pin-header { letter-spacing: 0; }
+.earth-node-pin:not(.selected):not(.infected) .pin-badge { display: none; }
+.earth-node-pin.selected .pin-header { font-size: 14px; }
+.field-operation-bubble { bottom: calc(var(--pin-stem-h, 22px) + 76px); }
+.hud-situation { width: 252px; padding: 16px; background: #0c1c24fa; }
+.hud-title { letter-spacing: .3px; color: #bdced4; }
+.hud-metric { grid-template-columns: 30px minmax(0, 1fr) auto; padding-top: 14px; margin-top: 14px; }
+.hud-icon { width: 30px; height: 30px; }
+.hud-icon svg { width: 18px; height: 18px; }
+.hud-metric > span:not(.hud-icon) { font-size: 14px; color: #c4d4db; }
+.hud-metric > strong { font-size: 26px; font-weight: 600; }
+.hud-metric > small { color: #b4c5cc; letter-spacing: 0; }
+.command-bar { padding: 16px 24px calc(16px + env(safe-area-inset-bottom)); gap: 12px; background: #0a181ffa; max-height: 45dvh; overflow-y: auto; }
+.command-row.primary { flex-wrap: wrap; gap: 14px 24px; }
+.cash-block { min-width: 190px; }
+.cash-block > strong { font-size: 30px; }
+.cash-block > strong small { color: #b4c5cc; }
+.cash-block > span, .zone-block > span, .cure-block > span, .day-block > span, .research-select .rs-label { color: #bdced4; letter-spacing: .4px; }
+.zone-block { flex: 1 1 230px; max-width: 330px; }
+.zone-block > strong { font-size: 16px; white-space: normal; line-height: 1.4; }
+.zone-block > small, .cure-block > small { color: #bdced4; }
+.cure-block { width: 230px; }
+.day-block > strong { font-size: 30px; }
+.command-bar .advance-button { font-size: 16px; min-height: 48px; min-width: 190px; }
+.command-row.actions, .research-select { flex-wrap: wrap; }
+.research-select { padding-left: 0; border-left: 0; gap: 8px; }
+.research-select button { min-width: 88px; min-height: 48px; }
+.research-select button small { color: #bdced4; }
+.plan-chips li button, .icon-button, .news-head button { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; }
+.news-flash { width: min(440px, calc(100vw - 36px)); bottom: calc(var(--command-height, 200px) + 16px); max-height: 44dvh; overflow-y: auto; }
+.news-body { font-size: 16px; color: #d1dee2; line-height: 1.6; }
+.news-foot, .news-facts { color: #b4c5cc; }
+.game-dialog { width: 660px; line-height: 1.6; }
+.game-dialog.wide { width: 1000px; }
+.game-dialog .quick-action { padding: 14px; gap: 12px; }
+.game-dialog .quick-action strong { font-size: 16px; white-space: normal; }
+.game-dialog .quick-action small { font-size: 14px; color: #bdced4; }
+.game-dialog .quick-action .qa-icon { width: 36px; height: 36px; }
+.settings-fields input, .settings-fields select, .mobile-zone-select { min-height: 44px; font-size: 16px; }
+@media (max-width: 1600px) { .hub-topbar .mission-badge { display: none; } }
+@media (max-width: 1180px) {
+  .hub-topbar .header-actions button { padding-inline: 7px; }
+  .command-row.primary { gap: 12px; }
+  .cure-block { width: 190px; }
+  .zone-block { flex-basis: 180px; }
+}
+@media (max-width: 980px) {
+  .hub-topbar .header-actions button span { display: none; }
+  .hud-situation { width: 230px; }
+  .command-bar { max-height: 48dvh; }
+}
+@media (max-width: 680px) {
+  .hub-topbar { height: auto; min-height: 72px; padding: 8px 10px; flex-wrap: wrap; gap: 6px; }
+  .hub-topbar .brand { font-size: 20px; }
+  .hub-topbar .header-actions { width: 100%; justify-content: space-between; gap: 0; }
+  .hub-topbar .header-actions button { width: 44px; height: 44px; }
+  .hud-situation { top: 114px; width: auto; padding: 10px 12px; gap: 12px; }
+  .hud-metric, .hud-metric.hospital { padding: 0; margin: 0; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'label' 'value'; }
+  .hud-icon { display: none; }
+  .hud-metric > strong { font-size: 24px; }
+  .hud-metric > span:not(.hud-icon) { font-size: 12px; }
+  .map-stage .earth-top-controls { top: 200px; left: 10px; right: 10px; }
+  .map-stage .earth-camera-controls { top: 256px; }
+  .command-bar { padding: 12px 10px calc(12px + env(safe-area-inset-bottom)); max-height: 48dvh; }
+  .command-row.primary { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'cash day' 'zone zone' 'cure cure' 'advance advance'; gap: 10px; }
+  .cash-block { min-width: 0; }
+  .cash-block > strong { font-size: 26px; }
+  .zone-block { max-width: none; }
+  .zone-block .mobile-zone-select { min-height: 44px; font-size: 16px; }
+  .day-block > strong { font-size: 26px; }
+  .cure-block { width: auto; }
+  .command-bar .advance-button { width: 100%; min-width: 0; }
+  .research-select { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .research-select button { min-width: 0; }
+  .research-select button small { display: block; }
+  .news-flash { top: 200px; bottom: auto; max-height: min(36dvh, calc(100dvh - var(--command-height, 320px) - 216px)); }
+  .settings-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+.map-stage .map-scale { bottom: calc(var(--command-height, 200px) + 16px); }
+.map-stage .map-legend { bottom: calc(var(--command-height, 200px) + 16px); }
+.map-stage .osm-attribution { bottom: calc(var(--command-height, 200px) + 44px); }

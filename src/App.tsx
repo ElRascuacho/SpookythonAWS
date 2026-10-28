@@ -21,7 +21,6 @@ import {
   TrendingDown,
   Users,
   X,
-  Gamepad2,
   type LucideIcon,
 } from "lucide-react";
 import { CureEarth3DMap } from "./components/CureEarth3DMap";
@@ -34,10 +33,9 @@ import {
 import { NewsFlash } from "./components/NewsFlash";
 import { GameTutorial } from "./components/GameTutorial";
 import { FieldOperations } from "./components/FieldOperations";
-import { completeFieldMission } from "./domain/fieldMissions";
+import { completeFieldMission, missionRewardAmount, randomFieldOperation, type FieldOperation } from "./domain/fieldMissions";
 import { SimulationDashboard } from "./components/SimulationDashboard";
 import { StrategyReport } from "./components/StrategyReport";
-import { createLabEvent } from "./domain/spontaneousEvents";
 import { TUTORIAL_SEEN_KEY } from "./domain/tutorial";
 import {
   advanceDay,
@@ -262,7 +260,7 @@ export default function App({
   const [simulationMode, setSimulationMode] = useState(false);
   const [selectedNode, setSelectedNode] = useState("N01");
   const [orders, setOrders] = useState<Order[]>([]);
-  const [missionNode, setMissionNode] = useState("N01");
+  const [fieldOperation, setFieldOperation] = useState<FieldOperation | null>(null);
   const [funding, setFunding] = useState<ResearchFunding>(RESEARCH_LEVELS[1]);
   const [modal, setModal] = useState<Modal>(() => {
     try {
@@ -282,6 +280,16 @@ export default function App({
   const [news, setNews] = useState<GameNews | null>(null);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsFacts, setNewsFacts] = useState("");
+  const commandBarRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const bar = commandBarRef.current;
+    if (!bar) return;
+    const resize = new ResizeObserver(() => {
+      bar.parentElement?.style.setProperty('--command-height', `${bar.getBoundingClientRect().height}px`);
+    });
+    resize.observe(bar);
+    return () => resize.disconnect();
+  }, [simulationMode]);
   const transitionTimer = useRef<number | null>(null);
   const advancing = useRef(false);
   const newsRequestId = useRef(0);
@@ -301,6 +309,7 @@ export default function App({
         // Storage can be blocked; dismissing the tutorial must still work.
       }
     }
+    if (modal === "operations" && fieldOperation && game.actions[game.day]?.fieldRewards?.[fieldOperation.kind]) setFieldOperation(null);
     setModal(null);
   };
   const snapshot = game.timeline[game.day];
@@ -318,6 +327,14 @@ export default function App({
   const playing = game.status === "playing";
   const chapterId = game.config.campaignChapter;
   const chapter = chapterId === undefined ? null : CHAPTERS[chapterId];
+
+  const availableOperation = playing && fieldOperation && !game.actions[game.day]?.fieldRewards?.[fieldOperation.kind] && missionRewardAmount(game, fieldOperation.kind, fieldOperation.nodeId) > 0 ? fieldOperation : null;
+  useEffect(() => { setFieldOperation(null); }, [game.day, game.config]);
+  useEffect(() => {
+    if (!playing || inactive || simulationMode || modal || dayTransition || news || availableOperation) return;
+    const timer = window.setTimeout(() => setFieldOperation(randomFieldOperation(game)), 25000 + Math.random() * 30000);
+    return () => window.clearTimeout(timer);
+  }, [game, playing, inactive, simulationMode, modal, dayTransition, news, availableOperation]);
 
   const selectZone = (id: string) => {
     setSelectedNode(id);
@@ -381,10 +398,6 @@ export default function App({
         transitionTimer.current = null;
         setDayTransition(null);
         if (next.status !== "playing") setModal("result");
-        else {
-          const incident = createLabEvent(next.config.seed, next.day);
-          if (incident) { setMissionNode(incident.nodeId); setModal("operations"); }
-        }
       };
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         finishTurn();
@@ -412,6 +425,7 @@ export default function App({
       setNews(null);
       setNewsFacts("");
       setNewsLoading(false);
+      setFieldOperation(null);
       setGame(createGame(config));
       setSelectedNode(config.patientZeroId);
       setOrders([]);
@@ -485,9 +499,6 @@ export default function App({
           <b>DEMO JUGABLE</b>
         </div>
         <nav className="header-actions" aria-label="Opciones de misión">
-          <button aria-label="Minijuegos de operaciones de campo" disabled={!playing || dayTransition !== null} onClick={() => { setMissionNode(selectedNode); setModal("operations"); }}>
-            <Gamepad2 size={16} /><span>Operaciones</span>
-          </button>
           <button aria-label="Modo simulación múltiple" disabled={dayTransition !== null} onClick={() => setSimulationMode(true)}>
             <Activity size={16} /><span>Simulación</span>
           </button>
@@ -529,6 +540,8 @@ export default function App({
       <main className="map-stage">
         <CureEarth3DMap
           paused={inactive || modal === "operations"}
+          operation={!modal && !dayTransition && !news ? availableOperation : null}
+          onOperation={() => { if (availableOperation) { setSelectedNode(availableOperation.nodeId); setModal("operations"); } }}
           cameraBridge={cameraBridge}
           snapshot={snapshot}
           selectedNode={selectedNode}
@@ -594,7 +607,7 @@ export default function App({
         />
       )}
 
-      <footer className="command-bar">
+      <footer ref={commandBarRef} className="command-bar">
         {chapter && chapterId !== undefined && (
           <div className="campaign-objective" aria-label="Objetivo del capítulo">
             <span>CAPÍTULO {chapterId + 1}/3 · {chapter.title}</span>
@@ -770,10 +783,10 @@ export default function App({
         </Dialog>
       )}
 
-      {modal === "operations" && (
+      {modal === "operations" && fieldOperation && (
         <Dialog title="Operaciones de campo" onClose={closeModal} className="field-dialog">
-          <FieldOperations game={game} nodeId={missionNode} onComplete={(kind) => {
-            const next = completeFieldMission(game, kind, missionNode);
+          <FieldOperations game={game} nodeId={fieldOperation.nodeId} kind={fieldOperation.kind} onComplete={(kind) => {
+            const next = completeFieldMission(game, kind, fieldOperation.nodeId);
             setGame(next);
             setEvaluation(null);
             newsRequestId.current++;

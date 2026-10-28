@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Crosshair, FlaskConical, Footprints, Pause, Play, RotateCcw, ShieldCheck } from 'lucide-react';
+import { ArrowRight, FlaskConical, Pause, Play, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { CureGame } from '../domain/cureGame';
 import type { FieldMissionKind } from '../domain/types';
-import { FIELD_MISSIONS, PIPE_PATH, PIPE_SOLUTION, connectedPipes, createPipePuzzle, missionRewardAmount, rotatePipe } from '../domain/fieldMissions';
+import { FIELD_MISSIONS, PIPE_PATH, PIPE_SOLUTION, connectedPipes, createPipePuzzle, rotatePipe } from '../domain/fieldMissions';
 import { createParkour, createShooter, reloadShooter, shoot, stepParkour, stepShooter, VIEW_H, VIEW_W } from '../domain/fieldArcade';
 import { NODE_MAP } from '../domain/mantaGraph';
 import { drawParkour, drawShooter } from './fieldScenes';
 import './FieldOperations.css';
 
-const icons = { shooter: Crosshair, parkour: Footprints, lab: FlaskConical };
-const kinds: FieldMissionKind[] = ['shooter', 'parkour', 'lab'];
 type Phase = 'ready' | 'playing' | 'paused' | 'won' | 'lost';
 
 function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; onWin: () => void; receipt: string }) {
@@ -129,25 +127,15 @@ function LabPuzzle({ seed, day, onWin, receipt }: { seed: number; day: number; o
   </div>;
 }
 
-export function FieldOperations({ game, nodeId, onComplete }: { game: CureGame; nodeId: string; onComplete: (kind: FieldMissionKind) => string }) {
-  const [selected, setSelected] = useState<FieldMissionKind | null>(null);
+export function FieldOperations({ game, nodeId, kind, onComplete }: { game: CureGame; nodeId: string; kind: FieldMissionKind; onComplete: (kind: FieldMissionKind) => string }) {
   const [receipt, setReceipt] = useState('');
   const [error, setError] = useState('');
-  const complete = () => { if (!selected) return; try { setReceipt(onComplete(selected)); } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo aplicar la recompensa.'); } };
+  const complete = () => { try { setReceipt(onComplete(kind)); } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo aplicar la recompensa.'); } };
   return <section className="field-operations">
     <div className="field-context"><span><span className="field-signal" /> DÍA {String(game.day).padStart(2, '0')} · {NODE_MAP[nodeId].name}</span><span>Una recompensa por operación y día</span></div>
-    {!selected ? <>
-      <p className="field-intro">Tres perspectivas. Una ciudad que proteger.<span>Elige una operación; la simulación no avanza mientras juegas.</span></p>
-      <div className="field-missions">{kinds.map((kind, i) => {
-        const mission = FIELD_MISSIONS[kind], Icon = icons[kind], done = !!game.actions[game.day]?.fieldRewards?.[kind];
-        const eligible = missionRewardAmount(game, kind, nodeId) > 0;
-        return <article className={`field-card field-card-${kind}`} key={kind}><div className="field-card-top"><span>0{i + 1} / {mission.role}</span><Icon size={34} strokeWidth={1.3} /></div><h3>{mission.title}</h3><p>{mission.objective}</p><div className="field-card-reward"><ShieldCheck size={18} /><span>{mission.reward}</span></div><button className={done ? 'field-secondary' : 'field-primary'} disabled={done || !eligible || game.status !== 'playing'} onClick={() => { setReceipt(''); setError(''); setSelected(kind); }}>{done ? <><Check size={17} /> Recompensa aplicada</> : !eligible ? 'Sin población elegible' : <>{kind === 'shooter' ? 'Desplegar agente' : kind === 'parkour' ? 'Iniciar extracción' : 'Entrar al laboratorio'} <ArrowRight size={17} /></>}</button></article>;
-      })}</div>
-      <p className="field-footnote">Operaciones ficticias. El agente usa contención no letal (infectados → recuperados); la extracción protege susceptibles (susceptibles → inmunes). No se elimina población. Salir o fallar no cuesta recursos.</p>
-    </> : <>
-      <div className="field-mission-title"><button className="field-back" onClick={() => setSelected(null)}><ArrowLeft size={17} /> Operaciones</button><span>{FIELD_MISSIONS[selected].role}</span><strong>{FIELD_MISSIONS[selected].title}</strong></div>
-      {selected === 'lab' ? <LabPuzzle seed={game.config.seed} day={game.day} onWin={complete} receipt={receipt} /> : <ArcadeMission key={selected} kind={selected} onWin={complete} receipt={receipt} />}
-      {error && <p className="field-error" role="alert">{error}</p>}
-    </>}
+    <div className="field-mission-title"><span>{FIELD_MISSIONS[kind].role}</span><strong>{FIELD_MISSIONS[kind].title}</strong></div>
+    {kind === 'lab' ? <LabPuzzle seed={game.config.seed} day={game.day} onWin={complete} receipt={receipt} /> : <ArcadeMission kind={kind} onWin={complete} receipt={receipt} />}
+    {error && <p className="field-error" role="alert">{error}</p>}
+    <p className="field-footnote">{FIELD_MISSIONS[kind].reward} Operaciones ficticias: se trata o protege a la población, sin eliminarla. Salir o fallar no cuesta recursos; puedes volver desde la burbuja.</p>
   </section>;
 }

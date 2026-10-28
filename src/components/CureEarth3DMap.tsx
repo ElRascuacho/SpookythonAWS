@@ -21,7 +21,11 @@ import type { Order } from "../domain/cureGame";
 
 import { northCamera, tacticalViewCamera, type TacticalView } from "./tacticalCamera";
 
+import { FIELD_MISSIONS, type FieldOperation } from "../domain/fieldMissions";
+
 interface Props {
+  operation?: FieldOperation | null;
+  onOperation?: () => void;
   cameraBridge?: import('./tacticalCamera').TacticalCameraBridge;
   paused?: boolean;
   snapshot: DailyCitySnapshot;
@@ -485,6 +489,8 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
 };
 
 export function CureEarth3DMap({
+  operation,
+  onOperation,
   paused = false,
   cameraBridge,
   snapshot,
@@ -946,7 +952,7 @@ export function CureEarth3DMap({
       const zoomScale = Math.pow(2, Math.max(-2, zoom - 13));
 
       // Scale pin size and stem smoothly with zoom so labels never drift at low or high zoom
-      const pinScale = Math.min(1.08, Math.max(0.72, (zoom - 9.2) / 3.9));
+      const pinScale = Math.min(1.08, Math.max(1, (zoom - 9.2) / 3.9));
       const stemPx = Math.round(
         Math.max(4, Math.min(26, (zoom - 10.8) * 9 * pitchFactor)),
       );
@@ -1343,6 +1349,7 @@ export function CureEarth3DMap({
                 .filter(Boolean)
                 .join(" ")}
             >
+              {operation?.nodeId === node.id && <button type="button" className="field-operation-bubble" aria-label={`Operación disponible en ${node.name}: ${FIELD_MISSIONS[operation.kind].title}`} title={`Operación en ${node.name}`} onClick={ev => { ev.stopPropagation(); onOperation?.(); }}><span aria-hidden="true">!</span></button>}
               <span className="pin-anchor-dot" />
               <span className="pin-stem" />
               <button
