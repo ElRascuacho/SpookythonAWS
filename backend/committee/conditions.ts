@@ -206,14 +206,15 @@ export function buildAdmissionTransactionInput(
               scenario,
               evaluation,
               evaluationCompletedPairs: evaluation ? 0 : undefined,
+              trainingCompletedTrajectories: evaluation ? undefined : 0,
               horizonDays: scenario.horizonDays,
               createdAt: nowIso,
               updatedAt: nowIso,
               softDeadlineAt: softDeadlineIso,
               hardDeadlineAt: hardDeadlineIso,
               reservedGbs: COMMITTEE_RESERVED_GBS_PER_JOB,
-              manifestKey: `committee/${jobId}/manifest.json`,
-              resultPrefix: `committee/${jobId}/`,
+              manifestKey: evaluation ? `committee/${jobId}/manifest.json` : `committee/${ownerHash}/${jobId}/manifest.json`,
+              resultPrefix: evaluation ? `committee/${jobId}/` : `committee/${ownerHash}/${jobId}/`,
               idempotencyKeyHash: keyHash,
               ttl: ttlEpoch,
             },
@@ -302,6 +303,14 @@ export function buildProgressUpdateInput(
     rawValues[":previousPairs"] = updates.completedPairs - 1;
     rawValues[":false"] = false;
   }
+  if (updates.completedTrajectories !== undefined) {
+    setClauses.push('#completedTrajectories = :completedTrajectories');
+    names['#completedTrajectories'] = 'trainingCompletedTrajectories';
+    names['#cancelRequested'] = 'cancelRequested';
+    rawValues[':completedTrajectories'] = updates.completedTrajectories;
+    rawValues[':previousTrajectories'] = updates.completedTrajectories - 1;
+    rawValues[':false'] = false;
+  }
   if (updates.progressPolicyVersion !== undefined) {
     setClauses.push("#progressPolicyVersion = :progressPolicyVersion");
     names["#progressPolicyVersion"] = "progressPolicyVersion";
@@ -337,7 +346,8 @@ export function buildProgressUpdateInput(
     UpdateExpression: `SET ${setClauses.join(", ")}`,
     ConditionExpression:
       "attribute_exists(pk) AND #status = :running AND #stateRevision = :expectedRevision" +
-      (updates.completedPairs !== undefined ? " AND #completedPairs = :previousPairs AND #cancelRequested = :false" : ""),
+      (updates.completedPairs !== undefined ? " AND #completedPairs = :previousPairs AND #cancelRequested = :false" : "") +
+      (updates.completedTrajectories !== undefined ? " AND #completedTrajectories = :previousTrajectories AND #cancelRequested = :false" : ""),
     ExpressionAttributeNames: names,
     ExpressionAttributeValues: marshall(rawValues, {
       removeUndefinedValues: true,
@@ -391,6 +401,14 @@ export function buildTerminalTransitionTransactionInput(
     setClauses.push("#message = :message");
     names["#message"] = "message";
     rawValues[":message"] = transition.message;
+  }
+  if (transition.trainingArtifactKey !== undefined || transition.trainingArtifactHash !== undefined) {
+    if (!transition.trainingArtifactKey || !transition.trainingArtifactHash) throw new Error('Incomplete training artifact pointer');
+    setClauses.push('#trainingArtifactKey = :trainingArtifactKey', '#trainingArtifactHash = :trainingArtifactHash');
+    names['#trainingArtifactKey'] = 'trainingArtifactKey';
+    names['#trainingArtifactHash'] = 'trainingArtifactHash';
+    rawValues[':trainingArtifactKey'] = transition.trainingArtifactKey;
+    rawValues[':trainingArtifactHash'] = transition.trainingArtifactHash;
   }
 
   return {

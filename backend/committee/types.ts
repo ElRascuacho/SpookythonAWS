@@ -67,6 +67,9 @@ export interface JobDdbItem {
   phase?: JobPhase;
   evaluation?: EvaluationJobMetadata;
   evaluationCompletedPairs?: number;
+  trainingCompletedTrajectories?: number;
+  trainingArtifactKey?: string;
+  trainingArtifactHash?: string;
 }
 
 export interface GlobalQuotaDdbItem {
@@ -126,6 +129,7 @@ export interface AdmitJobResult {
 export interface JobProgressUpdate {
   expectedRevision: number;
   completedPairs?: number;
+  completedTrajectories?: number;
   progressPolicyVersion?: number;
   recommendedPolicyVersion?: number;
   phase?: JobPhase;
@@ -142,6 +146,8 @@ export interface TerminalJobTransition {
   expectedRevision?: number;
   meanInfections?: number | null;
   message?: string | null;
+  trainingArtifactKey?: string;
+  trainingArtifactHash?: string;
 }
 
 export class CommitteeError extends Error {

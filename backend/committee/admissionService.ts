@@ -50,6 +50,10 @@ export class CommitteeAdmissionService {
       reconciler ?? new CommitteeReconciler(this.client, this.tableName);
   }
 
+  async reconcileSlot(now = new Date()) {
+    return this.reconciler.reconcileSlot(now);
+  }
+
   async admitJob(request: AdmitJobRequest): Promise<AdmitJobResult> {
     const {
       ownerHash,
