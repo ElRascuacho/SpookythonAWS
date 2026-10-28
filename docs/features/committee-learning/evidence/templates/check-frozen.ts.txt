@@ -1,0 +1,34 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { strictEqual, ok } from 'node:assert';
+import { runSingleSeirSimulation as run } from './adapted-engine';
+import { decideWeightedAction } from './weighted-policy';
+const results = JSON.parse(await readFile('.git/committee-experiment/results.json', 'utf8'));
+let checked = 0;
+for (const record of results.records) {
+  for (const runIndex of [200000, 200001, 200002]) {
+    for (const weights of [[0, 0, 0, 0], record.selectedWeights]) {
+      const params = record.params;
+      const result = run(params, 'SMART_CORTAFUEGOS', runIndex, undefined, (day, state, config) => decideWeightedAction(day, state, config, weights));
+      for (let day = 1; day < result.timeline.length; day++) {
+        const previous = result.timeline[day - 1];
+        const action = result.timeline[day].action;
+        let vaccineLots = 0;
+        for (const [nodeId, doses] of Object.entries(action.vaccinatedNodes)) {
+          ok(Number.isInteger(doses) && doses >= 0 && doses <= previous.nodes[nodeId].S, 'Order is bounded by susceptible people at start of day');
+          vaccineLots += Math.ceil(doses / params.vaccineBatchSize);
+        }
+        const price = vaccineLots * params.vaccineCost + action.cordonedNodes.length * params.cordonCost + action.fumigatedNodes.length * params.fumigationCost;
+        strictEqual(action.budgetSpent, price, 'Reported daily cost equals actual intervention orders');
+        ok(price <= params.dailyBudget);
+      }
+      checked++;
+    }
+  }
+  const row = record.finalRows[0];
+  const repeated = run(record.params, 'SMART_CORTAFUEGOS', row.runIndex, undefined, (day, state, params) => decideWeightedAction(day, state, params, record.selectedWeights));
+  strictEqual(repeated.totalCumulativeInfected, row.learned);
+  strictEqual(repeated.totalBudgetSpent, row.learnedBudget);
+}
+const evidence = { independentlyCheckedTrajectoryCount: checked, deterministicRepeatTrajectoryCount: results.records.length, mainSearchValidationFinalTrajectoryCount: results.records.reduce((sum: number, record: any) => sum + record.trainingTrajectoryCount + record.validationTrajectoryCount + record.final.count * 4, 0), paritySimulatorCalls: results.equivalence.length * 2 + 3, legacyResultsCounterMeaning: 'results.totalTrajectories instruments research wrapper calls and excludes 18 source/fallback parity calls; do not treat it as total simulator invocations', invariantResult: 'passed', deterministicRepeatResult: 'passed' };
+await writeFile('.git/committee-experiment/checks.json', JSON.stringify(evidence, null, 2));
+console.log(evidence);

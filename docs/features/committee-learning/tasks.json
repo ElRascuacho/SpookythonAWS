@@ -1,0 +1,203 @@
+{
+  "slug": "committee-learning",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Add optional fifth options seam to runSingleSeirSimulation with parity tests",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-06", "AC-10"],
+      "dod": "4-arg numeric parity holds for SGC/RANDOM/NONE; options enable envNamespace override and daily callback without StrategyType LEARNED",
+      "files_hint": ["src/domain/seirEngine.ts", "src/domain/prng.ts", "src/domain/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t1-engine-seam.md",
+      "status": "todo"
+    },
+    {
+      "id": "T2",
+      "title": "Implement explainable four-weight policy equal to SGC at zero vector",
+      "layer": "domain",
+      "deps": ["T1"],
+      "acs": ["AC-06", "AC-10"],
+      "dod": "Zero weights deep-equal source SGC actions/outcomes on fixture seeds; vaccine factor remains 1",
+      "files_hint": ["src/domain/committee/", "src/domain/strategies.ts", "src/domain/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t2-weighted-policy.md",
+      "status": "todo"
+    },
+    {
+      "id": "T3",
+      "title": "Build deterministic seed pools and run manifest serializer",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-09", "AC-16"],
+      "dod": "Disjoint train/selection/promotion/final pools with collision checks; manifest round-trips with versions and library snapshot",
+      "files_hint": ["src/domain/committee/", "src/domain/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t3-seed-manifest.md",
+      "status": "todo"
+    },
+    {
+      "id": "T4",
+      "title": "Implement CEM search using train pool only",
+      "layer": "domain",
+      "deps": ["T2", "T3"],
+      "acs": ["AC-06", "AC-07"],
+      "dod": "8x24x8 CEM never feeds selection/promotion/final into search center; includes SGC and searchIncumbent in 24",
+      "files_hint": ["src/domain/committee/", "src/domain/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t4-cem-search.md",
+      "status": "todo"
+    },
+    {
+      "id": "T5",
+      "title": "Implement progressive promotion gates and final audit",
+      "layer": "domain",
+      "deps": ["T4"],
+      "acs": ["AC-07", "AC-08", "AC-16"],
+      "dod": "Tie keeps incumbent; Bonferroni bootstrap gate; final audit can revert recommendation to base while stateRevision grows",
+      "files_hint": ["src/domain/committee/", "src/domain/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t5-promotion-final-audit.md",
+      "status": "todo"
+    },
+    {
+      "id": "T6",
+      "title": "Implement committee runner with cancel checks and 3552 cap ledger",
+      "layer": "app",
+      "deps": ["T5"],
+      "acs": ["AC-11", "AC-12", "AC-13"],
+      "dod": "Runner respects soft/hard budgets, cancel-before-trajectory, ledger ≤3552 protocol / ≤4096 hard, no resume of crashed jobs",
+      "files_hint": ["src/domain/committee/", "backend/workers/", "src/domain/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t6-committee-runner.md",
+      "status": "todo"
+    },
+    {
+      "id": "T7",
+      "title": "Add shared ownerHash helper from validated manta_session nonce",
+      "layer": "app",
+      "deps": [],
+      "acs": ["AC-04"],
+      "dod": "ownerHash derives from nonce after cookie validation; codeHash alone never authorizes committee job access",
+      "files_hint": ["backend/auth.ts", "backend/__tests__/auth.test.ts"],
+      "file": "docs/features/committee-learning/tasks/t7-owner-hash-auth.md",
+      "status": "todo"
+    },
+    {
+      "id": "T8",
+      "title": "Stage SAM resources for CommitteeTable, results bucket, and worker",
+      "layer": "wiring",
+      "deps": [],
+      "acs": ["AC-14"],
+      "dod": "template additions match migrations docs; training flag default off; no deploy without authorization",
+      "files_hint": ["infra/template.yaml", "docs/features/committee-learning/migrations/"],
+      "file": "docs/features/committee-learning/tasks/t8-sam-infra.md",
+      "status": "todo"
+    },
+    {
+      "id": "T9",
+      "title": "Implement DynamoDB admission, slot claim, and status CAS",
+      "layer": "infra",
+      "deps": ["T7", "T8"],
+      "acs": ["AC-05", "AC-11", "AC-13"],
+      "dod": "TransactWrite quotas+slot+job; idempotency; terminal CAS once; reconcile helpers for expired queued/running",
+      "files_hint": ["backend/committee/", "backend/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t9-ddb-admission.md",
+      "status": "todo"
+    },
+    {
+      "id": "T10",
+      "title": "Implement private S3 result store and policy library",
+      "layer": "infra",
+      "deps": ["T8"],
+      "acs": ["AC-09", "AC-15"],
+      "dod": "Put artifact then CAS pointer; library ≤8 weights-only; no public/presigned URLs",
+      "files_hint": ["backend/committee/", "backend/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t10-s3-library.md",
+      "status": "todo"
+    },
+    {
+      "id": "T11",
+      "title": "Expose authenticated committee HTTP routes on interactive handler",
+      "layer": "ports",
+      "deps": ["T9", "T10"],
+      "acs": ["AC-02", "AC-03", "AC-04", "AC-14"],
+      "dod": "OpenAPI routes implemented; rejects internal search fields; hides foreign jobs; respects training_disabled",
+      "files_hint": ["backend/handler.ts", "backend/committee/", "backend/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t11-committee-api.md",
+      "status": "todo"
+    },
+    {
+      "id": "T12",
+      "title": "Wire async committee worker invoke, claim, and terminal publish",
+      "layer": "wiring",
+      "deps": ["T6", "T9", "T10"],
+      "acs": ["AC-11", "AC-12"],
+      "dod": "Duplicate invoke no-ops on failed claim; publishes terminal states with growing stateRevision",
+      "files_hint": ["backend/workers/", "backend/committee/", "backend/__tests__/"],
+      "file": "docs/features/committee-learning/tasks/t12-committee-worker.md",
+      "status": "todo"
+    },
+    {
+      "id": "T13",
+      "title": "Add ModeShell keeping App mounted across mode switches",
+      "layer": "ui",
+      "deps": [],
+      "acs": ["AC-01"],
+      "dod": "Game/Campaña/Comité switch hides App without unmount; committee cannot inject game actions",
+      "files_hint": ["src/InvitationGate.tsx", "src/ModeShell.tsx", "src/App.tsx"],
+      "file": "docs/features/committee-learning/tasks/t13-modeshell.md",
+      "status": "todo"
+    },
+    {
+      "id": "T14",
+      "title": "Build committee form and polling progress panel",
+      "layer": "ui",
+      "deps": ["T11", "T13"],
+      "acs": ["AC-02", "AC-03", "AC-16"],
+      "dod": "SCR-02/03 states; poll 2s/10s; ignores stale lower stateRevision",
+      "files_hint": ["src/committee/", "src/ModeShell.tsx"],
+      "file": "docs/features/committee-learning/tasks/t14-form-poll.md",
+      "status": "todo"
+    },
+    {
+      "id": "T15",
+      "title": "Build playback adapters on Cure maps without CureGame",
+      "layer": "ui",
+      "deps": ["T14"],
+      "acs": ["AC-09"],
+      "dod": "SCR-05 plays DailyCitySnapshot.action via CureEarth3DMap/CureCityMap adapters",
+      "files_hint": ["src/committee/", "src/components/CureEarth3DMap.tsx", "src/components/CureCityMap.tsx"],
+      "file": "docs/features/committee-learning/tasks/t15-playback.md",
+      "status": "todo"
+    },
+    {
+      "id": "T16",
+      "title": "Add integration and chaos tests against real DynamoDB Local or ephemeral AWS",
+      "layer": "tests",
+      "deps": ["T11", "T12"],
+      "acs": ["AC-04", "AC-05", "AC-11", "AC-13"],
+      "dod": "No in-memory labeled as cloud E2E; covers duplicate invoke, cancel-before-start, quota, ownership",
+      "files_hint": ["backend/__tests__/", "tests/"],
+      "file": "docs/features/committee-learning/tasks/t16-integration-chaos.md",
+      "status": "todo"
+    },
+    {
+      "id": "T17",
+      "title": "Add maintenance-only cloud profile harness gated by authorization",
+      "layer": "tests",
+      "deps": ["T12", "T16"],
+      "acs": ["AC-14"],
+      "dod": "Harness documents commands, max 3 bounded jobs, refuses to run without explicit env authorization flag",
+      "files_hint": ["scripts/", "docs/features/committee-learning/runbook.md"],
+      "file": "docs/features/committee-learning/tasks/t17-profile-harness.md",
+      "status": "todo"
+    },
+    {
+      "id": "T18",
+      "title": "Collect release evidence checklist and update package readiness notes",
+      "layer": "docs",
+      "deps": ["T15", "T16", "T17"],
+      "acs": ["AC-14"],
+      "dod": "Checklist lists pending external gates only; no fabricated cloud timings/costs; coding prompt still STOP on redesign",
+      "files_hint": ["docs/features/committee-learning/", "README.md"],
+      "file": "docs/features/committee-learning/tasks/t18-release-evidence.md",
+      "status": "todo"
+    }
+  ]
+}

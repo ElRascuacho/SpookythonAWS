@@ -75,6 +75,10 @@ La evaluación de tu plan repite el calendario ya elegido; no representa una pol
 - PRNG Mulberry32 y transiciones binomiales (aproximación normal para grupos grandes). Misma configuración, semilla y decisiones producen la misma partida.
 - Requisitos versionados: [`docs/00-especificacion-reto.md`](./docs/00-especificacion-reto.md), contrastados con `hackathon_track_b.md` local. La entrega indicada es el 28 de octubre a las 10:00 (Ecuador); la región figura por confirmar.
 
+## Feature en planificación — modo Comité
+
+El aprendizaje híbrido de estrategias (modo **Comité**) está documentado en [`docs/features/committee-learning/`](./docs/features/committee-learning/README.md): spec, arquitectura, contratos y `tasks.json`. Hay un primer corte local en curso; **el modo completo no está habilitado en producción** y no se debe desplegar entrenamiento sin autorización.
+
 ## Estructura
 
 - `src/App.tsx` — shell de pantalla completa: mapa, HUD de situación, barra inferior de mando (presupuesto, zona, plan, cura, día, intervenciones, laboratorio), transición de día y diálogos.

@@ -1,0 +1,9 @@
+{
+  "independentlyCheckedTrajectoryCount": 12,
+  "deterministicRepeatTrajectoryCount": 2,
+  "mainSearchValidationFinalTrajectoryCount": 4480,
+  "paritySimulatorCalls": 21,
+  "legacyResultsCounterMeaning": "results.totalTrajectories instruments research wrapper calls and excludes 18 source/fallback parity calls; do not treat it as total simulator invocations",
+  "invariantResult": "passed",
+  "deterministicRepeatResult": "passed"
+}

@@ -1,0 +1,26 @@
+{
+    "localOnly":  true,
+    "supplementaryCalls":  14,
+    "cloudProfiled":  false,
+    "sourceFiles":  [
+                        {
+                            "sha256":  "131a5bddc2c467e78aada3f1953d125ba03eee87237cde0e07e22af7640d5ca2",
+                            "path":  "src/domain/seirEngine.ts"
+                        },
+                        {
+                            "sha256":  "fc7147fc28f54923a3a1de50e042e80d38d087755bae0711b250abec6f3a9e14",
+                            "path":  "src/domain/strategies.ts"
+                        },
+                        {
+                            "sha256":  "c63edeaf84f42cd5316dbe2bff7ad8425b939c91292083a73f688da2a329a386",
+                            "path":  "src/domain/prng.ts"
+                        },
+                        {
+                            "sha256":  "bfa2ffab25f0a98e24875f49c0098e623beafdfadf60c2bc5530809e5112c8db",
+                            "path":  "src/domain/mantaGraph.ts"
+                        }
+                    ],
+    "totalCalls":  4515,
+    "mainCalls":  4501,
+    "sourceRevision":  "4bcdc6e251c4ad02c350a15e35e3af1bb5e0ab5d"
+}

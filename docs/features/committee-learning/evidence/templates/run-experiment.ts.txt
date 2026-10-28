@@ -1,0 +1,167 @@
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { resolve, dirname } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { deepStrictEqual, strictEqual, ok } from 'node:assert';
+import { DEFAULT_SIMULATION_PARAMS, MANTA_NODES, TOTAL_MANTA_POPULATION } from '../../src/domain/mantaGraph';
+import { runSingleSeirSimulation as sourceRun } from '../../src/domain/seirEngine';
+import { mulberry32, sampleStandardNormal } from '../../src/domain/prng';
+import type { SimulationParams, SingleSimulationRunResult } from '../../src/domain/types';
+
+// Research-only adapter. No source files are changed and no network is used.
+const root = process.cwd();
+const output = resolve(root, '.git/committee-experiment');
+await mkdir(output, { recursive: true });
+const sourceEngine = await readFile(resolve(root, 'src/domain/seirEngine.ts'), 'utf8');
+const sourceStrategies = await readFile(resolve(root, 'src/domain/strategies.ts'), 'utf8');
+function localImports(source: string): string {
+  return source.replace(/from '(\.\/[^']+)'/g, (_, relative) =>
+    `from '${pathToFileURL(resolve(root, 'src/domain', relative)).href}'`);
+}
+function replaceOnce(source: string, before: string, after: string): string {
+  strictEqual(source.split(before).length - 1, 1, `Unique adapter seam missing: ${before}`);
+  return source.replace(before, after);
+}
+let adaptedEngine = localImports(sourceEngine);
+adaptedEngine = replaceOnce(adaptedEngine,
+  'manualActions?: Record<number, DailyAction>,',
+  'manualActions?: Record<number, DailyAction>,\n  policy?: (day: number, state: Record<string, CompartmentState>, params: SimulationParams) => DailyAction,');
+adaptedEngine = replaceOnce(adaptedEngine,
+  ': decideDailyAction(day, state, params, strategy, strategyRng);',
+  ': policy ? policy(day, state, params) : decideDailyAction(day, state, params, strategy, strategyRng);');
+await writeFile(resolve(output, 'adapted-engine.ts'), adaptedEngine);
+const policyStart = sourceStrategies.indexOf('function decideSmartCortafuegosAction(');
+ok(policyStart >= 0, 'SGC source function found');
+let policyBody = sourceStrategies.slice(policyStart);
+policyBody = replaceOnce(policyBody, 'function decideSmartCortafuegosAction(', 'export function decideWeightedAction(');
+policyBody = replaceOnce(policyBody, 'params: SimulationParams,', 'params: SimulationParams,\n  weights: readonly number[],');
+policyBody = replaceOnce(policyBody, 'candidates.sort((a, b) => b.rcdScore - a.rcdScore);',
+  `const offset = day <= 18 ? 0 : 2;
+  for (const candidate of candidates) {
+    if (candidate.kind === 'CORDON') candidate.rcdScore *= Math.exp(weights[offset]);
+    if (candidate.kind === 'FUMIGATE') candidate.rcdScore *= Math.exp(weights[offset + 1]);
+  }
+  candidates.sort((a, b) => b.rcdScore - a.rcdScore);`);
+const typeStart = sourceStrategies.indexOf('interface CandidateAction');
+const typeEnd = sourceStrategies.indexOf('\n}', typeStart) + 2;
+const policyModule = `import { MANTA_NODES, MANTA_EDGES, ADJACENCY_LIST, NODE_MAP } from '${pathToFileURL(resolve(root, 'src/domain/mantaGraph.ts')).href}';
+import type { CompartmentState, DailyAction, SimulationParams } from '${pathToFileURL(resolve(root, 'src/domain/types.ts')).href}';
+${sourceStrategies.slice(typeStart, typeEnd)}
+${policyBody}`;
+await writeFile(resolve(output, 'weighted-policy.ts'), policyModule);
+const { runSingleSeirSimulation: run } = await import(pathToFileURL(resolve(output, 'adapted-engine.ts')).href);
+const { decideWeightedAction } = await import(pathToFileURL(resolve(output, 'weighted-policy.ts')).href);
+type Weights = number[];
+const baselineWeights = [0, 0, 0, 0];
+const paramsBase: SimulationParams = { ...DEFAULT_SIMULATION_PARAMS, days: 40, betaHuman: 0.3, betaVector: 0.045, dailyBudget: 7500, vaccineBatchSize: 850, seed: 20261030 };
+const policy = (weights: Weights) => (day: number, state: any, params: SimulationParams) => decideWeightedAction(day, state, params, weights);
+let totalTrajectories = 0;
+let invariantTrajectories = 0;
+function check(result: SingleSimulationRunResult, params: SimulationParams): void {
+  strictEqual(result.timeline.length, params.days + 1);
+  strictEqual(result.wastedDosesOnInfected, 0);
+  for (const snapshot of result.timeline) {
+    strictEqual(snapshot.totalS + snapshot.totalE + snapshot.totalI + snapshot.totalR, TOTAL_MANTA_POPULATION);
+    ok(snapshot.action.budgetSpent >= 0 && snapshot.action.budgetSpent <= params.dailyBudget);
+    for (const compartment of Object.values(snapshot.nodes)) {
+      for (const value of [compartment.S, compartment.E, compartment.I, compartment.R]) ok(Number.isFinite(value) && value >= 0);
+    }
+  }
+  invariantTrajectories++;
+}
+function trajectory(params: SimulationParams, weights: Weights, runIndex: number, inspect = false): SingleSimulationRunResult {
+  totalTrajectories++;
+  const result = run(params, 'SMART_CORTAFUEGOS', runIndex, undefined, policy(weights));
+  if (inspect) check(result, params);
+  return result;
+}
+// Exact equality includes actions, snapshots, metadata and all epidemiological outputs.
+const equivalence = [];
+for (const seed of [0, 20261030, 987654321]) {
+  const params = { ...paramsBase, seed };
+  for (const strategy of ['NO_INTERVENTION', 'RANDOM', 'SMART_CORTAFUEGOS'] as const) {
+    const expected = sourceRun(params, strategy, 7);
+    const actual = run(params, strategy, 7);
+    deepStrictEqual(actual, expected);
+    if (strategy === 'SMART_CORTAFUEGOS') deepStrictEqual(trajectory(params, baselineWeights, 7, true), expected);
+    equivalence.push({ seed, strategy, exactMatch: true });
+  }
+}
+const runIndices = { training: Array.from({ length: 8 }, (_, i) => i), validation: Array.from({ length: 24 }, (_, i) => 1000 + i), final: Array.from({ length: 128 }, (_, i) => 100000 + i) };
+function evaluate(params: SimulationParams, weights: Weights, indices: number[]) {
+  const infections: number[] = [];
+  for (const index of indices) infections.push(trajectory(params, weights, index).totalCumulativeInfected);
+  return { mean: mean(infections), infections };
+}
+function mean(values: number[]) { return values.reduce((sum, value) => sum + value, 0) / values.length; }
+const key = (weights: Weights) => weights.map(v => v.toFixed(9)).join(',');
+function clamp(value: number) { return Math.max(-3, Math.min(3, value)); }
+const started = performance.now();
+const cpuStarted = process.cpuUsage();
+const records: any[] = [];
+let warmStart: Weights | undefined;
+for (const scenario of [{ name: 'standard', overrides: {} }, { name: 'double-transmission-half-vaccines', overrides: { betaHuman: 0.6, vaccineBatchSize: 425 } }]) {
+  const params = { ...paramsBase, ...scenario.overrides };
+  const rng = mulberry32(0x62ac1030 ^ records.length);
+  let center = warmStart ? [...warmStart] : [...baselineWeights];
+  let deviations = [1.3, 1.3, 1.3, 1.3];
+  let incumbent = [...baselineWeights];
+  let incumbentScore = Number.POSITIVE_INFINITY;
+  const archive = new Map<string, { weights: Weights; score: number }>();
+  const history: any[] = [];
+  const trainingStart = totalTrajectories;
+  for (let generation = 0; generation < 8; generation++) {
+    const population: Weights[] = [[...baselineWeights], [...incumbent]];
+    if (warmStart) population.push([...warmStart]);
+    while (population.length < 24) {
+      const fresh = population.length < 4;
+      population.push(center.map((value, dimension) => fresh ? (rng() * 6 - 3) : clamp(value + deviations[dimension] * sampleStandardNormal(rng))));
+    }
+    const ranked = population.map(weights => ({ weights, score: evaluate(params, weights, runIndices.training).mean }))
+      .sort((a, b) => a.score - b.score || key(a.weights).localeCompare(key(b.weights)));
+    for (const item of ranked) archive.set(key(item.weights), item);
+    if (ranked[0].score < incumbentScore) { incumbent = [...ranked[0].weights]; incumbentScore = ranked[0].score; }
+    const elites = ranked.slice(0, 6);
+    center = center.map((old, dimension) => 0.3 * old + 0.7 * mean(elites.map(item => item.weights[dimension])));
+    deviations = deviations.map((old, dimension) => {
+      const values = elites.map(item => item.weights[dimension]);
+      const average = mean(values);
+      const sd = Math.sqrt(mean(values.map(value => (value - average) ** 2)));
+      return Math.max(0.15, 0.3 * old + 0.7 * sd);
+    });
+    history.push({ generation, bestTrainingMean: incumbentScore, bestWeights: [...incumbent] });
+    console.log(JSON.stringify({ scenario: scenario.name, generation, bestTrainingMean: incumbentScore, totalTrajectories }));
+  }
+  const finalists = [...archive.values()].sort((a, b) => a.score - b.score || key(a.weights).localeCompare(key(b.weights))).slice(0, 7).map(item => item.weights);
+  if (!finalists.some(weights => key(weights) === key(baselineWeights))) finalists.push([...baselineWeights]);
+  const selected = finalists.map(weights => ({ weights, validation: evaluate(params, weights, runIndices.validation) }))
+    .sort((a, b) => a.validation.mean - b.validation.mean || key(a.weights).localeCompare(key(b.weights)))[0];
+  // Freeze to disk before touching the final test pool. No decisions below change the candidate.
+  const freezePath = resolve(output, `frozen-${scenario.name}.json`);
+  await writeFile(freezePath, JSON.stringify({ scenario: scenario.name, params, weights: selected.weights, seed: params.seed, finalRunIndices: runIndices.final, note: 'Frozen before final evaluation; final output cannot influence training/selection.' }, null, 2));
+  const finalRows: any[] = [];
+  for (const index of runIndices.final) {
+    const learned = trajectory(params, selected.weights, index, true);
+    const baseline = trajectory(params, baselineWeights, index, true);
+    const random = sourceRun(params, 'RANDOM', index); totalTrajectories++; check(random, params);
+    const noIntervention = sourceRun(params, 'NO_INTERVENTION', index); totalTrajectories++; check(noIntervention, params);
+    finalRows.push({ runIndex: index, learned: learned.totalCumulativeInfected, sgc: baseline.totalCumulativeInfected, random: random.totalCumulativeInfected, noIntervention: noIntervention.totalCumulativeInfected, learnedBudget: learned.totalBudgetSpent, sgcBudget: baseline.totalBudgetSpent });
+  }
+  const difference = finalRows.map(row => row.learned - row.sgc);
+  const average = mean(difference);
+  const sampleVariance = difference.reduce((sum, value) => sum + (value - average) ** 2, 0) / (difference.length - 1);
+  const se = Math.sqrt(sampleVariance / difference.length);
+  const bootstrapRng = mulberry32(0x11990123 ^ records.length);
+  const boot = Array.from({ length: 2000 }, () => mean(difference.map(() => difference[Math.floor(bootstrapRng() * difference.length)]))).sort((a, b) => a - b);
+  const interval = [boot[Math.floor(0.025 * (boot.length - 1))], boot[Math.ceil(0.975 * (boot.length - 1))]];
+  const sgcMean = mean(finalRows.map(row => row.sgc));
+  const record = { scenario: scenario.name, params, warmStartWeights: warmStart ?? null, trainingTrajectoryCount: 8 * 24 * 8, finalistCount: finalists.length, validationTrajectoryCount: finalists.length * 24, selectedWeights: [...selected.weights], selectedValidationMean: selected.validation.mean, history,
+    final: { count: finalRows.length, meanInfections: Object.fromEntries(['learned', 'sgc', 'random', 'noIntervention'].map(label => [label, mean(finalRows.map(row => row[label]))])), pairedDifferenceLearnedMinusSGC: average, pairedStandardError: se, pairedBootstrap95Interval: interval, relativeReductionPercent: -average / sgcMean * 100, candidateBeatsSgcMean: average < 0, bootstrapIntervalBelowZero: interval[1] < 0, meanBudget: { learned: mean(finalRows.map(row => row.learnedBudget)), sgc: mean(finalRows.map(row => row.sgcBudget)) } }, finalRows };
+  records.push(record);
+  warmStart = [...selected.weights];
+}
+const cpu = process.cpuUsage(cpuStarted);
+const result = { schema: 'committee-learning-feasibility/v1', sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), measuredAt: new Date().toISOString(), runtime: { bun: Bun.version, platform: process.platform, arch: process.arch }, method: { name: 'Smoothed diagonal Gaussian elite search (CEM-style)', generations: 8, population: 24, elites: 6, smoothingNewWeight: 0.7, minStd: 0.15, logWeightBounds: [-3, 3], dimensions: ['cordonLogMultiplierDays1To18', 'fumigateLogMultiplierDays1To18', 'cordonLogMultiplierDays19To40', 'fumigateLogMultiplierDays19To40'], vaccineRelativeMultiplier: 1, baselineWeights, sourcePhysicsUnchanged: true, environmentStrategyIdentity: 'SMART_CORTAFUEGOS', note: 'Seed-matched comparisons; action/state-dependent random draws may diverge, not guaranteed identical per-transition noise.' }, runIndices, equivalence, totalTrajectories, invariantTrajectories, wallSeconds: (performance.now() - started) / 1000, cpuSeconds: (cpu.user + cpu.system) / 1e6, rssMiB: process.memoryUsage().rss / (1024 * 1024), records,
+  limitations: ['Scratch adapter and four-parameter policy family only, not implemented product.', 'Two scenario-specific training runs; second uses first selected policy as a warm candidate, not a general transfer guarantee.', 'Single base seed and bounded disjoint run-index pools; more base seeds/scenarios required.', 'Final results never tune the candidate; repeated product promotions need fresh evaluation and sequential-testing control.', 'Bun Windows x64 timing is not Node ARM Lambda billed duration or AWS cost.', 'No AWS profile performed; USD5/month enforcement remains a release gate.', 'No global optimum, clinical validity or lifetime outbreak-prevention claim.'], source: 'https://arxiv.org/abs/1703.03864' };
+await writeFile(resolve(output, 'results.json'), JSON.stringify(result, null, 2));
+console.log(JSON.stringify({ output: resolve(output, 'results.json'), totalTrajectories, invariantTrajectories, wallSeconds: result.wallSeconds, cpuSeconds: result.cpuSeconds, summary: records.map(record => ({ scenario: record.scenario, selectedWeights: record.selectedWeights, final: record.final })) }, null, 2));
