@@ -31,13 +31,30 @@ Parameters:
 
   OpenAiResearchModel:
     Type: String
-    Default: gpt-6-luna
+    Default: gpt-6.1-terra
     Description: Modelo del agente supervisado de investigación.
   EnableResearchAi:
     Type: String
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: Habilitar llamadas de pago del agente tras configurar cuotas y credenciales.
+
+  OpenAiResearchVoiceApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Clave opcional exclusiva para voz; vacia reutiliza la clave OpenAI del servidor.
+  EnableResearchVoice:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Habilitar audio Realtime con facturacion separada del agente de texto.
+  OpenAiResearchVoiceModel:
+    Type: String
+    Default: gpt-realtime-2.1-mini
+  OpenAiResearchVoice:
+    Type: String
+    Default: alloy
 
 Globals:
   Function:
@@ -57,6 +74,10 @@ Globals:
         OPENAI_NEWS_MODEL: !Ref OpenAiNewsModel
         OPENAI_RESEARCH_MODEL: !Ref OpenAiResearchModel
         ENABLE_RESEARCH_AI: !Ref EnableResearchAi
+        ENABLE_RESEARCH_VOICE: !Ref EnableResearchVoice
+        OPENAI_RESEARCH_VOICE_API_KEY: !Ref OpenAiResearchVoiceApiKey
+        OPENAI_RESEARCH_VOICE_MODEL: !Ref OpenAiResearchVoiceModel
+        OPENAI_RESEARCH_VOICE: !Ref OpenAiResearchVoice
 
 Resources:
   SpookythonHttpApi:
@@ -90,6 +111,12 @@ Resources:
           Properties:
             ApiId: !Ref SpookythonHttpApi
             Path: /api/research/agent
+            Method: POST
+        ResearchVoiceRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /api/research/voice/session
             Method: POST
         NewsRoute:
           Type: HttpApi

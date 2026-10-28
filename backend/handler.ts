@@ -7,6 +7,7 @@ import {
 import { PartialSimulationParamsSchema } from "../src/domain/schemas/simulationParams.schema";
 import { authorize } from "./auth";
 import { NEWS_ROUTE, handleNewsRoute } from "./news";
+import { RESEARCH_VOICE_ROUTE, handleResearchVoice } from './researchVoice';
 import { RESEARCH_ROUTE, handleResearchAgent } from './researchAgent';
 
 export interface APIGatewayProxyEventV2 {
@@ -136,8 +137,8 @@ export async function handler(
       };
     }
     // Se resuelve antes del enrutado de simulación: comparte contrato con el dev server.
-    if (path === NEWS_ROUTE || path === RESEARCH_ROUTE) {
-      const newsResponse = path === RESEARCH_ROUTE ? await handleResearchAgent(request, clientIp) : await handleNewsRoute(request, clientIp);
+    if (path === NEWS_ROUTE || path === RESEARCH_ROUTE || path === RESEARCH_VOICE_ROUTE) {
+      const newsResponse = path === RESEARCH_VOICE_ROUTE ? await handleResearchVoice(request, clientIp) : path === RESEARCH_ROUTE ? await handleResearchAgent(request, clientIp) : await handleNewsRoute(request, clientIp);
       return {
         statusCode: newsResponse.status,
         headers: Object.fromEntries(newsResponse.headers.entries()),

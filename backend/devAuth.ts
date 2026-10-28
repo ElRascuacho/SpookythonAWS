@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { authorize, json } from "./auth";
 import { NEWS_BODY_LIMIT, NEWS_ROUTE, handleNewsRoute } from "./news";
+import { RESEARCH_VOICE_ROUTE, handleResearchVoice } from './researchVoice';
 import { RESEARCH_BODY_LIMIT, RESEARCH_ROUTE, handleResearchAgent } from './researchAgent';
 
 export function invitationAuth(env: Record<string, string>): Plugin {
@@ -47,6 +48,7 @@ export function invitationAuth(env: Record<string, string>): Plugin {
         if (!response && pathname === NEWS_ROUTE)
           response = await handleNewsRoute(request, clientIp, serverEnv);
         if (!response && pathname === RESEARCH_ROUTE) response = await handleResearchAgent(request, clientIp, serverEnv);
+        if (!response && pathname === RESEARCH_VOICE_ROUTE) response = await handleResearchVoice(request, clientIp, serverEnv);
         response ??= json(404, { error: "Ruta no encontrada." });
         res.writeHead(
           response.status,
