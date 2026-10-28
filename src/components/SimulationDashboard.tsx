@@ -4,6 +4,7 @@ import { computePercentile } from "../domain/monteCarlo";
 import type { SimulationPlan, SimulationSample } from "../domain/multiSimulation";
 import { createDifficultyGraph, type GraphDifficulty } from "../domain/difficultyGraph";
 import "./SimulationDashboard.css";
+import { StrategyReport } from "./StrategyReport";
 
 const format = (n: number) => Math.round(n).toLocaleString("es-EC");
 
@@ -98,6 +99,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
         <div className="simulation-metrics"><div><span>Contagios acumulados · promedio</span><strong>{format(average(totals))}</strong></div><div><span>Rango P10–P90</span><strong>{format(computePercentile(totals, 10))} – {format(computePercentile(totals, 90))}</strong></div><div><span>Pico infeccioso · promedio</span><strong>{format(average(samples.map((s) => s.peak)))}</strong></div><div><span>Gasto total · promedio</span><strong>${format(average(samples.map((s) => s.spent)))}</strong></div></div>
         <div className="simulation-chart"><h2>Contagios acumulados</h2><p>Promedio por día · {daily.length - 1} días · semilla {actualSeed}</p><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Curva promedio: de ${format(daily[0])} a ${format(daily[daily.length - 1])} contagios`}><polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" /></svg><div><span>Día 0</span><span>Día {daily.length - 1}</span></div></div>
         <details className="simulation-chart"><summary>Ver sectores simulados</summary><ul>{createDifficultyGraph(actualDifficulty).nodes.map((node) => <li key={node.id}>{node.id} · {node.name} · {format(node.population)} habitantes estimados</li>)}</ul></details>
+        <StrategyReport game={game} plan={actualPlan} seed={actualSeed!} days={actualPlan === "PLAYER" ? game.day : game.params.days} difficulty={actualDifficulty} />
         <p className="simulation-note">P10–P90 describe la dispersión entre corridas, no un intervalo de confianza. La semilla aleatoria mostrada permite repetir el análisis.</p>
       </section>}
     </div>

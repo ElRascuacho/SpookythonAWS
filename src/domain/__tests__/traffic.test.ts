@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { pointOnRoad, quadraticRoutePoint, TRAFFIC_ROUTES } from "../traffic";
+import { pointOnRoad, quadraticRoutePoint, TRAFFIC_ROUTES, TRAFFIC_VEHICLES } from "../traffic";
 
 describe("traffic route projection", () => {
   test("keeps vehicles on quadratic corridors and clamps progress", () => {
@@ -22,5 +22,8 @@ describe("traffic route projection", () => {
       expect(route.edges.length).toBeGreaterThan(0);
     }
     expect(TRAFFIC_ROUTES[0].edges).toEqual(["E02", "E08"]);
+    expect(TRAFFIC_VEHICLES).toHaveLength(216);
+    expect(new Set(TRAFFIC_VEHICLES.map((v) => v.route)).size).toBe(TRAFFIC_ROUTES.length);
+    expect(TRAFFIC_VEHICLES.some((v) => v.type === "bus")).toBe(true);
   });
 });

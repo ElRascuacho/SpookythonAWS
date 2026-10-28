@@ -150,6 +150,8 @@ export function CureCityMap({
         aria-label="16 zonas de Manta. Selecciona una para enviar brigadas."
       >
         <defs>
+          <g id={`traffic-car-${trafficId}`}><path d="M-10 -2.5 -7 -4h10l4 2 2 2v2h-19V0z"/><path d="M-5 -3h7l2 3H-7z" fill="#17313a" stroke="none"/><rect x="-7" y="3" width="4" height="2" fill="#071217" stroke="none"/><rect x="5" y="3" width="4" height="2" fill="#071217" stroke="none"/></g>
+          <g id={`traffic-bus-${trafficId}`}><rect x="-14" y="-4" width="28" height="8" rx="1.5"/><path d="M-9 -3h4v3h-4zm6 0h4v3h-4zm6 0h4v3H3z" fill="#17313a" stroke="none"/><rect x="-11" y="3" width="4" height="2" fill="#071217" stroke="none"/><rect x="7" y="3" width="4" height="2" fill="#071217" stroke="none"/></g>
           <pattern
             id="ocean-grid"
             width="32"
@@ -267,11 +269,11 @@ export function CureCityMap({
             );
           })}
           <g aria-hidden="true" pointerEvents="none">
-            {TRAFFIC_VEHICLES.filter((vehicle) => !TRAFFIC_ROUTES[vehicle.route].edges.some((id) => {
+            {TRAFFIC_VEHICLES.filter((vehicle) => (!reducedMotion || vehicle.id < TRAFFIC_ROUTES.length) && !TRAFFIC_ROUTES[vehicle.route].edges.some((id) => {
               const edge = MANTA_EDGES.find((item) => item.id === id);
               return snapshot.action.cordonedEdges.includes(id) || (edge && orders.some((order) => order.kind === "cordon" && (order.nodeId === edge.source || order.nodeId === edge.target)));
             })).map((vehicle) => (
-              <g key={`${vehicle.type}-${vehicle.route}`}>
+              <g key={vehicle.id}>
                 {!reducedMotion && (
                   <animateMotion dur={`${vehicle.duration}s`} begin={`-${vehicle.delay}s`} repeatCount="indefinite" rotate="auto">
                     <mpath href={`#traffic-road-${trafficId}-${vehicle.route}`} />
@@ -283,21 +285,7 @@ export function CureCityMap({
                   stroke="#0b1b23"
                   strokeWidth="1"
                 >
-                  {vehicle.type === "bus" ? (
-                    <>
-                      <rect x="-14" y="-4" width="28" height="8" rx="1.5" />
-                      <path d="M-9 -3h4v3h-4zm6 0h4v3h-4zm6 0h4v3H3z" fill="#17313a" stroke="none" />
-                      <rect x="-11" y="3" width="4" height="2" rx=".5" fill="#071217" stroke="none" />
-                      <rect x="7" y="3" width="4" height="2" rx=".5" fill="#071217" stroke="none" />
-                    </>
-                  ) : (
-                    <>
-                      <path d="M-10 -2.5  -7 -4h10l4 2 2 2v2h-19V0z" />
-                      <path d="M-5 -3h7l2 3H-7z" fill="#17313a" stroke="none" />
-                      <rect x="-7" y="3" width="4" height="2" rx=".5" fill="#071217" stroke="none" />
-                      <rect x="5" y="3" width="4" height="2" rx=".5" fill="#071217" stroke="none" />
-                    </>
-                  )}
+                  <use href={`#traffic-${vehicle.type}-${trafficId}`} />
                 </g>
               </g>
             ))}

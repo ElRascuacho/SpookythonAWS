@@ -35,6 +35,7 @@ import { NewsFlash } from "./components/NewsFlash";
 import { GameTutorial } from "./components/GameTutorial";
 import { LabSpontaneousEvent } from "./components/LabSpontaneousEvent";
 import { SimulationDashboard } from "./components/SimulationDashboard";
+import { StrategyReport } from "./components/StrategyReport";
 import { createLabEvent, type LabEvent } from "./domain/spontaneousEvents";
 import { TUTORIAL_SEEN_KEY } from "./domain/tutorial";
 import {
@@ -265,7 +266,7 @@ export default function App({
   const [analysisDay, setAnalysisDay] = useState(0);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [mapView, setMapView] = useState<"3d" | "2d">("3d");
-  const [styleMode, setStyleMode] = useState<MapStyleMode>("satellite");
+  const [styleMode, setStyleMode] = useState<MapStyleMode>("tactical3d");
   const [dayTransition, setDayTransition] =
     useState<DayTransitionReport | null>(null);
   const [news, setNews] = useState<GameNews | null>(null);
@@ -991,7 +992,20 @@ export default function App({
               <span>Inmunes y recuperados</span>
               <strong>{format(snapshot.totalR)}</strong>
             </div>
+            <div>
+              <span>Pico de infecciosos</span>
+              <strong>{format(Math.max(...game.timeline.map((day) => day.totalI)))}</strong>
+            </div>
+            <div>
+              <span>Gasto total ejecutado</span>
+              <strong>${format(Object.values(game.actions).reduce((sum, action) => sum + action.budgetSpent, 0))}</strong>
+            </div>
+            <div>
+              <span>Avance de la cura</span>
+              <strong>{game.research}%</strong>
+            </div>
           </div>
+          <StrategyReport game={game} plan="PLAYER" seed={game.config.seed} days={game.day} />
           {chapter && chapterId !== undefined && (
             <button className="primary-button" onClick={() => {
               if (game.status === "won" && chapterId < 2) {

@@ -1059,23 +1059,27 @@ export function CureEarth3DMap({
             }
           }
 
+          const blockedRoads = TRAFFIC_ROUTES.map((road) => road.edges.some((id) => {
+            const edge = MANTA_EDGES.find((item) => item.id === id);
+            return snap.action.cordonedEdges.includes(id) || (edge && activeOrders.some((order) => order.kind === "cordon" && (order.nodeId === edge.source || order.nodeId === edge.target)));
+          }));
           for (const vehicle of TRAFFIC_VEHICLES) {
+            if (prefersReducedMotion && vehicle.id >= TRAFFIC_ROUTES.length) continue;
             const road = TRAFFIC_ROUTES[vehicle.route];
             if (!road) continue;
-            const isClosed = road.edges.some((id) => {
-              const edge = MANTA_EDGES.find((item) => item.id === id);
-              return snap.action.cordonedEdges.includes(id) || (edge && activeOrders.some((order) => order.kind === "cordon" && (order.nodeId === edge.source || order.nodeId === edge.target)));
-            });
-            if (isClosed) continue;
+            if (blockedRoads[vehicle.route]) continue;
 
             const t = prefersReducedMotion
               ? 0.5
               : ((elapsed + vehicle.delay) % vehicle.duration) / vehicle.duration;
             const point = map.project(pointOnRoad(road, t));
+            if (point.x < -30 || point.y < -30 || point.x > width + 30 || point.y > height + 30) continue;
             const ahead = map.project(pointOnRoad(road, Math.min(1, t + 0.001)));
             ctx.save();
             ctx.translate(point.x, point.y);
             ctx.rotate(Math.atan2(ahead.y - point.y, ahead.x - point.x));
+            const vehicleScale = Math.max(0.2, Math.min(1, (zoom - 11) / 6));
+            ctx.scale(vehicleScale, vehicleScale);
             drawTrafficVehicle(ctx, vehicle.type);
             ctx.restore();
           }
