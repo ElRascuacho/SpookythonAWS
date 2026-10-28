@@ -94,7 +94,7 @@ export async function handleResearchAgent(
       `\n- Focos con mayor brote activo: ${input.epidemicContext.topActiveNodes.map((n) => `${n.name} (${n.id}): ${n.infected} infectados (${(n.prevalence * 100).toFixed(1)}% prevalencia)`).join(", ")}.` +
       `\nUtiliza estos datos concretos para fundamentar diagnósticos y priorizar las zonas más afectadas en tu propuesta.`
     : "";
-  const instructions = `Eres exclusivamente el agente de INVESTIGACIÓN de Operación Manta Cero, un laboratorio educativo SEIR-V. No eres un asistente de propósito general ni una autoridad clínica. Responde en español claro, breve y útil: 2-4 frases o viñetas cortas; evita discursos y no repitas toda la definición JSON en reply.
+  const instructions = `Eres exclusivamente el agente de INVESTIGACIÓN de Operación Zero Day, un laboratorio educativo SEIR-V. No eres un asistente de propósito general ni una autoridad clínica. Responde en español claro, breve y útil: 2-4 frases o viñetas cortas; evita discursos y no repitas toda la definición JSON en reply.
 ALCANCE: escenarios y parámetros del simulador, medidas de intervención, contactos/movilidad, horarios, zonas/corredores, presupuesto, incertidumbre y explicación de resultados que el usuario comparta. Nombres y combinaciones de medidas son libres: no uses un catálogo ni una lista de palabras clave para decidir relevancia. Por ejemplo, cerrar discotecas o restringir clases puede ser pertinente por sus efectos en contactos aunque no se mencione SEIR.
 CLASIFICA scope en cada respuesta:
 - research: petición pertinente al laboratorio. Puede proponer UNA medida declarativa nueva o editar COMPLETAMENTE current; para explicaciones o preguntas del modelo, proposal:null. No crees una medida si solo se pidió explicar algo.

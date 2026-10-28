@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { ComparisonChart } from '../../components/ComparisonChart';
+import App from '../../App';
 import { FieldOperations } from '../../components/FieldOperations';
 import { ResearchWorkspace } from '../../research/ResearchWorkspace';
 import { createGame } from '../cureGame';
@@ -11,6 +12,21 @@ import { runMonteCarloComparison } from '../monteCarlo';
 const game = createGame({ seed: 42, scenario: 'standard', patientZeroId: 'N01', dailyBudget: 7500 });
 
 describe('accessible UI contracts', () => {
+  test('game branding is Zero Day while Manta remains the city', () => {
+    const html = renderToStaticMarkup(createElement(App));
+    expect(html).toContain('aria-label="Operación Zero Day"');
+    expect(html).toContain('ZERO <span class="brand-zero">DAY</span>');
+    expect(html).not.toMatch(/Manta Cero/i);
+    expect(readFileSync(new URL('../../../index.html', import.meta.url), 'utf8')).toContain('<title>Zero Day — Encuentra la cura</title>');
+  });
+  test('live situation starts collapsed and uses a native keyboard-operable disclosure', () => {
+    const html = renderToStaticMarkup(createElement(App));
+    expect(html).toContain('<details class="hud-situation" aria-label="Situación en tiempo real">');
+    expect(html).toContain('<summary class="hud-title">');
+    expect(html).toContain('class="hud-metrics"');
+    expect(html).toContain('Infecciosos');
+    expect(html).toContain('Hospital');
+  });
   test('native zone selector and its popup options have explicit dark colors outside mobile breakpoints', () => {
     const css = readFileSync(new URL('../../index.css', import.meta.url), 'utf8');
     const control = css.match(/\n\.mobile-zone-select\s*\{([^}]+)\}/)![1];

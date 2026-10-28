@@ -79,7 +79,7 @@ export function buildMayorExecutiveBriefing(
     .map((snap) => snap.action.summaryText);
 
   return {
-    title: "Informe Ejecutivo para la Alcaldía de Manta — Operación Manta Cero",
+    title: "Informe Ejecutivo para la Alcaldía de Manta — Operación Zero Day",
     executiveSummary,
     bulletRecommendations,
     auditMetrics: {

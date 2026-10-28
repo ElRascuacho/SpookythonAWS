@@ -9,7 +9,7 @@ import { runSingleSeirSimulation } from "../seirEngine";
 import { handler } from "../../../backend/handler";
 import { hashInvitation } from "../../../backend/auth";
 
-describe("Operación Manta Cero — SEIR-V Graph Simulation & Monte Carlo", () => {
+describe("Operación Zero Day — SEIR-V Graph Simulation & Monte Carlo", () => {
   test("Test 1: Deterministic reproducibility (same seed + same params = identical results)", () => {
     const params = {
       ...DEFAULT_SIMULATION_PARAMS,

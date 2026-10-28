@@ -1,6 +1,6 @@
-# Manta Cero — Encuentra la cura
+# Zero Day — Encuentra la cura
 
-Juego de estrategia para navegador de **Operación Manta Cero**, Track B: La Plaga Zombie. Eres el comité de respuesta de Manta: distribuye recursos entre contención e investigación para encontrar la cura antes de que el brote desborde la ciudad.
+Juego de estrategia para navegador de **Operación Zero Day**, Track B: La Plaga Zombie. Eres el comité de respuesta de Manta: distribuye recursos entre contención e investigación para encontrar la cura antes de que el brote desborde la ciudad.
 
 ## Ejecutar
 

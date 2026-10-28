@@ -3906,6 +3906,19 @@ svg {
 .comparison-chart button { min-height: 44px; font: inherit; }
 .comparison-day { display: grid; gap: 8px; margin-block: 16px; color: var(--text); font-size: 16px; }
 .comparison-day input { width: 100%; min-height: 32px; accent-color: var(--mint); }
+.game-shell > details.hud-situation { display: block; }
+.hud-situation > summary.hud-title { display: flex; min-height: 44px; gap: 8px; cursor: pointer; list-style: none; font: 14px/1.4 var(--body); letter-spacing: 0; }
+.hud-situation > summary::-webkit-details-marker { display: none; }
+.hud-situation > summary:focus-visible { outline: 2px solid var(--mint); outline-offset: 4px; border-radius: 3px; }
+.hud-toggle-icon { flex-shrink: 0; }
+.hud-situation[open] > summary .hud-toggle-icon { transform: rotate(180deg); }
+.hud-metrics { display: grid; }
+@media (max-width: 680px), (max-height: 600px) {
+  .hud-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 12px; }
+}
+@media (max-width: 680px) and (min-height: 601px) {
+  .game-shell:has(.hud-situation[open]) .map-stage .earth-top-controls { top: 260px; }
+}
 /* Low-height screens need document flow, not competing fixed panels. */
 @media (max-height: 600px) {
   .dialog-backdrop { padding: 8px; }

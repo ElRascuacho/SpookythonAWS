@@ -196,12 +196,12 @@ export default function InvitationGate() {
         <div className="access-cinematic-shade" />
       </div>
       <header className="access-header">
-        <a className="access-brand" href="/" aria-label="Manta Cero, inicio">
+        <a className="access-brand" href="/" aria-label="Zero Day, inicio">
           <span className="access-brand-icon">
             <Dna size={26} />
           </span>
           <span>
-            MANTA CERO<small>OPERACIÓN DE RESPUESTA</small>
+            ZERO DAY<small>OPERACIÓN DE RESPUESTA</small>
           </span>
         </a>
         <span className="access-private">
@@ -418,7 +418,7 @@ export default function InvitationGate() {
       </div>
       <footer className="access-footer">
         <span>
-          MANTA CERO <b>/</b> ENCUENTRA LA CURA
+          ZERO DAY <b>/</b> ENCUENTRA LA CURA
         </span>
         <span>Simulación ficticia · No es una herramienta clínica</span>
         <span>

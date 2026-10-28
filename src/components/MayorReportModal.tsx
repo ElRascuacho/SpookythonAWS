@@ -48,7 +48,7 @@ export const MayorReportModal: React.FC<MayorReportModalProps> = ({
                 </span>
               </div>
               <h2 className="text-lg font-bold text-white mt-1">
-                Informe de Decisiones para la Alcaldía de Manta — Operación Manta Cero
+                Informe de Decisiones para la Alcaldía de Manta — Operación Zero Day
               </h2>
             </div>
           </div>
