@@ -127,11 +127,13 @@ export function advanceDay(
   game: CureGame,
   orders: Order[],
   funding: ResearchFunding,
+  bonusOrder?: Order,
 ): CureGame {
   if (game.status !== "playing") throw new Error("La partida ya terminó.");
   if (
     !RESEARCH_LEVELS.includes(funding) ||
-    orders.some((o) => !NODE_MAP[o.nodeId] || !INTERVENTIONS[o.kind])
+    orders.some((o) => !NODE_MAP[o.nodeId] || !INTERVENTIONS[o.kind]) ||
+    (bonusOrder !== undefined && (!NODE_MAP[bonusOrder.nodeId] || bonusOrder.kind !== "prevention"))
   ) {
     throw new Error("Órdenes inválidas.");
   }
@@ -146,6 +148,7 @@ export function advanceDay(
   }
   const previous = game.timeline[game.day];
   const day = game.day + 1;
+  const appliesBonus = bonusOrder !== undefined && !orders.some((order) => order.nodeId === bonusOrder.nodeId && order.kind === "prevention");
   const action: DailyAction = {
     day,
     vaccinatedNodes: {},
@@ -155,7 +158,7 @@ export function advanceDay(
     isolatedNodes: [],
     preventionNodes: [],
     budgetSpent: getPlanCost(orders, funding),
-    summaryText: `${orders.length} brigadas · $${funding} en investigación`,
+    summaryText: `${orders.length + Number(appliesBonus)} brigadas${appliesBonus ? " · apoyo de laboratorio" : ""} · $${funding} en investigación`,
   };
   for (const order of orders) {
     if (order.kind === "vaccine") {
@@ -174,6 +177,8 @@ export function advanceDay(
     else if (order.kind === "isolation") action.isolatedNodes!.push(order.nodeId);
     else action.preventionNodes!.push(order.nodeId);
   }
+  if (appliesBonus)
+    action.preventionNodes!.push(bonusOrder.nodeId);
   action.cordonedEdges = MANTA_EDGES.filter(
     (e) =>
       action.cordonedNodes.includes(e.source) ||

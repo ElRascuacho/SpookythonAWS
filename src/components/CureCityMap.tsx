@@ -3,7 +3,7 @@ import { Crosshair, Globe, Layers, Map as MapIcon, Minus, Plus } from "lucide-re
 import { MANTA_EDGES, MANTA_NODES } from "../domain/mantaGraph";
 import type { DailyCitySnapshot } from "../domain/types";
 import type { Order } from "../domain/cureGame";
-import { TRAFFIC_VEHICLES } from "../domain/traffic";
+import { TRAFFIC_ROUTES, TRAFFIC_VEHICLES } from "../domain/traffic";
 
 const POSITIONS: Record<string, [number, number]> = {
   N01: [645, 350],
@@ -55,6 +55,18 @@ const ROAD_PATHS = [
   "M470 670Q510 490 620 350T700 120",
   "M0 595Q400 565 960 540",
 ];
+const OSM_PATHS = TRAFFIC_ROUTES.map((route) => {
+  const first = route.coordinates[0], last = route.coordinates[route.coordinates.length - 1];
+  const [x0, y0] = POSITIONS[route.from], [x1, y1] = POSITIONS[route.to];
+  const dx = last[0] - first[0], dy = first[1] - last[1];
+  const lengthSquared = dx * dx + dy * dy;
+  return route.coordinates.map(([lng, lat], i) => {
+    const x = lng - first[0], y = first[1] - lat;
+    const along = (x * dx + y * dy) / lengthSquared;
+    const across = (y * dx - x * dy) / lengthSquared;
+    return `${i ? "L" : "M"}${(x0 + along * (x1 - x0) - across * (y1 - y0)).toFixed(1)} ${(y0 + along * (y1 - y0) + across * (x1 - x0)).toFixed(1)}`;
+  }).join(" ");
+});
 
 interface Props {
   snapshot: DailyCitySnapshot;
@@ -207,12 +219,13 @@ export function CureCityMap({
               />
             ))}
             {ROAD_PATHS.map((d, i) => (
-              <path key={i} id={`traffic-road-${trafficId}-${i}`} d={d} fill="none" stroke="#38505a" strokeWidth="9" opacity=".7" />
+              <path key={i} d={d} fill="none" stroke="#38505a" strokeWidth="9" opacity=".7" />
             ))}
             {ROAD_PATHS.map((d, i) => (
               <path key={i} d={d} fill="none" stroke="#52616a" strokeWidth="1" opacity=".5" />
             ))}
           </g>
+          {OSM_PATHS.map((d, i) => <path key={i} id={`traffic-road-${trafficId}-${i}`} d={d} fill="none" stroke="#72958d" strokeWidth="2" opacity=".7" />)}
           <text
             x="145"
             y="150"
@@ -254,7 +267,10 @@ export function CureCityMap({
             );
           })}
           <g aria-hidden="true" pointerEvents="none">
-            {TRAFFIC_VEHICLES.map((vehicle) => (
+            {TRAFFIC_VEHICLES.filter((vehicle) => !TRAFFIC_ROUTES[vehicle.route].edges.some((id) => {
+              const edge = MANTA_EDGES.find((item) => item.id === id);
+              return snapshot.action.cordonedEdges.includes(id) || (edge && orders.some((order) => order.kind === "cordon" && (order.nodeId === edge.source || order.nodeId === edge.target)));
+            })).map((vehicle) => (
               <g key={`${vehicle.type}-${vehicle.route}`}>
                 {!reducedMotion && (
                   <animateMotion dur={`${vehicle.duration}s`} begin={`-${vehicle.delay}s`} repeatCount="indefinite" rotate="auto">
@@ -262,12 +278,7 @@ export function CureCityMap({
                   </animateMotion>
                 )}
                 <g
-                  transform={reducedMotion ? [
-                    "translate(0 550) rotate(-8)",
-                    "translate(200 670) rotate(-64)",
-                    "translate(470 670) rotate(-77)",
-                    "translate(0 595) rotate(-4)",
-                  ][vehicle.route] : undefined}
+                  transform={reducedMotion ? `translate(${OSM_PATHS[vehicle.route].split("L")[0].slice(1)})` : undefined}
                   fill={vehicle.type === "bus" ? "#80e0bc" : "#f0c879"}
                   stroke="#0b1b23"
                   strokeWidth="1"
@@ -414,6 +425,7 @@ export function CureCityMap({
       <div className="map-scale">
         <span />2 km<small>Grafo esquemático · no cartografía oficial</small>
       </div>
+      <div className="osm-attribution">Vías © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · buses referenciales</div>
       <div className="map-compass">
         <span>N</span>
         <i />

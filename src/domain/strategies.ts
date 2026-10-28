@@ -1,6 +1,7 @@
-import { ADJACENCY_LIST, MANTA_EDGES, MANTA_NODES, NODE_MAP } from './mantaGraph';
+import { ADJACENCY_LIST as DEFAULT_ADJACENCY_LIST, MANTA_EDGES as DEFAULT_EDGES, MANTA_NODES as DEFAULT_NODES, NODE_MAP as DEFAULT_NODE_MAP } from './mantaGraph';
 import { RngFunction } from './prng';
 import { CompartmentState, DailyAction, SimulationParams, StrategyType } from './types';
+import type { DifficultyGraph } from './difficultyGraph';
 
 interface CandidateAction {
   kind: 'CORDON' | 'FUMIGATE' | 'VACCINATE';
@@ -19,6 +20,7 @@ export function decideDailyAction(
   params: SimulationParams,
   strategy: StrategyType,
   rng: RngFunction,
+  graph?: DifficultyGraph,
 ): DailyAction {
   if (strategy === 'NO_INTERVENTION' || day === 0 || params.dailyBudget <= 0) {
     return {
@@ -36,10 +38,10 @@ export function decideDailyAction(
   }
 
   if (strategy === 'RANDOM') {
-    return decideRandomAction(day, state, params, rng);
+    return decideRandomAction(day, state, params, rng, graph);
   }
 
-  return decideSmartCortafuegosAction(day, state, params);
+  return decideSmartCortafuegosAction(day, state, params, graph);
 }
 
 /**
@@ -50,7 +52,10 @@ function decideRandomAction(
   state: Record<string, CompartmentState>,
   params: SimulationParams,
   rng: RngFunction,
+  graph?: DifficultyGraph,
 ): DailyAction {
+  const MANTA_NODES = graph?.nodes ?? DEFAULT_NODES;
+  const MANTA_EDGES = graph?.edges ?? DEFAULT_EDGES;
   let remainingBudget = params.dailyBudget;
   const vaccinatedNodes: Record<string, number> = {};
   const fumigatedNodes: string[] = [];
@@ -122,7 +127,12 @@ function decideSmartCortafuegosAction(
   day: number,
   state: Record<string, CompartmentState>,
   params: SimulationParams,
+  graph?: DifficultyGraph,
 ): DailyAction {
+  const MANTA_NODES = graph?.nodes ?? DEFAULT_NODES;
+  const MANTA_EDGES = graph?.edges ?? DEFAULT_EDGES;
+  const NODE_MAP = graph?.nodeMap ?? DEFAULT_NODE_MAP;
+  const ADJACENCY_LIST = graph?.adjacencyList ?? DEFAULT_ADJACENCY_LIST;
   let remainingBudget = params.dailyBudget;
   const vaccinatedNodes: Record<string, number> = {};
   const fumigatedNodes: string[] = [];
