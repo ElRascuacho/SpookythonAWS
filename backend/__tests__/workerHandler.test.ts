@@ -18,4 +18,31 @@ describe("committee worker handler", () => {
     expect(stored?.result.playback.length).toBe(21);
     expect(await loadCommitteeResult("owner-b", "job-worker-1")).toBeNull();
   });
+
+  test("delegates evaluation events to the evaluation executor", async () => {
+    let executedJobId = "";
+    let executedOwner = "";
+    const mockExecutor = {
+      async execute(jobId: string, ownerHash?: string) {
+        executedJobId = jobId;
+        executedOwner = ownerHash ?? "";
+        return { status: "completed", pairsCompleted: 4 };
+      },
+    };
+
+    const response = await handler(
+      {
+        type: "evaluation",
+        jobId: "eval-job-123",
+        ownerHash: "owner-eval",
+      },
+      { executor: mockExecutor },
+    );
+
+    expect(response.ok).toBe(true);
+    expect(response.status).toBe("completed");
+    expect(response.pairsCompleted).toBe(4);
+    expect(executedJobId).toBe("eval-job-123");
+    expect(executedOwner).toBe("owner-eval");
+  });
 });
