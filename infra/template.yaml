@@ -65,6 +65,12 @@ Parameters:
     Default: alloy
     Description: Voz configurada para el agente de investigación.
 
+  OpenAiResearchVoiceApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Clave opcional exclusiva para voz; vacia reutiliza la clave OpenAI del servidor.
+
 Globals:
   Function:
     Runtime: nodejs20.x
@@ -84,6 +90,7 @@ Globals:
         OPENAI_RESEARCH_MODEL: !Ref OpenAiResearchModel
         ENABLE_RESEARCH_AI: !Ref EnableResearchAi
         ENABLE_RESEARCH_VOICE: !Ref EnableResearchVoice
+        OPENAI_RESEARCH_VOICE_API_KEY: !Ref OpenAiResearchVoiceApiKey
         OPENAI_RESEARCH_VOICE_MODEL: !Ref OpenAiResearchVoiceModel
         OPENAI_RESEARCH_VOICE: !Ref OpenAiResearchVoice
         COMMITTEE_TABLE_NAME: !Ref CommitteeTable
@@ -135,6 +142,12 @@ Resources:
           Properties:
             ApiId: !Ref SpookythonHttpApi
             Path: /api/research/agent
+            Method: POST
+        ResearchVoiceRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SpookythonHttpApi
+            Path: /api/research/voice/session
             Method: POST
         NewsRoute:
           Type: HttpApi

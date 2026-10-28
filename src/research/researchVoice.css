@@ -1,0 +1,156 @@
+/* Voice stays in the agent composer: no portal, backdrop, orb or map overlay. */
+.rw-voice-inline {
+  min-width: 0;
+}
+.rw-voice-card {
+  padding: 10px 12px;
+  border: 1px solid #ffad6628;
+  border-radius: 12px;
+  background: linear-gradient(120deg, #ffad6607, #0d1a2200);
+  animation: rw-voice-card-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+}
+.rw-voice-card.is-closing {
+  opacity: 0;
+  transform: translateY(3px);
+  pointer-events: none;
+  animation: none;
+}
+.rw-voice-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.rw-voice-card-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #f5d5b5;
+  font-size: 12px;
+  min-width: 0;
+}
+.rw-voice-card-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffad66;
+  flex-shrink: 0;
+}
+.rw-voice-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.research-workspace .rw-composer .rw-voice-inline .rw-voice-card button {
+  padding: 4px 7px;
+  min-height: 26px;
+  border-radius: 7px;
+  background: transparent !important;
+  border-color: #ffad6626;
+  font-size: 11px !important;
+}
+.research-workspace .rw-composer .rw-voice-inline .rw-voice-card button:hover {
+  background: #ffad6610 !important;
+  border-color: #ffad6650;
+}
+.research-workspace
+  .rw-composer
+  .rw-voice-inline
+  .rw-voice-card
+  button:focus-visible {
+  outline: 2px solid #ffad66;
+  outline-offset: 2px;
+}
+.rw-voice-waveform {
+  --voice-level: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 36px;
+  margin: 6px 0 3px;
+  overflow: hidden;
+}
+.rw-voice-waveform span {
+  width: 3px;
+  height: calc(3px + var(--shape) * var(--voice-level) * 29px);
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: #ffad66;
+  opacity: calc(0.35 + var(--voice-level) * 0.65);
+  transition:
+    height 90ms linear,
+    opacity 120ms linear;
+}
+.rw-voice-card[data-state="connecting"] .rw-voice-waveform span,
+.rw-voice-card[data-state="thinking"] .rw-voice-waveform span {
+  height: 5px;
+  animation: rw-voice-wait 1.3s ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+.rw-voice-card[data-state="error"] .rw-voice-waveform,
+.rw-voice-card[data-state="idle"] .rw-voice-waveform {
+  opacity: 0.3;
+}
+.rw-voice-card-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 17px;
+}
+.rw-voice-card-bottom span {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #b6bdc4;
+}
+.rw-voice-controls .rw-voice-preview {
+  max-height: 48px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #e1e7ec;
+  margin: 3px 0 0;
+}
+.rw-voice-card .rw-voice-error {
+  line-height: 1.6;
+}
+@keyframes rw-voice-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes rw-voice-wait {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scaleY(0.6);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scaleY(1.5);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rw-voice-inline *,
+  .rw-voice-inline {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .rw-voice-waveform span {
+    height: 4px !important;
+    transform: none !important;
+    opacity: 0.65 !important;
+  }
+}

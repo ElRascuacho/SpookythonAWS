@@ -525,7 +525,7 @@ export default function App({
             <Activity size={16} /><span>Simulación</span>
           </button>
           {onOpenResearch && (
-            <button aria-label="Investigación" title="Abrir investigación experimental" onClick={onOpenResearch}>
+            <button className="research-entry" aria-label="Investigación" title="Abrir investigación experimental" onClick={onOpenResearch}>
               <FlaskConical size={16} /><span>Investigación</span>
             </button>
           )}

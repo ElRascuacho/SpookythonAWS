@@ -1,6 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import {
   MeasureSchema,
+  AgentReplySchema,
+  AgentResponseSchema,
   newWorkspace,
   decodeWorkspace,
   resolveResearchEffects,
@@ -21,6 +23,28 @@ const states = () =>
     ]),
   );
 describe("research measures and shared engine", () => {
+  test("separates provider output from the HTTP envelope without weakening validation", () => {
+    const content = {
+      reply: "Revisa y confirma los supuestos.",
+      proposal: fixture,
+    };
+    const response = { ...content, model: "gpt-6.1-terra" };
+    expect(AgentReplySchema.safeParse(content).success).toBe(true);
+    expect(AgentReplySchema.safeParse(response).success).toBe(false);
+    expect(AgentResponseSchema.parse(response)).toEqual(response);
+    expect(
+      AgentResponseSchema.safeParse({ ...response, proposal: null }).success,
+    ).toBe(true);
+    for (const invalid of [
+      content,
+      { ...response, model: 42 },
+      { ...response, model: "" },
+      { ...response, extra: true },
+      { ...response, proposal: { ...fixture, costKey: "missing" } },
+    ]) {
+      expect(AgentResponseSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
   test("validates bounded references, time and node IDs; rejects executable/unknown fields", () => {
     expect(MeasureSchema.safeParse(fixture).success).toBe(true);
     for (const patch of [
