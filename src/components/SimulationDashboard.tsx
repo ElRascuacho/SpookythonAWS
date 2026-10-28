@@ -110,9 +110,10 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
                 const response = await fetch("/api/committee/policies/latest", { credentials: "same-origin" });
         const contentType = response.headers.get("content-type") ?? "";
         if (!response.ok || !contentType.includes("application/json")) {
+          const noPublishedPolicy = response.status === 404 || contentType.includes("text/html");
           throw new Error(
-            response.status === 404
-              ? "No hay una política publicada del Comité disponible en este momento."
+            noPublishedPolicy
+              ? "No hay una política publicada del Comité. El entrenamiento sigue cerrado, así que esta comparación no puede empezar."
               : "No se pudo obtener la política publicada del Comité (el registro no está disponible o el servidor respondió con un formato no válido)."
           );
         }

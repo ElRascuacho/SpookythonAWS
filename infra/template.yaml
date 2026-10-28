@@ -326,8 +326,10 @@ Resources:
             ResponseCode: 200
             ResponsePagePath: /index.html
             ErrorCachingMinTTL: 0
+          # Keep 404 as 404. A 200 rewrite turns API "no policy" into the SPA
+          # and the simulation screen treats that HTML as a broken registry.
           - ErrorCode: 404
-            ResponseCode: 200
+            ResponseCode: 404
             ResponsePagePath: /index.html
             ErrorCachingMinTTL: 0
         Origins:
