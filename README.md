@@ -1,6 +1,6 @@
 # Manta Cero — Encuentra la cura
 
-Demo jugable para navegador de **Operación Manta Cero**, Track B: La Plaga Zombie. Eres el comité de respuesta de Manta: distribuye recursos entre contención e investigación para encontrar la cura antes de que el brote desborde la ciudad.
+Juego de estrategia para navegador de **Operación Manta Cero**, Track B: La Plaga Zombie. Eres el comité de respuesta de Manta: distribuye recursos entre contención e investigación para encontrar la cura antes de que el brote desborde la ciudad.
 
 ## Ejecutar
 
@@ -16,7 +16,7 @@ bun run preview
 
 ## Inicio de sesión
 
-El botón **Usar credenciales demo** rellena el correo y la contraseña; después pulsa **Entrar a la operación**. Esta cuenta es pública y compartida: cualquiera con acceso a la aplicación puede usarla, incluidos los endpoints protegidos. Para deshabilitarla configura `DEMO_LOGIN_ENABLED=false` en el servidor y reinícialo; esto también invalida sus sesiones existentes. El botón permanece visible, pero el servidor rechazará esas credenciales.
+El botón **Usar acceso de invitado** rellena el correo y la contraseña; después pulsa **Entrar a la operación**. Esta cuenta es pública y compartida: cualquiera con acceso a la aplicación puede usarla, incluidos los endpoints protegidos. Para deshabilitarla configura `DEMO_LOGIN_ENABLED=false` en el servidor y reinícialo; esto también invalida sus sesiones existentes. El botón permanece visible, pero el servidor rechazará esas credenciales.
 
 Para iniciar localmente, crea `.env.local` con `INVITE_SESSION_SECRET` de 32 bytes aleatorios en hexadecimal, por ejemplo con `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Conserva cualquier otra variable existente. Vite usa `http://localhost:5173` o `http://localhost:4173` como origen por defecto; para otro origen configura `INVITE_APP_ORIGIN` (HTTPS salvo localhost).
 
@@ -24,7 +24,7 @@ Opcionalmente configura una cuenta propia con `LOGIN_EMAIL` y `LOGIN_PASSWORD_SC
 
 La API anterior sigue aceptando códigos configurados en `INVITE_CODE_HASHES` para compatibilidad; elimina esa variable para revocarlos. No compartas `.env.local` ni uses `VITE_` para secretos. La cookie es `HttpOnly`, `SameSite=Strict`, `Secure` en HTTPS y dura hasta **8 horas**; hay comprobación de origen, límite de tamaño y cinco intentos por IP/minuto. **Salir** descarta la partida, mientras que recargar conserva el acceso, pero no el progreso. Rota `INVITE_SESSION_SECRET` para revocar todas las sesiones.
 
-**Límites de esta demo:** el rate limit es por proceso, no distribuido; antes de escalar necesita control compartido o WAF. Cerrar sesión borra la cookie del navegador, pero una copia robada del token sigue válida hasta caducar o revocar el código/clave. El JavaScript del juego es descargable y la simulación corre en cliente: esto controla el acceso normal y los endpoints, no es DRM ni protege código fuente o datos que se incluyan en assets públicos.
+**Límites de esta aplicación:** el rate limit es por proceso, no distribuido; antes de escalar necesita control compartido o WAF. Cerrar sesión borra la cookie del navegador, pero una copia robada del token sigue válida hasta caducar o revocar el código/clave. El JavaScript del juego es descargable y la simulación corre en cliente: esto controla el acceso normal y los endpoints, no es DRM ni protege código fuente o datos que se incluyan en assets públicos.
 
 **Despliegue:** El frontend estático y el backend serverless están alojados y unificados en AWS mediante **Amazon CloudFront** y **Amazon S3** (Origin Access Control) junto con **AWS Lambda ARM64** y **API Gateway**. Esto permite servir la UI y los endpoints protegidos (`/api/auth/*`, `/api/news`, `/simulate`, `/mayor-report`) bajo el mismo origen HTTPS seguro, garantizando el funcionamiento de las cookies `HttpOnly; SameSite=Strict` sin fricciones de CORS. La compilación se realiza con `bun run build` para la web y `bun run build:lambda` para el paquete serverless (`build/lambda/handler.mjs`).
 
@@ -54,7 +54,7 @@ En el primer acceso aparece una **práctica interactiva de cuatro pasos**: elegi
 
 **Una estrategia ganadora verificada:** escenario estándar, semilla `20261030`, $7.500/día; invierte $2.200 en investigación y envía cada día un cordón y un lote de vacunación al nodo con más infecciosos (no vacunes si ya no quedan susceptibles). Completa la cura el día 20 con 13.552 contagios acumulados (5,0% de la población). No se garantiza victoria en todas las semillas/escenarios.
 
-**Nueva misión** permite cambiar las dosis por lote (10–5.000, por defecto 850; atajo de mitad: 425), semilla, origen, presupuesto ($4.000 austeridad / $7.500 emergencia municipal / $11.000 refuerzo COE) y escenario: estándar, doble contagio humano o escape de vacuna. El costo de cada lote sigue en $2.400, incluso con 425 dosis: representa menor disponibilidad, no una rebaja de precio. Campaña y tutorial conservan 850 dosis. Reiniciar o recargar descarta la partida: esta demo no guarda progreso.
+**Nueva misión** permite cambiar las dosis por lote (10–5.000, por defecto 850; atajo de mitad: 425), semilla, origen, presupuesto ($4.000 austeridad / $7.500 emergencia municipal / $11.000 refuerzo COE) y escenario: estándar, doble contagio humano o escape de vacuna. El costo de cada lote sigue en $2.400, incluso con 425 dosis: representa menor disponibilidad, no una rebaja de precio. Campaña y tutorial conservan 850 dosis. Reiniciar o recargar descarta la partida: esta aplicación no guarda progreso.
 
 ## Evaluación reproducible
 
@@ -88,7 +88,7 @@ El aprendizaje híbrido de estrategias (modo **Comité**) está documentado en [
 - `src/domain/economy.ts` — costos USD y niveles de presupuesto de la respuesta municipal/nacional.
 - `src/domain/cureGame.ts` — reglas y validación del juego; reutiliza el motor SEIR.
 - `src/domain/seirEngine.ts` — simulación compartida y calendario opcional de acciones manuales.
-- `src/domain/monteCarlo.ts` — baselines y agregación; la demo calcula solo al pedir evaluación.
+- `src/domain/monteCarlo.ts` — baselines y agregación; la aplicación calcula solo al pedir evaluación.
 - `src/domain/newsModel.ts` — contrato, prompt editorial y boletín determinista de respaldo.
 - `src/domain/newsClient.ts` — llamada a `/api/news` con reserva local ante cualquier fallo.
 - `src/domain/__tests__/`, `backend/__tests__/`, `tests/e2e/` — reproducibilidad, economía, conservación, victoria/derrota, esquemas Zod, agregador, workers, reconciliación y smoke tests (pruebas automatizadas; ver el resultado actual de `bun test`).

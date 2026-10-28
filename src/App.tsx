@@ -291,6 +291,50 @@ export default function App({
   const [dayTransition, setDayTransition] =
     useState<DayTransitionReport | null>(null);
   const [news, setNews] = useState<GameNews | null>(null);
+  const [bgmPlaying, setBgmPlaying] = useState(false);
+  const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
+  const bgmUserToggledRef = useRef(false);
+  useEffect(() => {
+    const startOnFirstGesture = (event: Event) => {
+      if (bgmUserToggledRef.current) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-bgm-toggle="true"]')) return;
+      const audio = bgmAudioRef.current;
+      if (!audio || !audio.paused) return;
+      audio.volume = 0.35;
+      audio
+        .play()
+        .then(() => {
+          bgmUserToggledRef.current = true;
+          setBgmPlaying(true);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("pointerdown", startOnFirstGesture, { passive: true });
+    window.addEventListener("keydown", startOnFirstGesture);
+    return () => {
+      window.removeEventListener("pointerdown", startOnFirstGesture);
+      window.removeEventListener("keydown", startOnFirstGesture);
+    };
+  }, []);
+  const toggleBgm = () => {
+    bgmUserToggledRef.current = true;
+    const audio = bgmAudioRef.current;
+    if (!audio) return;
+    if (bgmPlaying || !audio.paused) {
+      audio.pause();
+      setBgmPlaying(false);
+      return;
+    }
+    audio.volume = 0.35;
+    audio
+      .play()
+      .then(() => setBgmPlaying(true))
+      .catch(() => {
+        setBgmPlaying(false);
+        setNotice("No se pudo reproducir la música de fondo.");
+      });
+  };
 
   useEffect(() => {
     if (tutorialRequired) { setModal("help"); return; }
@@ -503,6 +547,10 @@ export default function App({
 
   return (
     <div className="game-shell">
+      <audio ref={bgmAudioRef} loop preload="auto" aria-hidden="true">
+        <source src="/audio/bgm-manta-cero.m4a" type="audio/mp4" />
+        <source src="/audio/bgm-manta-cero.mp3" type="audio/mpeg" />
+      </audio>
       <header className="hub-topbar">
         <a className="brand" href="#" aria-label="Operación Manta Cero">
           <span className="brand-mark">
@@ -515,8 +563,7 @@ export default function App({
         </a>
         <div className="mission-badge">
           <span className="live-dot" />
-          OPERACIÓN NECRO-DENGUE <span className="badge-divider">/</span>
-          <b>DEMO JUGABLE</b>
+          OPERACIÓN NECRO-DENGUE
         </div>
         <nav className="header-actions" aria-label="Opciones de misión">
           <ModeTabs />
@@ -539,6 +586,18 @@ export default function App({
           <button aria-label="Cómo jugar" onClick={() => setModal("help")}>
             <CircleHelp size={16} />
             <span>Cómo jugar</span>
+          </button>
+          <button
+            type="button"
+            data-bgm-toggle="true"
+            aria-label={bgmPlaying ? "Silenciar música de fondo" : "Activar música de fondo"}
+            aria-pressed={bgmPlaying}
+            title={bgmPlaying ? "Silenciar música de fondo (Ecos del Refugio)" : "Activar música de fondo (Ecos del Refugio)"}
+            className={bgmPlaying ? "mint-text" : ""}
+            onClick={toggleBgm}
+          >
+            {bgmPlaying ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>Música</span>
           </button>
           <button aria-label="Nueva misión" onClick={openSettings}>
             <Settings2 size={16} />
