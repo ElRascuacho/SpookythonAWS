@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Activity,
   ArrowLeft,
   Dna,
   FlaskConical,
@@ -28,6 +29,7 @@ import {
   readWorkspace,
   resolveResearchEffects,
   type Measure,
+  type MeasureEvaluation,
   type ResearchWorkspace as Workspace,
 } from "../domain/research";
 import type {
@@ -89,7 +91,7 @@ export function ResearchWorkspace({
   const [draftId, setDraftId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [chat, setChat] = useState<
-    { id: string; role: string; text: string }[]
+    { id: string; role: string; text: string; evaluation?: MeasureEvaluation | null }[]
   >([]);
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const typingScrollUntil = useRef(0);
@@ -377,6 +379,41 @@ export function ResearchWorkspace({
       ? AbortSignal.any([controller.signal, voiceSignal])
       : controller.signal;
     try {
+      const snapshot = result?.timeline?.[day];
+      let epidemicContext = undefined;
+      if (snapshot) {
+        const activeInfected = snapshot.totalI;
+        const cumulativeInfected = snapshot.cumulativeInfected;
+        const totalBudget = (w.params.dailyBudget ?? 1000) * (w.params.days ?? 60);
+        const budgetSpent =
+          result?.timeline
+            ?.slice(0, day + 1)
+            .reduce((acc, s) => acc + (s.action?.budgetSpent ?? 0), 0) ?? 0;
+        const budgetRemaining = Math.max(0, totalBudget - budgetSpent);
+        const capacity = w.params.hospitalCapacity || 1200;
+        const hospitalSaturationPercent = Number(
+          Math.min(100, (activeInfected / capacity) * 100).toFixed(1),
+        );
+        const topActiveNodes = Object.entries(snapshot.nodes)
+          .sort((a, b) => b[1].I - a[1].I)
+          .slice(0, 3)
+          .map(([id, n]) => {
+            const totalPop = n.S + n.E + n.I + n.R;
+            const prevalence =
+              totalPop > 0 ? Number((n.I / totalPop).toFixed(4)) : 0;
+            const name = MANTA_NODES.find((node) => node.id === id)?.name ?? id;
+            return { id, name, infected: n.I, prevalence };
+          });
+        epidemicContext = {
+          day,
+          activeInfected,
+          cumulativeInfected,
+          budgetRemaining,
+          hospitalSaturationPercent,
+          topActiveNodes,
+        };
+      }
+
       const response = await fetch("/api/research/agent", {
         method: "POST",
         credentials: "same-origin",
@@ -388,6 +425,7 @@ export function ResearchWorkspace({
             role: m.role === "Tú" ? "user" : "assistant",
             text: m.text,
           })),
+          epidemicContext,
         }),
         signal,
       });
@@ -420,6 +458,7 @@ export function ResearchWorkspace({
               id: replyId,
               role: `Agente · ${parsed.model}`,
               text: parsed.reply,
+              evaluation: parsed.evaluation,
             },
           ].slice(-20),
         );
