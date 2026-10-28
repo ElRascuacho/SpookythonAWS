@@ -117,7 +117,7 @@ export default function CommitteePanel() {
       setJob(body as JobView);
       setDay(0);
     } catch {
-      setError("No se pudo conectar. Revisa tu conexión y vuelve a intentar.");
+      setError("No se pudo conectar. Revisa tu conexiÃ³n y vuelve a intentar.");
     } finally {
       setBusy(false);
     }
@@ -343,9 +343,9 @@ export default function CommitteePanel() {
       <header className="committee-header">
         <div className="committee-title-group">
           <span className="committee-badge">COMITÉ EPIDEMIOLÓGICO</span>
-          <h2>Tablero y Optimización de Políticas</h2>
+          <h2>¿Qué hace el Comité?</h2>
           <p className="committee-subtitle">
-            Monitoreo cuantitativo de efectividad, aprendizaje continuo sin sobreajuste y distribución presupuestaria en Manta.
+            Busca una política de respuesta que reduzca los contagios acumulados en una simulación mediante aprendizaje continuo sin sobreajuste. Compara la estrategia base con una candidata; es exploratoria, no valida decisiones reales.
           </p>
         </div>
       </header>
@@ -616,3 +616,5 @@ export default function CommitteePanel() {
     </div>
   );
 }
+
+

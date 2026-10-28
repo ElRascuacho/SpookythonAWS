@@ -1048,21 +1048,10 @@ export default function App({
             descarta la partida actual.
           </p>
           <div className="settings-fields">
-            <label>
-              Semilla reproducible
-              <input
-                type="number"
-                min="0"
-                max="4294967295"
-                value={Number.isNaN(draft.seed) ? "" : draft.seed}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    seed: e.target.value === "" ? NaN : Number(e.target.value),
-                  })
-                }
-              />
-            </label>
+            <div>
+              <p>Semilla reproducible: {draft.seed}</p>
+              <button type="button" onClick={() => setDraft({ ...draft, seed: Math.floor(Math.random() * 4294967296) })}>Generar semilla aleatoria</button>
+            </div>
             <label>
               Origen del brote
               <select
