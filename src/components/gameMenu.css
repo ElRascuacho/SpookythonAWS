@@ -29,7 +29,19 @@
   .game-menu-option h2 { margin-top: 20px; }
 }
 .arcade-controls { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:24px 0; }
-.arcade-controls [aria-pressed="true"] { outline:2px solid var(--mint); outline-offset:3px; }
+.arcade-speed { display:inline-flex; align-items:center; gap:4px; padding:4px; border:1px solid var(--line); border-radius:8px; background:#081820; }
+.arcade-speed span { padding:0 10px; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.arcade-speed button { min-width:48px; min-height:44px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--muted); font-weight:700; cursor:pointer; }
+.arcade-speed button:hover { color:var(--text); background:#17302e; }
+.arcade-speed button[aria-pressed="true"] { color:#041f15; background:var(--mint); }
+.arcade-speed button:focus-visible { outline:3px solid var(--mint); outline-offset:3px; }
 .arcade-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
 .arcade-grid .game-menu-option { gap:14px; }
 .arcade-grid meter { width:100%; }
+.arcade-zone { cursor: default; }
+.arcade-difficulty { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:auto; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+.arcade-difficulty [role="group"] { display:flex; gap:8px; }
+.arcade-difficulty button { width:44px; height:44px; border:1px solid var(--line); border-radius:8px; background:#17302e; color:var(--mint); font-size:23px; cursor:pointer; }
+.arcade-difficulty button:hover:not(:disabled) { border-color:var(--mint); background:#21443e; }
+.arcade-difficulty button:focus-visible { outline:3px solid var(--mint); outline-offset:3px; }
+.arcade-difficulty button:disabled { opacity:.35; cursor:not-allowed; }

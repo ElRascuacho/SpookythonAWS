@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, Brain, Clapperboard, Dna, LogOut } from "lucide-react";
+import { Activity, ArrowRight, Brain, Clapperboard, Dna, Gamepad2, LogOut } from "lucide-react";
 import type { Mode } from "../ModeShell";
 import "./gameMenu.css";
 
@@ -37,7 +37,7 @@ export function GameMenu({ onSelect, onLogout, loggingOut, onArcade }: {
             <p>Un laboratorio opcional para probar propuestas y comparar resultados sin intervenir en tu partida.</p>
             <span className="game-menu-action">Abrir Comité <ArrowRight size={19} /></span>
           </button>
-          <button type="button" className="game-menu-option" onClick={onArcade}><span className="eyebrow">04 / SANDBOX</span><h2>Modo Arcade</h2><p>Experimenta con brotes y curas instant?neas. Acci?n r?pida, recursos ilimitados y reglas propias, sin afectar la partida principal.</p><span className="game-menu-action">Jugar Arcade <ArrowRight size={19} /></span></button>
+          <button type="button" className="game-menu-option" onClick={onArcade}><span className="game-menu-option-top"><Gamepad2 size={28} aria-hidden="true" /><small>04 / SANDBOX</small></span><h2>Modo Arcade</h2><p>Experimenta con brotes y curas instantáneas. Acción rápida, recursos ilimitados y reglas propias, sin afectar la partida principal.</p><span className="game-menu-action">Jugar Arcade <ArrowRight size={19} /></span></button>
         </div>
         <p className="game-menu-note">¿Primera vez? La práctica guiada está disponible dentro del juego. Las partidas no se guardan al recargar.</p>
       </section>
