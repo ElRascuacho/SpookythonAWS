@@ -41,17 +41,151 @@ function CumulativeChart({ title, caption, band, selected, comparison, label }: 
   if (!band.length) return null;
   const max = Math.max(1, ...band.flatMap((point) => [point.p90, point.mean]), ...(selected ?? []), ...(comparison ?? []));
   const mean = band.map((point) => point.mean);
+  const lastDay = Math.max(0, band.length - 1);
+  const yTicks = [1, 0.75, 0.5, 0.25, 0].map((ratio) => ({
+    ratio,
+    y: chartY(max * ratio, max),
+    label: format(max * ratio),
+  }));
+  const xTickDays = Array.from(new Set([0, Math.round(lastDay * 0.25), Math.round(lastDay * 0.5), Math.round(lastDay * 0.75), lastDay]));
+
   return (
     <div className="simulation-chart">
-      <h2>{title}</h2>
-      <p>{caption}</p>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={label}>
-        <polygon className="band" points={bandPolygon(band, max)} />
-        {selected ? <polyline className="selected" points={linePoints(selected, max)} fill="none" strokeWidth="1.8" vectorEffect="non-scaling-stroke" /> : <polyline className="mean" points={linePoints(mean, max)} fill="none" stroke="currentColor" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />}
-        {comparison && <polyline className="comparison" points={linePoints(comparison, max)} fill="none" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />}
-      </svg>
-      <div><span>Día 0</span><span>Día {Math.max(0, band.length - 1)}</span></div>
+      <div className="simulation-chart__header">
+        <div>
+          <h2>{title}</h2>
+          <p>{caption}</p>
+        </div>
+        <div className="simulation-chart__legend" aria-label="Leyenda del gráfico">
+          <span className="legend-item">
+            <i className="legend-swatch legend-swatch--band" aria-hidden="true" />
+            Banda P10–P90 (80% central)
+          </span>
+          {selected ? (
+            <span className="legend-item">
+              <i className="legend-swatch legend-swatch--selected" aria-hidden="true" />
+              {comparison ? "Política del Comité (par elegido)" : "Corrida seleccionada"}
+            </span>
+          ) : (
+            <span className="legend-item">
+              <i className="legend-swatch legend-swatch--mean" aria-hidden="true" />
+              Promedio Monte Carlo
+            </span>
+          )}
+          {comparison && (
+            <span className="legend-item">
+              <i className="legend-swatch legend-swatch--comparison" aria-hidden="true" />
+              Referencia SGC (misma semilla)
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="simulation-chart__plot">
+        <div className="simulation-chart__y-title" aria-hidden="true">Contagios acumulados (personas)</div>
+        <div className="simulation-chart__y-axis" aria-hidden="true">
+          {yTicks.map((tick) => (
+            <span key={tick.ratio}>{tick.label}</span>
+          ))}
+        </div>
+        <div className="simulation-chart__canvas">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={label}>
+            {yTicks.map((tick) => (
+              <line key={tick.ratio} className="grid-line" x1="0" y1={tick.y} x2="100" y2={tick.y} vectorEffect="non-scaling-stroke" />
+            ))}
+            {xTickDays.map((day) => (
+              <line key={day} className="grid-line" x1={chartX(day, band.length)} y1="10" x2={chartX(day, band.length)} y2="100" vectorEffect="non-scaling-stroke" />
+            ))}
+            <polygon className="band" points={bandPolygon(band, max)} />
+            {selected ? <polyline className="selected" points={linePoints(selected, max)} fill="none" strokeWidth="2" vectorEffect="non-scaling-stroke" /> : <polyline className="mean" points={linePoints(mean, max)} fill="none" stroke="currentColor" strokeWidth="1.8" vectorEffect="non-scaling-stroke" />}
+            {comparison && <polyline className="comparison" points={linePoints(comparison, max)} fill="none" strokeWidth="1.8" vectorEffect="non-scaling-stroke" />}
+          </svg>
+          <div className="simulation-chart__x-axis">
+            {xTickDays.map((day) => (
+              <span key={day}>Día {day}</span>
+            ))}
+          </div>
+          <div className="simulation-chart__x-title">Eje X: Tiempo transcurrido (días) · Eje Y: Personas infectadas acumuladas</div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function MetricCard({ label, value, help }: { label: string; value: string; help: string }) {
+  return (
+    <div className="simulation-metric-card">
+      <div className="simulation-metric-card__head">
+        <span>{label}</span>
+        <button type="button" className="metric-info-btn" aria-label={`Información sobre ${label}: ${help}`}>
+          <span aria-hidden="true">ⓘ</span>
+          <span className="metric-tooltip" role="tooltip">{help}</span>
+        </button>
+      </div>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+const SAMPLE_CSV_DICTIONARY: Array<{ col: string; unit: string; desc: string }> = [
+  { col: "plan", unit: "Texto", desc: "Estrategia epidemiológica evaluada (Cortafuegos automático, Azar, Sin intervención o Plan jugado)." },
+  { col: "dificultad", unit: "Texto", desc: "Escala topológica de la ciudad (16 zonas originales, 32 o 48 sectores sintéticos)." },
+  { col: "semilla", unit: "Entero (32-bit)", desc: "Semilla base del generador pseudoaleatorio (PRNG) que garantiza reproducibilidad exacta." },
+  { col: "indice", unit: "Entero", desc: "Número secuencial de la variante estocástica dentro del experimento Monte Carlo." },
+  { col: "contagios", unit: "Personas", desc: "Total acumulado de habitantes que se infectaron desde el Día 0 hasta el cierre del horizonte." },
+  { col: "pico", unit: "Personas", desc: "Máximo histórico de infectados activos simultáneos (I) en un solo día; mide el estrés hospitalario." },
+  { col: "dia_pico", unit: "Día (0–H)", desc: "Día exacto en el que ocurrió el pico máximo de infección activa." },
+  { col: "gasto", unit: "USD ($)", desc: "Presupuesto municipal total ejecutado en vacunas, fumigación y cordones durante toda la corrida." },
+  { col: "vacunas", unit: "Dosis", desc: "Total de dosis de vacunas aplicadas estrictamente sobre población susceptible (S)." },
+  { col: "dias_colapso_hospital", unit: "Días", desc: "Cantidad de días en los que los infectados activos superaron la capacidad del Hospital Rodríguez Zambrano." },
+];
+
+const COMMITTEE_CSV_DICTIONARY: Array<{ col: string; unit: string; desc: string }> = [
+  { col: "plan", unit: "Texto", desc: "Identificador del modo de evaluación ('política publicada del Comité')." },
+  { col: "dificultad", unit: "Texto", desc: "Topología evaluada ('16 zonas' urbanas de Manta)." },
+  { col: "semilla", unit: "Entero (32-bit)", desc: "Semilla base compartida por ambos lados del par para comparación justa." },
+  { col: "politica", unit: "Entero", desc: "Versión numérica de la política aprendida por el Comité." },
+  { col: "registro", unit: "Texto (ID)", desc: "Identificador inmutable de publicación en el registro del Comité." },
+  { col: "indice", unit: "Entero", desc: "Índice de réplica del par evaluado (fuera de los índices usados en entrenamiento)." },
+  { col: "contagios_politica", unit: "Personas", desc: "Contagios acumulados totales al cierre usando la política del Comité." },
+  { col: "contagios_sgc", unit: "Personas", desc: "Contagios acumulados totales al cierre usando la heurística base Smart Graph Cortafuegos (SGC)." },
+  { col: "diferencia_sgc_menos_politica", unit: "Personas", desc: "Casos evitados frente a SGC (contagios_sgc − contagios_politica). Un valor positivo indica que la política superó a SGC." },
+  { col: "pico_politica / pico_sgc", unit: "Personas", desc: "Máximo de infectados activos simultáneos bajo la política del Comité y bajo SGC, respectivamente." },
+  { col: "dia_pico_politica / dia_pico_sgc", unit: "Día (0–H)", desc: "Día en que se alcanzó el pico infeccioso en cada estrategia del par." },
+  { col: "gasto_politica / gasto_sgc", unit: "USD ($)", desc: "Presupuesto acumulado invertido por la política del Comité y por SGC." },
+  { col: "vacunas_politica / vacunas_sgc", unit: "Dosis", desc: "Dosis de vacunas administradas a susceptibles en cada estrategia." },
+  { col: "dias_colapso_politica / dias_colapso_sgc", unit: "Días", desc: "Días con saturación hospitalaria bajo la política del Comité y bajo SGC." },
+];
+
+function DatasetDictionary({ mode }: { mode: "committee" | "standard" }) {
+  const rows = mode === "committee" ? COMMITTEE_CSV_DICTIONARY : SAMPLE_CSV_DICTIONARY;
+  return (
+    <details className="simulation-chart simulation-dictionary">
+      <summary>📖 Diccionario de datos del CSV descargable ({rows.length} campos documentados)</summary>
+      <p className="simulation-note">
+        Estructura de columnas incluidas al descargar el archivo <code>.csv</code> (codificado en UTF-8 con valores numéricos exactos sin redondear):
+      </p>
+      <div className="simulation-table-wrap">
+        <table className="simulation-table simulation-dictionary__table">
+          <thead>
+            <tr>
+              <th>Columna en CSV</th>
+              <th>Unidad / Tipo</th>
+              <th>Significado epidemiológico</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((item) => (
+              <tr key={item.col}>
+                <td><code>{item.col}</code></td>
+                <td>{item.unit}</td>
+                <td>{item.desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 
@@ -185,7 +319,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
         <label>Simulaciones (1–200)<input type="number" min="1" max="200" step="1" value={count} disabled={running} onChange={(event) => setCount(Number(event.target.value))} /></label>
         <label>Semilla<select value={seedMode} disabled={running} onChange={(event) => setSeedMode(event.target.value as "fixed" | "random")}><option value="fixed">Específica</option><option value="random">Aleatoria</option></select></label>
         {seedMode === "fixed" && <label>Valor de semilla<input type="number" min="0" max="4294967295" step="1" value={seed} disabled={running} onChange={(event) => setSeed(Number(event.target.value))} /></label>}
-                <button className="primary-button" disabled={running} onClick={start}>Ejecutar simulaciones</button>
+        <button className="primary-button" disabled={running} onClick={start}>Ejecutar simulaciones</button>
         {running && <button className="secondary-button" onClick={() => { stop(); setRunning(false); setError("Simulación cancelada."); }}>Cancelar</button>}
       </section>
       {plan === "COMMITTEE" && (
@@ -199,17 +333,42 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
       {finished && comparison && policy && candidateInfected && <section aria-label="Evaluación de la política del Comité" className="simulation-results">
         <p className="simulation-note">Política {policy.artifact.policyVersion} · registro {policy.registryVersion} · {policy.artifact.recommendation === "sgc-fallback" ? "alternativa SGC (sin mejora aprobada)" : "entrenada y publicada"} · 16 zonas · {policy.artifact.params.days} días · semilla {actualSeed} · {pairs.length} pares ({pairs.length * 2} corridas).</p>
         <div className="simulation-metrics">
-          <div><span>Mejora de contagios frente a SGC</span><strong>{comparison.improvementPercent === null ? "No definida" : `${comparison.improvementPercent >= 0 ? "+" : ""}${comparison.improvementPercent.toFixed(2)}%`}</strong></div>
-          <div><span>Contagios promedio · política</span><strong>{format(comparison.candidateMean)}</strong></div>
-          <div><span>Contagios promedio · SGC</span><strong>{format(comparison.sgcMean)}</strong></div>
-          <div><span>Política · mínimo / mediana / máximo</span><strong>{format(candidateInfected.min)} / {format(candidateInfected.median)} / {format(candidateInfected.max)}</strong></div>
-          <div><span>Política · rango P10–P90</span><strong>{format(comparison.p10)} – {format(comparison.p90)}</strong></div>
-          <div><span>Política · corridas con colapso</span><strong>{candidateCollapse} de {pairs.length}</strong></div>
+          <MetricCard
+            label="Mejora de contagios frente a SGC"
+            value={comparison.improvementPercent === null ? "No definida" : `${comparison.improvementPercent >= 0 ? "+" : ""}${comparison.improvementPercent.toFixed(2)}%`}
+            help="Porcentaje promedio de casos de contagio evitados por la política entrenada del Comité en comparación con la heurística base Smart Graph Cortafuegos (SGC) bajo exactamente las mismas semillas."
+          />
+          <MetricCard
+            label="Contagios promedio · política"
+            value={format(comparison.candidateMean)}
+            help="Media aritmética del total de habitantes infectados acumulados al cierre del horizonte aplicando la política publicada del Comité."
+          />
+          <MetricCard
+            label="Contagios promedio · SGC"
+            value={format(comparison.sgcMean)}
+            help="Media aritmética del total de habitantes infectados acumulados bajo la estrategia base Smart Graph Cortafuegos (SGC) en los mismos pares de réplicas."
+          />
+          <MetricCard
+            label="Política · mínimo / mediana / máximo"
+            value={`${format(candidateInfected.min)} / ${format(candidateInfected.median)} / ${format(candidateInfected.max)}`}
+            help="Tres escenarios clave de la política: el brote más leve observado (mínimo), el escenario típico central donde la mitad de las corridas son mejores y la otra mitad peores (mediana P50), y el escenario más severo (máximo)."
+          />
+          <MetricCard
+            label="Política · rango P10–P90"
+            value={`${format(comparison.p10)} – ${format(comparison.p90)}`}
+            help="Intervalo interdecil: concentra el 80% central de las simulaciones, descartando el 10% más optimista y el 10% más extremo para medir la dispersión real del riesgo."
+          />
+          <MetricCard
+            label="Política · corridas con colapso"
+            value={`${candidateCollapse} de ${pairs.length}`}
+            help="Cantidad de simulaciones en las que los infectados activos simultáneos superaron la capacidad crítica del Hospital Rodríguez Zambrano durante al menos un día."
+          />
         </div>
         <p>Diferencia pareada promedio (SGC menos política): {format(comparison.meanDifference)} contagios. Intervalo bootstrap del 95%: {format(comparison.confidenceInterval[0])} a {format(comparison.confidenceInterval[1])} contagios.</p>
         <CumulativeChart title="Contagios de la política" caption={selectedPair ? `Par ${selectedPair.index}: política ${format(selectedPair.candidate.infected)} · SGC ${format(selectedPair.sgc.infected)}` : `Promedio de la política y banda P10–P90 · semilla ${actualSeed}`} band={pairBand} selected={selectedPair?.candidate.daily ?? null} comparison={selectedPair?.sgc.daily ?? null} label={selectedPair ? `Curva del par ${selectedPair.index}. La línea clara es la política y la coral es SGC.` : "Promedio de la política con banda P10–P90."} />
         {selectedPair && <button className="secondary-button" type="button" onClick={() => setSelectedIndex(null)}>Volver al promedio</button>}
         <div className="simulation-toolbar"><p className="simulation-note">Cada fila es un par con la misma semilla y el mismo índice. La diferencia es SGC menos política. El CSV trae ambos lados sin redondear.</p><button className="secondary-button" type="button" onClick={() => downloadCsv(`comite-${actualSeed}.csv`, pairsToCsv({ plan: planLabel, difficulty: "16 zonas", seed: actualSeed!, policyVersion: policy.artifact.policyVersion, registryVersion: policy.registryVersion }, pairs))}>Descargar CSV</button></div>
+        <DatasetDictionary mode="committee" />
         <div className="simulation-table-wrap">
           <table className="simulation-table">
             <thead><tr><SortHeader label="Índice" column="index" sort={sort} onSort={onSort} /><SortHeader label="Política" column="candidate" sort={sort} onSort={onSort} /><SortHeader label="SGC" column="sgc" sort={sort} onSort={onSort} /><SortHeader label="Diferencia" column="difference" sort={sort} onSort={onSort} /><SortHeader label="Pico" column="peak" sort={sort} onSort={onSort} /><SortHeader label="Día del pico" column="peakDay" sort={sort} onSort={onSort} /><SortHeader label="Colapso" column="hospitalCollapseDays" sort={sort} onSort={onSort} /><SortHeader label="Vacunas" column="vaccines" sort={sort} onSort={onSort} /><th>Curva</th></tr></thead>
@@ -221,16 +380,41 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
       {finished && actualPlan !== "COMMITTEE" && infected && <section aria-label="Resultados de la simulación" className="simulation-results">
         <p className="simulation-note">Plan ejecutado: {planLabel} · {difficultyLabel}</p>
         <div className="simulation-metrics">
-          <div><span>Contagios acumulados · promedio</span><strong>{format(infected.mean)}</strong></div>
-          <div><span>Contagios · mínimo / mediana / máximo</span><strong>{format(infected.min)} / {format(infected.median)} / {format(infected.max)}</strong></div>
-          <div><span>Rango P10–P90</span><strong>{format(infected.p10)} – {format(infected.p90)}</strong></div>
-          <div><span>Pico infeccioso · promedio</span><strong>{format(distribution(samples.map((sample) => sample.peak)).mean)}</strong></div>
-          <div><span>Gasto total · promedio</span><strong>${format(distribution(samples.map((sample) => sample.spent)).mean)}</strong></div>
-          <div><span>Corridas con colapso hospitalario</span><strong>{collapseRuns} de {samples.length}</strong></div>
+          <MetricCard
+            label="Contagios acumulados · promedio"
+            value={format(infected.mean)}
+            help="Promedio aritmético del total de personas que se infectaron desde el Día 0 hasta el final de la simulación entre todas las corridas Monte Carlo."
+          />
+          <MetricCard
+            label="Contagios · mínimo / mediana / máximo"
+            value={`${format(infected.min)} / ${format(infected.median)} / ${format(infected.max)}`}
+            help="Resumen de extremos: la corrida con menos contagios (mínimo), la corrida central típica (mediana, percentil 50) y la corrida más grave (máximo)."
+          />
+          <MetricCard
+            label="Rango P10–P90"
+            value={`${format(infected.p10)} – ${format(infected.p90)}`}
+            help="Banda donde se ubica el 80% de las simulaciones (entre el percentil 10 y el percentil 90). Cuanto más estrecho es este rango, más predecible es el plan."
+          />
+          <MetricCard
+            label="Pico infeccioso · promedio"
+            value={format(distribution(samples.map((sample) => sample.peak)).mean)}
+            help="Promedio del número máximo de infectados activos simultáneos en un mismo día; indica el momento de mayor presión sobre el sistema hospitalario."
+          />
+          <MetricCard
+            label="Gasto total · promedio"
+            value={`$${format(distribution(samples.map((sample) => sample.spent)).mean)}`}
+            help="Presupuesto municipal acumulado promedio invertido en lotes de vacunas, fumigación vectorial y cordones sanitarios a lo largo de la corrida."
+          />
+          <MetricCard
+            label="Corridas con colapso hospitalario"
+            value={`${collapseRuns} de ${samples.length}`}
+            help="Cantidad de variantes simuladas en las que los casos activos simultáneos superaron la capacidad máxima del Hospital Rodríguez Zambrano al menos un día."
+          />
         </div>
         <CumulativeChart title="Contagios acumulados" caption={selectedSample ? `Corrida ${selectedSample.index} · semilla ${selectedSample.seed} · día del pico ${selectedSample.peakDay}` : `Promedio y banda P10–P90 · ${Math.max(0, band.length - 1)} días · semilla ${actualSeed}`} band={band} selected={selectedSample?.daily ?? null} label={selectedSample ? `Curva de la corrida ${selectedSample.index}: de ${format(selectedSample.daily[0] ?? 0)} a ${format(selectedSample.daily.at(-1) ?? 0)} contagios` : `Promedio de ${format(band[0]?.mean ?? 0)} a ${format(band.at(-1)?.mean ?? 0)} contagios, con banda P10–P90`} />
         {selectedSample && <button className="secondary-button" type="button" onClick={() => setSelectedIndex(null)}>Volver al promedio</button>}
         <div className="simulation-toolbar"><p className="simulation-note">Elige una corrida para ver su curva. El CSV trae los valores sin redondear.</p><button className="secondary-button" type="button" onClick={() => downloadCsv(`simulacion-${actualSeed}.csv`, samplesToCsv({ plan: planLabel, difficulty: difficultyLabel, seed: actualSeed! }, samples))}>Descargar CSV</button></div>
+        <DatasetDictionary mode="standard" />
         <div className="simulation-table-wrap">
           <table className="simulation-table">
             <thead><tr><SortHeader label="Índice" column="index" sort={sort} onSort={onSort} /><SortHeader label="Semilla" column="seed" sort={sort} onSort={onSort} /><SortHeader label="Contagios" column="infected" sort={sort} onSort={onSort} /><SortHeader label="Pico" column="peak" sort={sort} onSort={onSort} /><SortHeader label="Día del pico" column="peakDay" sort={sort} onSort={onSort} /><SortHeader label="Gasto" column="spent" sort={sort} onSort={onSort} /><SortHeader label="Colapso" column="hospitalCollapseDays" sort={sort} onSort={onSort} /><SortHeader label="Vacunas" column="vaccines" sort={sort} onSort={onSort} /><th>Curva</th></tr></thead>
