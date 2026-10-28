@@ -281,7 +281,7 @@ export default function CommitteePanel() {
           <span className="committee-badge">COMITÉ EPIDEMIOLÓGICO</span>
           <h2>¿Qué hace el Comité?</h2>
           <p className="committee-subtitle">
-            Busca una política de respuesta que reduzca los contagios acumulados en una simulación. Compara la estrategia base con una candidata; es exploratoria, no valida decisiones reales.
+            Compara automáticamente una estrategia de referencia con una nueva propuesta para buscar menos contagios. Es una herramienta opcional: no cambia tu partida. Para aprender a jugar, vuelve a Juego y abre Cómo jugar. Los resultados son simulados, no validan decisiones reales.
           </p>
         </div>
       </header>
@@ -295,7 +295,7 @@ export default function CommitteePanel() {
       >
         <div className="committee-form-row">
           <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            Horizonte (días)
+            Días a simular
             <input
               type="number"
               min={20}
@@ -312,11 +312,11 @@ export default function CommitteePanel() {
               checked={runAudit}
               onChange={(e) => setRunAudit(e.target.checked)}
             />
-            Auditoría rigurosa (Held-out seeds)
+            Probar también en escenarios nuevos
           </label>
 
           <button type="submit" disabled={busy}>
-            {busy ? "Calculando…" : runAudit ? "Buscar y Auditar" : "Optimizar Local"}
+            {busy ? "Comparando estrategias…" : runAudit ? "Comparar y comprobar" : "Comparar estrategias"}
           </button>
         </div>
 
@@ -329,26 +329,26 @@ export default function CommitteePanel() {
               {/* Tarjeta 1: Reducción de Contagios */}
               <div className="committee-kpi-card">
                 <div className="kpi-title-row">
-                  <span>Eficacia de Contención</span>
+                  <span>Reducción de contagios</span>
                   <TrendingDown size={16} color="#00e5a3" />
                 </div>
                 <div className="kpi-main-metric">
                   {stats ? `-${stats.reductionPct}%` : "—"}
                   {stats && stats.reductionPct > 0 && (
-                    <span className="kpi-badge badge-green">Mitigación</span>
+                    <span className="kpi-badge badge-green">Menos contagios</span>
                   )}
                 </div>
                 <div className="kpi-subtext">
                   <strong>{stats ? stats.reductionAbsolute.toLocaleString() : 0}</strong> contagios evitados frente al escenario base.
                   <br />
-                  Baseline: {job.baselineMean == null ? "—" : Math.round(job.baselineMean).toLocaleString()} | Candidata: {job.candidateMean == null ? "—" : Math.round(job.candidateMean).toLocaleString()}
+                  Referencia: {job.baselineMean == null ? "—" : Math.round(job.baselineMean).toLocaleString()} | Propuesta: {job.candidateMean == null ? "—" : Math.round(job.candidateMean).toLocaleString()}
                 </div>
               </div>
 
               {/* Tarjeta 2: Capacidad Hospitalaria */}
               <div className="committee-kpi-card">
                 <div className="kpi-title-row">
-                  <span>Carga Hospitalaria Pico</span>
+                  <span>Mayor ocupación del hospital</span>
                   <Activity size={16} color={stats?.hospitalStatus === "colapso" ? "#ff5252" : "#ffb300"} />
                 </div>
                 <div className="kpi-main-metric">
@@ -364,14 +364,14 @@ export default function CommitteePanel() {
                   <br />
                   Días en colapso: <strong>{stats?.collapseDays ?? 0} días</strong>.
                   <br />
-                  Tasa de ataque final: <strong>{stats?.attackRatePct ?? 0}%</strong> de la ciudad.
+                  Personas contagiadas al final: <strong>{stats?.attackRatePct ?? 0}%</strong> de la ciudad.
                 </div>
               </div>
 
               {/* Tarjeta 3: Distribución Táctica */}
               <div className="committee-kpi-card">
                 <div className="kpi-title-row">
-                  <span>Distribución Presupuestaria</span>
+                  <span>Uso del presupuesto</span>
                   <DollarSign size={16} color="#29b6f6" />
                 </div>
                 <div className="kpi-main-metric">
@@ -405,22 +405,22 @@ export default function CommitteePanel() {
               {/* Tarjeta 4: Dictamen de Auditoría */}
               <div className="committee-kpi-card">
                 <div className="kpi-title-row">
-                  <span>Auditoría de Generalización</span>
+                  <span>Prueba en escenarios nuevos</span>
                   <Award size={16} color="#00e5a3" />
                 </div>
                 <div className="kpi-main-metric" style={{ fontSize: "20px" }}>
                   {job.finalAudit === "passed" && (
                     <span className="kpi-badge badge-green" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      <ShieldCheck size={14} /> CERTIFICADA
+                      <ShieldCheck size={14} /> SUPERÓ LA PRUEBA
                     </span>
                   )}
                   {job.finalAudit === "failed" && (
                     <span className="kpi-badge badge-red" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      <ShieldAlert size={14} /> RECHAZADA
+                      <ShieldAlert size={14} /> NO SUPERÓ LA PRUEBA
                     </span>
                   )}
                   {job.finalAudit === "not-run" && (
-                    <span className="kpi-badge badge-blue">PRELIMINAR</span>
+                    <span className="kpi-badge badge-blue">SIN COMPROBAR</span>
                   )}
                 </div>
                 <div className="kpi-subtext">
@@ -436,7 +436,7 @@ export default function CommitteePanel() {
             {/* Slider de Inspección Día a Día */}
             <div style={{ marginTop: "16px" }}>
               <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span style={{ fontWeight: 600, color: "#e2f1f5" }}>Línea de Tiempo de Inspección Táctica: Día {day}</span>
+                <span style={{ fontWeight: 600, color: "#e2f1f5" }}>Explorar los resultados: día {day}</span>
                 <span style={{ fontSize: "12px", color: "#8da4ae" }}>0 a {Math.max(0, horizonDays)} días</span>
               </label>
               <input
@@ -452,13 +452,13 @@ export default function CommitteePanel() {
                 <div className="day-inspection-box">
                   <div className="day-inspection-metrics">
                     <span className="metric-chip">
-                      Infectados Activos: <strong>{Math.round(currentSnapshot.totalI).toLocaleString()}</strong> ({currentDailyStat?.activeInfectionPct ?? 0}%)
+                      Personas que contagian: <strong>{Math.round(currentSnapshot.totalI).toLocaleString()}</strong> ({currentDailyStat?.activeInfectionPct ?? 0}%)
                     </span>
                     <span className="metric-chip">
                       Ocupación Hospital: <strong>{currentDailyStat?.hospitalLoadPct ?? 0}%</strong>
                     </span>
                     <span className="metric-chip">
-                      Casos Acumulados: <strong>{Math.round(currentSnapshot.cumulativeInfected).toLocaleString()}</strong>
+                      Contagios hasta este día: <strong>{Math.round(currentSnapshot.cumulativeInfected).toLocaleString()}</strong>
                     </span>
                     <span className="metric-chip">
                       Gasto del Día: <strong>${currentSnapshot.action.budgetSpent.toLocaleString()}</strong>

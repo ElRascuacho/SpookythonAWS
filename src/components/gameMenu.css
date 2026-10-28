@@ -1,0 +1,35 @@
+.game-menu {
+  min-height: 100svh;
+  padding: 32px clamp(24px, 5vw, 80px);
+  color: var(--text);
+  background: radial-gradient(ellipse at 15% 65%, #193d3b80, transparent 60%), var(--ink);
+}
+.game-menu-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.game-menu-content { max-width: 1200px; margin: clamp(48px, 10svh, 110px) auto 32px; }
+.game-menu h1 { margin: 12px 0; font: 500 clamp(38px, 5vw, 68px)/1.08 Bahnschrift, var(--body); letter-spacing: -2px; }
+.game-menu h1 em { font-style: normal; color: var(--mint); }
+.game-menu-intro { color: var(--muted); font-size: 17px; line-height: 1.6; }
+.game-menu-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 40px; }
+.game-menu-option { display: flex; flex-direction: column; padding: clamp(22px, 2.5vw, 34px); text-align: left; color: var(--text); background: #0d1922; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.game-menu-option:hover { border-color: var(--mint); background: #13272c; }
+.game-menu-option:focus-visible { outline: 3px solid var(--mint); outline-offset: 5px; }
+.game-menu-featured { border-color: #b1dfc870; background: #17302e; }
+.game-menu-option-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--mint); }
+.game-menu-option-top small { font: 11px var(--mono); letter-spacing: 1px; }
+.game-menu-option h2 { font-size: 24px; margin: 30px 0 10px; }
+.game-menu-option p { color: var(--muted); font-size: 15px; line-height: 1.7; margin: 0 0 32px; }
+.game-menu-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 20px; border-top: 1px solid #b1dfc826; color: var(--mint); font-size: 14px; font-weight: 700; }
+.game-menu-note { margin: 24px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+@media (max-width: 760px) {
+  .game-menu { padding: 24px; }
+  .game-menu-header { align-items: flex-start; }
+  .game-menu-header .access-brand small { font-size: 9px; letter-spacing: 1px; }
+  .game-menu-header .secondary-button { font-size: 12px; padding: 8px; }
+  .game-menu-options { grid-template-columns: 1fr; margin-top: 26px; }
+  .game-menu-option h2 { margin-top: 20px; }
+}
+.arcade-controls { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:24px 0; }
+.arcade-controls [aria-pressed="true"] { outline:2px solid var(--mint); outline-offset:3px; }
+.arcade-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
+.arcade-grid .game-menu-option { gap:14px; }
+.arcade-grid meter { width:100%; }

@@ -1,7 +1,7 @@
 import { advanceDay, createGame, RESEARCH_LEVELS, type CureGame, type GameConfig, type ResearchFunding } from "./cureGame";
 import { NODE_MAP } from "./mantaGraph";
 
-export const TUTORIAL_STEPS = ["Zona", "Protección", "Laboratorio", "Turno"] as const;
+export const TUTORIAL_STEPS = ["Elige una zona", "Protege habitantes", "Investiga la cura", "Avanza un día"] as const;
 export const TUTORIAL_SEEN_KEY = "manta-cero:tutorial:v1";
 export type TutorialInteraction = { type: "zone"; nodeId: string } | { type: "protect" } | { type: "fund"; amount: ResearchFunding } | { type: "advance" };
 
