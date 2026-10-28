@@ -255,6 +255,7 @@ function Dialog({
 export type Mode = "game" | "campaign" | "committee";
 
 export interface AppProps {
+  initialSetup?: boolean;
   onLogout?: () => void;
   loggingOut?: boolean;
   activeMode?: Mode;
@@ -266,6 +267,7 @@ export interface AppProps {
 }
 
 export default function App({
+  initialSetup = false,
   onLogout,
   loggingOut = false,
   inactive = false,
@@ -276,7 +278,7 @@ export default function App({
   onModeChange,
 }: AppProps = {}) {
   const [playerGame, setGame] = useState(() => createGame(DEFAULT_CONFIG));
-  const [tutorial, setTutorial] = useState<TutorialState | null>(() => hasCompletedTutorial() ? null : createTutorial(DEFAULT_CONFIG));
+  const [tutorial, setTutorial] = useState<TutorialState | null>(() => initialSetup || hasCompletedTutorial() ? null : createTutorial(DEFAULT_CONFIG));
   const game = tutorial && tutorial.step >= 0 ? tutorial.game : playerGame;
   useEffect(() => { if (inactive) setModal(null); }, [inactive]);
   const [simulationMode, setSimulationMode] = useState(false);
@@ -287,8 +289,8 @@ export default function App({
   const selectedNode = tutorial?.nodeId ?? (tutorial ? DEFAULT_CONFIG.patientZeroId : playerNode);
   const orders: Order[] = tutorial ? tutorial.step < 4 && tutorial.protection && tutorial.nodeId ? [{ nodeId: tutorial.nodeId, kind: "prevention" }] : [] : playerOrders;
   const funding = tutorial ? tutorial.funding : playerFunding;
-  const [tutorialRequired, setTutorialRequired] = useState(() => !hasCompletedTutorial());
-  const [modal, setModal] = useState<Modal>(() => tutorialRequired ? "help" : null);
+  const [tutorialRequired, setTutorialRequired] = useState(() => !initialSetup && !hasCompletedTutorial());
+  const [modal, setModal] = useState<Modal>(() => initialSetup && activeMode === "game" ? "settings" : tutorialRequired ? "help" : null);
   const [tourStep,setTourStep]=useState<GameTourStep|null>(null);
   useEffect(() => { if (!tutorial&&tourStep===null) onScenarioChange?.(structuredClone(game.params)); }, [game.params, onScenarioChange, tutorial,tourStep]);
   const tourBackup=useRef<{game:typeof game;orders:Order[];funding:ResearchFunding;selectedNode:string;required:boolean;operation:FieldOperation|null;tutorial:TutorialState|null}|null>(null);
@@ -760,6 +762,11 @@ export default function App({
       )}
 
       <footer ref={commandBarRef} className="command-bar">
+        {!tutorial && !chapter && <div className="campaign-objective" aria-label="Objetivo de la partida">
+          <strong>Tu misión: completar la cura al 100% en un máximo de {MAX_DAYS} días, antes de acumular contagios en el {LOSS_THRESHOLD * 100}% de la ciudad.</strong>
+          <small>El tiempo no corre solo. Elige una zona, asigna medidas y pulsa «Avanzar un día» para ver el resultado.</small>
+          {!playing && <button className="secondary-button" onClick={() => setModal("result")}>Ver resultado de la misión</button>}
+        </div>}
         {chapter && chapterId !== undefined && (
           <div className="campaign-objective" aria-label="Objetivo del capítulo">
             <span>CAPÍTULO {chapterId + 1}/3 · {chapter.title}</span>
@@ -811,9 +818,10 @@ export default function App({
               ))}
             </select>
             <small>
-              {format(local.S)} susceptibles ·{" "}
-              <b>{format(local.I)} infecciosos</b>
+              {format(local.S)} pueden contagiarse ·{" "}
+              <b>{format(local.I)} con infección activa</b>
             </small>
+            {!tutorial && <button type="button" className="secondary-button" disabled={!playing} onClick={() => setModal("zone")}>Elegir medidas en esta zona</button>}
           </div>
           <div className="cure-block">
             <span>
@@ -898,7 +906,7 @@ export default function App({
           >
             <span className="rs-label">
               LABORATORIO
-              <b>{researchGain ? `+${researchGain} pp/día` : "pausado"}</b>
+              <b>{researchGain ? `+${researchGain} puntos de cura/día` : "sin avance"}</b>
             </span>
             {RESEARCH_LEVELS.map((amount) => (
               <button
@@ -948,7 +956,7 @@ export default function App({
       )}
 
       {modal === "operations" && fieldOperation && (
-        <Dialog title="Operaciones de campo" onClose={closeModal} className="field-dialog">
+        <Dialog title={fieldOperation.kind === "lab" ? "Operaciones de campo · Laboratorio" : "Operaciones de campo"} onClose={closeModal} className="field-dialog">
           {tourStep===3&&<div className="field-tour-coach" role="status"><strong>Paso 4 de 5 · completa el minijuego</strong><p>Practica Perímetro cero: apunta con el ratón o las flechas, dispara con clic o espacio y recarga con R. Neutraliza 8 objetivos antes de perder los 3 escudos. En móvil, toca el objetivo; otro toque con el cargador vacío inicia la recarga. Solo ganar y recibir la recompensa permite continuar; si pierdes, reintenta. También hay extracción (parkour) y laboratorio. El día está detenido hasta resolver la operación.</p><button type="button" onClick={()=>finishGuidedTour(false)}>Salir de la práctica y restaurar mi partida</button></div>}
           <FieldOperations game={game} nodeId={fieldOperation.nodeId} kind={fieldOperation.kind} onComplete={(kind) => {
             const next = completeFieldMission(game, kind, fieldOperation.nodeId);
@@ -968,7 +976,7 @@ export default function App({
         <Dialog title={node.name} onClose={closeModal}>
           {tutorial?.step === 1 && tutorialGuide}
           <p className="dialog-intro">
-            {format(local.S)} susceptibles · {format(local.I)} infecciosos · ${format(remaining)} disponibles
+            {format(local.S)} personas que aún pueden contagiarse · {format(local.I)} con infección activa · ${format(remaining)} disponibles hoy
           </p>
           <div className="intervention-strip">
             {(Object.keys(INTERVENTIONS) as Intervention[]).map((kind) => {
@@ -1004,7 +1012,7 @@ export default function App({
                   </span>
                   <span>
                     <strong>{action.label}</strong>
-                    <small>{kind === "vaccine" ? `${game.params.vaccineBatchSize} dosis · solo población susceptible` : action.description}</small>
+                    <small>{kind === "vaccine" ? `${game.params.vaccineBatchSize} dosis para personas que aún pueden contagiarse` : kind === "fumigate" ? "Reduce un 80% la fuente ambiental de contagio" : action.description}</small>
                   </span>
                   {assigned ? (
                     <Check className="qa-check" size={14} />
@@ -1015,7 +1023,8 @@ export default function App({
               );
             })}
           </div>
-          <p className="dialog-intro">Selecciona una intervención para asignarla o retirarla del plan.</p>
+          <p className="dialog-intro">Marca las medidas que quieras aplicar. Una marca ✓ indica que ya están en el plan; vuelve a pulsar para retirarlas. Se aplican al avanzar un día y las medidas de un día deben elegirse de nuevo mañana.</p>
+          {!tutorial && <button type="button" className="primary-button" onClick={closeModal}>Listo, volver al plan del día <ArrowRight size={17} /></button>}
         </Dialog>
       )}
       {modal === "logout" && (

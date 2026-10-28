@@ -2,6 +2,8 @@ import { createContext, lazy, Suspense, useContext, useState, type ReactNode } f
 import CommitteePanel from "./committee/CommitteePanel";
 import { Activity, Clapperboard, Brain, LoaderCircle } from "lucide-react";
 import type { AppProps } from "./App";
+import { ArcadeSandbox } from "./components/ArcadeSandbox";
+import { GameMenu } from "./components/GameMenu";
 
 export type Mode = "game" | "campaign" | "committee";
 
@@ -31,13 +33,13 @@ export function ModeTabs({ onSelect }: { onSelect?: (mode: Mode) => void }) {
   };
   return (
     <nav className="mode-shell-nav" role="tablist" aria-label="Selector de modo">
-      <button type="button" role="tab" aria-label="Juego" aria-selected={mode === "game"} className={`mode-shell-tab ${mode === "game" ? "active" : ""}`} onClick={() => select("game")} data-testid="tab-game">
+      <button type="button" role="tab" aria-label="Juego" title="Empieza aquí: aprende a contener el brote y encontrar la cura" aria-selected={mode === "game"} className={`mode-shell-tab ${mode === "game" ? "active" : ""}`} onClick={() => select("game")} data-testid="tab-game">
         <Activity size={15} /><span>Juego</span>
       </button>
-      <button type="button" role="tab" aria-label="Campaña" aria-selected={mode === "campaign"} className={`mode-shell-tab ${mode === "campaign" ? "active" : ""}`} onClick={() => select("campaign")} data-testid="tab-campaign">
+      <button type="button" role="tab" aria-label="Campaña" title="Misiones con objetivos y un plazo definido" aria-selected={mode === "campaign"} className={`mode-shell-tab ${mode === "campaign" ? "active" : ""}`} onClick={() => select("campaign")} data-testid="tab-campaign">
         <Clapperboard size={15} /><span>Campaña</span>
       </button>
-      <button type="button" role="tab" aria-label="Comité" aria-selected={mode === "committee"} className={`mode-shell-tab ${mode === "committee" ? "active" : ""}`} onClick={() => select("committee")} data-testid="tab-committee">
+      <button type="button" role="tab" aria-label="Comité" title="Herramienta opcional: compara estrategias sin cambiar tu partida" aria-selected={mode === "committee"} className={`mode-shell-tab ${mode === "committee" ? "active" : ""}`} onClick={() => select("committee")} data-testid="tab-committee">
         <Brain size={15} /><span>Comité</span>
       </button>
     </nav>
@@ -47,20 +49,31 @@ export function ModeTabs({ onSelect }: { onSelect?: (mode: Mode) => void }) {
 export default function ModeShell({
   onLogout,
   loggingOut = false,
-  initialMode = "game",
+  initialMode,
   onModeChange,
   renderApp,
   renderCommittee,
 }: ModeShellProps) {
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const [mode, setMode] = useState<Mode>(initialMode ?? "game");
+  const [arcade, setArcade] = useState(false);
+  const [showMenu, setShowMenu] = useState(initialMode === undefined);
+  const [initialSetup, setInitialSetup] = useState(false);
 
   const switchMode = (newMode: Mode) => {
     setMode(newMode);
     onModeChange?.(newMode);
   };
 
+  if (arcade) return <ArcadeSandbox onBack={() => { setArcade(false); setShowMenu(true); }} />;
+
+  if (showMenu) return <GameMenu onArcade={() => setArcade(true)} onSelect={(next) => {
+    setInitialSetup(true);
+    switchMode(next);
+    setShowMenu(false);
+  }} onLogout={onLogout} loggingOut={loggingOut} />;
+
   const appElement = renderApp ? (
-    renderApp({ onLogout, loggingOut, activeMode: mode, onModeChange: switchMode, inactive: mode === "committee" })
+    renderApp({ onLogout, loggingOut, activeMode: mode, onModeChange: switchMode, inactive: mode === "committee", initialSetup })
   ) : (
     <Suspense
       fallback={
@@ -71,6 +84,7 @@ export default function ModeShell({
     >
       <DefaultApp
         onLogout={onLogout}
+        initialSetup={initialSetup}
         loggingOut={loggingOut}
         activeMode={mode}
         inactive={mode === "committee"}

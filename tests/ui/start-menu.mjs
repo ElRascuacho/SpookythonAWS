@@ -1,0 +1,31 @@
+import { chromium } from 'file:///C:/Users/ASUS/AppData/Local/npm-cache/_npx/31e32ef8478fbf80/node_modules/playwright/index.mjs';
+import assert from 'node:assert/strict';
+const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || process.env.LOCALAPPDATA + '/ms-playwright/chromium-1243/chrome-win64/chrome.exe' });
+try {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.route('**/api/auth/session', route => route.fulfill({ json: { expiresAt: Date.now() + 3600000 } }));
+  const url = process.env.QA_BASE_URL || 'http://127.0.0.1:5173';
+  await page.goto(url);
+  await page.getByTestId('game-menu').waitFor();
+  assert.equal(await page.locator('.game-shell').count(), 0);
+  await page.getByRole('button', { name: /Configurar partida/ }).click();
+  await page.getByRole('dialog', { name: /Prepara una nueva/ }).waitFor();
+  await page.getByRole('button', { name: /Iniciar nueva/ }).click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  assert.equal(await page.locator('.game-shell.is-training').count(), 0);
+  console.log('PASS session -> menu -> setup -> playable game');
+  await page.reload();
+  await page.getByRole('button', { name: /Elegir misi/ }).click();
+  await page.getByRole('button', { name: /Iniciar cap/ }).waitFor();
+  console.log('PASS campaign opens briefing without tutorial interception');
+  await page.reload();
+  await page.getByRole('button', { name: /Abrir Comit/ }).click();
+  await page.getByTestId('committee-shell').waitFor();
+  console.log('PASS committee selection');
+  await page.reload();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId('game-menu').waitFor();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.getByRole('button', { name: /Abrir Comit/ }).scrollIntoViewIfNeeded();
+  console.log('PASS mobile menu has no horizontal overflow and all modes reachable');
+} finally { await browser.close(); }
