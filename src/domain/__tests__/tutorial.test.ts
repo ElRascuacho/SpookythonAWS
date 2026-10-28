@@ -1,10 +1,31 @@
 import { describe, expect, test } from "bun:test";
 import { advanceDay, createGame, getPlanCost, type GameConfig } from "../cureGame";
-import { canContinueTutorial, createTutorial, tutorialReducer } from "../tutorial";
+import { canContinueTutorial, createTutorial, tutorialReducer, interactWithTutorial } from "../tutorial";
 
 const config: GameConfig = { seed: 20261030, scenario: "standard", patientZeroId: "N01", dailyBudget: 7500 };
 
 describe("Interactive tutorial", () => {
+  test("real control interactions advance only the current step and simulate once", () => {
+    let state = createTutorial(config);
+    expect(interactWithTutorial(state, { type: "advance" })).toBe(state);
+    state = tutorialReducer(state, { type: "next" });
+    expect(interactWithTutorial(state, { type: "fund", amount: 2200 })).toBe(state);
+    expect(interactWithTutorial(state, { type: "zone", nodeId: "invalid" })).toBe(state);
+    state = interactWithTutorial(state, { type: "zone", nodeId: "N03" });
+    expect(state.step).toBe(1);
+    expect(state.nodeId).toBe("N03");
+    expect(interactWithTutorial(state, { type: "advance" })).toBe(state);
+    state = interactWithTutorial(state, { type: "protect" });
+    expect(state.step).toBe(2);
+    state = interactWithTutorial(state, { type: "fund", amount: 2200 });
+    expect(state.step).toBe(3);
+    state = interactWithTutorial(state, { type: "advance" });
+    expect(state.step).toBe(4);
+    expect(state.game.day).toBe(1);
+    expect(state.game.research).toBe(5);
+    expect(state.game.actions[1].preventionNodes).toEqual(["N03"]);
+    expect(interactWithTutorial(state, { type: "advance" })).toBe(state);
+  });
   test("requires each practical choice, allows undo and rejects out-of-step actions", () => {
     let state = tutorialReducer(createTutorial(config), { type: "next" });
     expect(state.step).toBe(0);

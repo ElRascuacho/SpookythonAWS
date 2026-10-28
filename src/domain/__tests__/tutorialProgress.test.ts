@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { GameTutorial } from "../../components/GameTutorial";
+import { createTutorial } from "../tutorial";
 import { hasCompletedTutorial, rememberTutorialCompletion, tutorialCookieComplete, TUTORIAL_COMPLETED_KEY } from "../tutorialProgress";
 
 const originals = new Map(["document", "localStorage", "location"].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -51,7 +52,7 @@ describe("first-visit tutorial completion", () => {
     expect(() => rememberTutorialCompletion()).not.toThrow();
   });
   test("first visit offers an explicit skip while replay can be closed", () => {
-    const props = { config: { seed: 42, scenario: "standard" as const, patientZeroId: "N01", dailyBudget: 7500 }, onClose: () => {}, onComplete: () => {} };
+    const props = { state: createTutorial({ seed: 42, scenario: "standard", patientZeroId: "N01", dailyBudget: 7500 }), onStart: () => {}, onTarget: () => {}, onClose: () => {}, onComplete: () => {} };
     const required = renderToStaticMarkup(createElement(GameTutorial, { ...props, required: true }));
     expect(required).toContain("Primera visita");
     expect(required).toContain("Saltar tutorial");

@@ -9,13 +9,15 @@ La primera visita del navegador abre una práctica guiada de cuatro pasos:
 3. Financiar el laboratorio.
 4. Revisar y avanzar un día de práctica.
 
-Cada paso muestra una captura real de la interfaz con el objetivo destacado, una explicación breve y una acción de práctica necesaria para avanzar. Las capturas se pueden ampliar en otra pestaña y tienen texto alternativo. **Saltar tutorial**, disponible en la bienvenida y durante los pasos, permite entrar directamente al juego y recuerda esa elección. Escape y el fondo no sustituyen esa elección explícita. Se puede retroceder sin perder las decisiones; no hay reloj ni penalizaciones.
+La práctica se realiza sobre el mapa, el selector de zona, la ventana de intervenciones, el laboratorio y el botón de avance reales. No hay tarjetas que simulen esos controles ni botones «Continuar»: realizar cada acción correcta avanza automáticamente la guía. El control relevante queda resaltado y «Llévame al control» desplaza y enfoca su destino. En prevención, «Abrir intervenciones» recupera la ventana si se cerró. Las acciones que no corresponden al paso quedan deshabilitadas, sin bloquear el control de música.
 
-El motor y el presupuesto son los del juego, pero la práctica usa una partida independiente. Al completar se muestran resultados y una orientación sobre mapa, brigadas, comparativas, agente, campaña y operaciones. La partida real sigue en su estado original.
+Las capturas anteriores siguen disponibles como referencia opcional desplegable con texto alternativo. **Saltar tutorial**, en la bienvenida y durante los pasos de la primera visita, entra directamente al juego y recuerda la elección. En repeticiones, «Cerrar guía» permite salir. No hay reloj ni penalizaciones.
+
+El motor y el presupuesto son los del juego, pero la práctica usa un `TutorialState` independiente. `App` conserva el estado del jugador y proyecta temporalmente los valores de práctica sobre la misma interfaz. Las acciones de entrenamiento se despachan al reducer del tutorial, no a los setters del jugador. Al salir se conservan día, zona, inversión, presupuesto y órdenes pendientes. El avance de práctica no solicita noticias ni recompensa operaciones; tampoco publica parámetros de práctica a Investigación. Al completar se muestran resultados y orientación sobre las funciones restantes.
 
 ## Persistencia
 
-- Al pulsar **Completar y empezar a jugar** o **Saltar tutorial**, se guarda `manta_cero_tutorial=2`, durante un año, `Path=/`, `SameSite=Lax` y `Secure` en HTTPS. El marcador representa que el usuario terminó o decidió omitir la guía, no que necesariamente completó la práctica.
+- Al pulsar **Volver a mi partida** al terminar o **Saltar tutorial**, se guarda `manta_cero_tutorial=2`, durante un año, `Path=/`, `SameSite=Lax` y `Secure` en HTTPS. El marcador representa que el usuario terminó o decidió omitir la guía, no que necesariamente completó la práctica.
 - Respaldo independiente: `localStorage["manta-cero:tutorial:completed:v2"] = "2"`.
 - Una cookie o un marcador local válido evita la apertura automática. El antiguo marcador `manta-cero:tutorial:v1` solo significaba «visto» y no cuenta como una decisión sobre esta guía.
 - Recargar una práctica incompleta sin elegir saltarla no guarda la decisión. Al recargar se empieza de nuevo.
@@ -30,7 +32,7 @@ Esto es una preferencia de navegador, sin datos personales; no identifica cuenta
 
 ## Verificación
 
-- `bun test`: 254 pruebas pasan; cuatro nuevas prueban versión exacta, marcador antiguo, persistencias bloqueadas/independientes y bienvenida obligatoria/opcional. Las pruebas existentes cubren las acciones requeridas, el motor y la separación de partidas.
+- `bun test`: 255 pruebas pasan; una prueba nueva recorre los eventos de los controles reales, rechaza interacciones fuera de orden y verifica que el motor avance exactamente una vez. Se mantienen las pruebas de persistencia y de separación de partidas.
 - `bun run build`: correcto.
-- Chromium, app real con respuesta de sesión simulada: primera visita y marcador antiguo, Escape/fondo, recarga incompleta, cuatro acciones y capturas cargadas, reflujo a 390 px, partida real en día 00, cookie y almacenamiento al completar, recarga sin bloqueo, repetición opcional y persistencias independientes.
+- Chromium, app real con respuesta de sesión simulada, escritorio y 390 px: selector real, ventana de intervención reabrible, prevención real, inversión real y avance; acciones fuera de orden deshabilitadas, foco al control, cookie al terminar, práctica de un día y conservación de partida. Una segunda práctica con otra zona/inversión conserva exactamente el texto de la barra del jugador, incluidos inversión, presupuesto y órdenes pendientes, tanto al terminar como al cerrar anticipadamente.
 - No se verificaron lectores de pantalla reales ni otros navegadores. La persistencia no se ha migrado a perfiles de servidor.
