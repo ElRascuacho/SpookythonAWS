@@ -2,7 +2,7 @@
   "name": "operacion-manta-cero",
   "private": true,
   "version": "1.0.0",
-  "description": "Operación Manta Cero — Simulación Epidemiológica 3D SEIR-V en Grafo Urbano (Spookython AWS Track B)",
+  "description": "Operación Zero Day — Simulación Epidemiológica 3D SEIR-V en Grafo Urbano (Spookython AWS Track B)",
   "type": "module",
   "scripts": {
     "invite": "bun scripts/create-invite.ts",

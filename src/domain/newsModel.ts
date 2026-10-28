@@ -1,5 +1,5 @@
 /**
- * Modelo de noticias diarias de Manta Cero.
+ * Modelo de noticias diarias de Zero Day.
  *
  * Módulo puro y determinista: sin red, sin DOM, sin `process.env` y sin secretos.
  * Se puede importar desde el cliente sin riesgo de filtrar credenciales.
@@ -126,22 +126,22 @@ function fitWords(sentences: string[], padding: readonly string[]): string {
 
 const HEADLINES: Record<NewsSeverity, readonly string[]> = {
   victory: [
-    "Manta Cero, día {day}: brote contenido con {cum} contagios acumulados",
+    "Zero Day, día {day}: brote contenido con {cum} contagios acumulados",
     "COE Manta, día {day}: contención confirmada y {active} casos activos",
-    "Parte oficial, día {day}: Manta Cero cierra el brote con {active} casos activos",
+    "Parte oficial, día {day}: Zero Day cierra el brote con {active} casos activos",
   ],
   calm: [
-    "Manta Cero, día {day}: {new} casos nuevos y variación de {g}%",
+    "Zero Day, día {day}: {new} casos nuevos y variación de {g}%",
     "COE Manta, día {day}: incidencia en descenso con {new} contagios nuevos",
     "Boletín de Manta, día {day}: {new} casos nuevos y {h}% de carga hospitalaria",
   ],
   alert: [
-    "Manta Cero, día {day}: {new} casos nuevos y {h}% de ocupación hospitalaria",
+    "Zero Day, día {day}: {new} casos nuevos y {h}% de ocupación hospitalaria",
     "COE Manta, día {day}: vigilancia activa por {new} contagios nuevos",
     "Boletín cantonal, día {day}: {new} casos nuevos y {active} casos activos",
   ],
   critical: [
-    "Manta Cero, día {day}: alerta crítica con {h}% de carga hospitalaria",
+    "Zero Day, día {day}: alerta crítica con {h}% de carga hospitalaria",
     "COE Manta, día {day}: {new} casos nuevos y presión hospitalaria alta",
     "Alerta roja, día {day}: {h}% de ocupación en el Rodríguez Zambrano",
   ],
@@ -149,9 +149,9 @@ const HEADLINES: Record<NewsSeverity, readonly string[]> = {
 
 const OPENERS = [
   "Boletín del COE cantonal de Manta, día {day} de {total}: {new} casos nuevos y {cum} contagios acumulados en el cantón.",
-  "Parte operativo de la Operación Manta Cero, jornada {day} de {total}: se notifican {new} casos nuevos y la serie acumulada llega a {cum} personas.",
+  "Parte operativo de la Operación Zero Day, jornada {day} de {total}: se notifican {new} casos nuevos y la serie acumulada llega a {cum} personas.",
   "Informe diario del comité epidemiológico de Manta, día {day} de {total}: {new} notificaciones nuevas y {cum} contagios acumulados desde el inicio del brote.",
-  "Reporte oficial de Manta Cero, día {day} de {total}: {new} casos nuevos detectados y {cum} acumulados en el cantón.",
+  "Reporte oficial de Zero Day, día {day} de {total}: {new} casos nuevos detectados y {cum} acumulados en el cantón.",
   "Boletín operativo del Municipio de Manta, día {day} de {total}: {new} casos nuevos y {cum} contagios confirmados en la ciudad.",
 ] as const;
 
@@ -255,7 +255,7 @@ export function fallbackNews(state: NewsState): GameNews {
 /** Contexto territorial y reglas editoriales del Municipio de Manta. */
 export const NEWS_SYSTEM_PROMPT = [
   "Eres el/la editor(a) de comunicaciones de emergencia del Municipio de Manta, en la provincia de Manabí, Ecuador.",
-  "Redactas el boletín epidemiológico diario de la Operación Manta Cero.",
+  "Redactas el boletín epidemiológico diario de la Operación Zero Day.",
   "Tono: parte operativo, preciso, sobrio, sin sensacionalismo, sin especulación política y sin atribuir culpas.",
   "Escribe siempre en español de Ecuador, en texto plano (sin markdown, sin viñetas, sin emojis).",
   "Contexto territorial obligatorio: Manta es una economía dolarizada (USD), sede del segundo puerto atunero del Ecuador, en recuperación desde el terremoto de 2016; las lluvias de El Niño y el vector del dengue condicionan el riesgo; la respuesta se coordina con el MSP y el COE Nacional; el Hospital Rodríguez Zambrano es la referencia de capacidad; la ULEAM apoya con vigilancia y personal; las remesas y el turismo sostienen la economía local y son vulnerables a una crisis sanitaria.",

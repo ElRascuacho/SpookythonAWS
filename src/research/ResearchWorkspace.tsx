@@ -578,7 +578,7 @@ export function ResearchWorkspace({
             <Dna size={26} />
           </span>
           <span>
-            MANTA<span className="brand-zero">CERO</span>
+            ZERO <span className="brand-zero">DAY</span>
             <small>LABORATORIO · MODELO SEIR-V</small>
           </span>
         </a>

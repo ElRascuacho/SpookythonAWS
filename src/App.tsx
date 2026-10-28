@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowRight,
   Check,
+  ChevronDown,
   CircleHelp,
   Dna,
   FlaskConical,
@@ -233,7 +234,7 @@ function Dialog({
       >
         <div className="dialog-heading">
           <div>
-            <span className="eyebrow">OPERACIÓN MANTA CERO</span>
+            <span className="eyebrow">OPERACIÓN ZERO DAY</span>
             <h2>{title}</h2>
           </div>
           {dismissible && <button
@@ -589,12 +590,12 @@ export default function App({
         <source src="/audio/bgm-manta-cero.mp3" type="audio/mpeg" />
       </audio>
       <header className="hub-topbar">
-        <a className="brand" href="#" aria-label="Operación Manta Cero">
+        <a className="brand" href="#" aria-label="Operación Zero Day">
           <span className="brand-mark">
             <Dna size={26} />
           </span>
           <span>
-            MANTA<span className="brand-zero">CERO</span>
+            ZERO <span className="brand-zero">DAY</span>
             <small>LA CURA ESTÁ EN TUS MANOS</small>
           </span>
         </a>
@@ -672,11 +673,12 @@ export default function App({
         />
       </main>
 
-      <section className="hud-situation" aria-label="Situación en tiempo real">
-        <div className="hud-title">
-          <span>SITUACIÓN EN TIEMPO REAL</span>
-          <Activity size={12} />
-        </div>
+      <details className="hud-situation" aria-label="Situación en tiempo real">
+        <summary className="hud-title">
+          <span>Situación en tiempo real</span>
+          <ChevronDown className="hud-toggle-icon" size={18} aria-hidden="true" />
+        </summary>
+        <div className="hud-metrics">
         <div className="hud-metric coral">
           <span className="hud-icon">
             <Users size={13} />
@@ -716,7 +718,8 @@ export default function App({
             />
           </div>
         </div>
-      </section>
+        </div>
+      </details>
 
       {!tutorial && (news || newsLoading) && (
         <NewsFlash
