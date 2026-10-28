@@ -22,15 +22,33 @@ describe('frozen policy evaluation', () => {
   });
   test('rejects incompatible policy metadata', () => {
     const artifact = { policyVersion: 1, recommendation: 'trained', weights: [0, 0, 0, 0], params: { ...DEFAULT_SIMULATION_PARAMS, days: 40 }, manifest: { versions: DEFAULT_COMPATIBILITY_VERSIONS, pools: { final: { runIndices: [871] } } } };
-    expect(parsePublishedPolicy({ registryVersion: 'one', artifact }).artifact.policyVersion).toBe(1);
+    expect(parsePublishedPolicy({ registryVersion: 'one', artifact }).policyVersion).toBe(1);
     expect(() => parsePublishedPolicy({ registryVersion: 'one', artifact: { ...artifact, manifest: { ...artifact.manifest, versions: { ...DEFAULT_COMPATIBILITY_VERSIONS, graphVersion: 'other' } } } })).toThrow();
     expect(() => parsePublishedPolicy({ registryVersion: 'one', artifact: { ...artifact, weights: [9, 0, 0, 0] } })).toThrow();
   });
   test('validates canonical default published policy and runs paired simulation', () => {
     const parsed = parsePublishedPolicy(DEFAULT_PUBLISHED_POLICY);
-    expect(parsed.artifact.recommendation).toBe('trained');
-    expect(parsed.artifact.policyVersion).toBe(2);
-    const pair = simulatePolicyPair(parsed.artifact.params, parsed.artifact.weights, 872);
+    expect(parsed.artifact?.recommendation).toBe('trained');
+    expect(parsed.policyVersion).toBe(2);
+    const pair = simulatePolicyPair(DEFAULT_SIMULATION_PARAMS, parsed.weights, 872);
     expect(pair.candidate.infected).toBeLessThan(pair.sgc.infected);
+  });
+  test('parses and validates sanitized PublicPolicyProjection without private artifact, params or pools', () => {
+    const projection = {
+      registryVersion: '2026-10-28T12:00:00.000Z_v2-abc',
+      publishedAt: '2026-10-28T12:00:00.000Z',
+      policyVersion: 2,
+      recommendation: 'trained' as const,
+      weights: [-1, 0.5, -2, 1] as const,
+      audit: 'passed' as const,
+      finalEvidence: { meanDifference: -15000, upperBound: -10000 },
+      compatibilityVersions: { ...DEFAULT_COMPATIBILITY_VERSIONS },
+      projectionHash: 'abcdef1234567890',
+    };
+    const parsed = parsePublishedPolicy(projection);
+    expect(parsed.registryVersion).toBe(projection.registryVersion);
+    expect(parsed.policyVersion).toBe(2);
+    expect(parsed.weights).toEqual([-1, 0.5, -2, 1]);
+    expect((parsed as any).manifest).toBeUndefined();
   });
 });
