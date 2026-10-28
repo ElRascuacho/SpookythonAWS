@@ -171,38 +171,45 @@ function Dialog({
     const before = document.activeElement as HTMLElement | null;
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    ref.current?.focus();
-    const keyboard = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
-      if (event.key === "Tab") {
-        const items = ref.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input, select, [tabindex="0"]',
-        );
-        if (!items?.length) return;
-        const first = items[0];
-        const last = items[items.length - 1];
-        if (
-          event.shiftKey &&
-          (document.activeElement === first ||
-            document.activeElement === ref.current)
-        ) {
-          event.preventDefault();
-          last.focus();
-        } else if (
-          !event.shiftKey &&
-          (document.activeElement === last ||
-            document.activeElement === ref.current)
-        ) {
-          event.preventDefault();
-          first.focus();
+    const backgrounds: { element: HTMLElement; inert: boolean }[] = [];
+    let branch = ref.current?.parentElement;
+    while (branch?.parentElement && branch !== document.body) {
+      for (const sibling of branch.parentElement.children) {
+        if (sibling instanceof HTMLElement && sibling !== branch) {
+          backgrounds.push({ element: sibling, inert: sibling.inert });
+          sibling.inert = true;
         }
+      }
+      branch = branch.parentElement;
+    }
+    ref.current?.focus();
+    const containFocus = (event: FocusEvent) => {
+      if (!ref.current?.contains(event.target as Node)) ref.current?.focus();
+    };
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); closeRef.current(); }
+      if (event.key !== "Tab") return;
+      const items = [...(ref.current?.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])',
+      ) ?? [])].filter(item => !item.closest('[inert]') && item.getClientRects().length > 0);
+      const first = items[0], last = items[items.length - 1];
+      const outside = !ref.current?.contains(document.activeElement);
+      if (!first) { event.preventDefault(); ref.current?.focus(); }
+      else if (event.shiftKey && (document.activeElement === first || !items.includes(document.activeElement as HTMLElement) || outside)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !items.includes(document.activeElement as HTMLElement) || outside)) {
+        event.preventDefault(); first.focus();
       }
     };
     document.addEventListener("keydown", keyboard);
+    document.addEventListener("focusin", containFocus);
     return () => {
       document.body.style.overflow = oldOverflow;
       document.removeEventListener("keydown", keyboard);
-      before?.focus();
+      document.removeEventListener("focusin", containFocus);
+      for (const background of backgrounds) background.element.inert = background.inert;
+      const target = before?.isConnected ? before : document.querySelector<HTMLElement>('.game-shell .field-operation-bubble, .game-shell .earth-node-pin.selected');
+      target?.focus();
     };
   }, []);
   return (

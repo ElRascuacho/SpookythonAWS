@@ -398,6 +398,7 @@ export function ResearchWorkspace({
       inert={!visible}
       aria-hidden={!visible}
       aria-label="Espacio de investigación"
+      tabIndex={-1}
     >
       <header className="hub-topbar">
         <a
@@ -635,7 +636,7 @@ export function ResearchWorkspace({
                 </select>
                 <button onClick={() => setDraftId(null)}>Nueva</button>
               </div>
-              <div className="rw-chat" aria-label="Conversación con el agente">
+              <div className="rw-chat" role="log" aria-live="polite" aria-relevant="additions" aria-atomic="false" aria-label="Conversación con el agente">
                 {chat.length === 0 && (
                   <div>
                     <strong>AGENTE DE INVESTIGACIÓN</strong>
@@ -662,6 +663,7 @@ export function ResearchWorkspace({
                   </p>
                 )}
               </div>
+              <p className="rw-agent-status" role="status">{busy ? 'Consultando al agente…' : ''}</p>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();

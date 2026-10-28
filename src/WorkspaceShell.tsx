@@ -11,6 +11,15 @@ export default function WorkspaceShell(props: AppProps) {
   useEffect(() => {
     if (props.activeMode === "game" || props.activeMode === "campaign") setMode("game");
   }, [props.activeMode]);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (props.inactive) return;
+    const frame = requestAnimationFrame(() => {
+      if (mode === "research") document.querySelector<HTMLElement>('.research-workspace.is-active')?.focus();
+      else { returnFocus.current?.focus(); returnFocus.current = null; }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [mode, props.inactive]);
   const cameraBridge = useRef<TacticalCameraBridge["current"]>(null);
   return (
     <div className="workspace-shell">
@@ -25,6 +34,7 @@ export default function WorkspaceShell(props: AppProps) {
           cameraBridge={cameraBridge}
           onScenarioChange={setParams}
           onOpenResearch={() => {
+            returnFocus.current = document.activeElement as HTMLElement | null;
             setMode("research");
           }}
         />

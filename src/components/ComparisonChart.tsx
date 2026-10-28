@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { MonteCarloComparisonResult, StrategyType } from '../domain/types';
 import { Activity, TrendingDown } from 'lucide-react';
 
@@ -18,6 +18,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
 }) => {
   const [metric, setMetric] = useState<ChartMetric>('ACTIVE_ZOMBIES');
 
+  const dayInputId = useId();
   const days = result.params.days;
   const noIntBands = result.strategies.NO_INTERVENTION.dailyBands;
   const randomBands = result.strategies.RANDOM.dailyBands;
@@ -77,7 +78,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(maxY * t));
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+    <div className="comparison-chart bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">
@@ -87,8 +88,8 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
             <h3 className="text-sm font-bold text-white">
               Comparativa Monte Carlo ({result.params.monteCarloRuns} corridas, Bandas P10–P90)
             </h3>
-            <p className="text-[11px] text-slate-400">
-              🔴 Sin Intervención vs. 🟡 Azar vs. 🟢 Smart Graph Cortafuegos (Clic en la gráfica para ir al día)
+            <p className="text-sm text-slate-400">
+              🔴 Sin Intervención vs. 🟡 Azar vs. 🟢 Smart Graph Cortafuegos (Usa el selector de día o haz clic en la gráfica)
             </p>
           </div>
         </div>
@@ -96,7 +97,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
         <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
           <button
             onClick={() => setMetric('ACTIVE_ZOMBIES')}
-            className={`px-2.5 py-1 rounded-lg text-xs transition cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-sm transition cursor-pointer ${
               metric === 'ACTIVE_ZOMBIES'
                 ? 'bg-emerald-500 text-slate-950 font-semibold'
                 : 'text-slate-400 hover:text-slate-200'
@@ -106,7 +107,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
           </button>
           <button
             onClick={() => setMetric('CUMULATIVE_INFECTED')}
-            className={`px-2.5 py-1 rounded-lg text-xs transition cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-sm transition cursor-pointer ${
               metric === 'CUMULATIVE_INFECTED'
                 ? 'bg-emerald-500 text-slate-950 font-semibold'
                 : 'text-slate-400 hover:text-slate-200'
@@ -117,10 +118,16 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
         </div>
       </div>
 
-      {/* Interactive SVG Chart */}
-      <div className="relative w-full overflow-x-auto">
+      <label className="comparison-day" htmlFor={dayInputId}>
+        Día observado: {currentDay} de {days}
+        <input id={dayInputId} type="range" min={0} max={days} step={1} value={currentDay} disabled={days === 0} aria-valuetext={`Día ${currentDay} de ${days}`} onChange={e => onSelectDay(Number(e.target.value))} />
+      </label>
+      <div className="relative w-full overflow-x-auto" role="region" aria-label="Gráfica comparativa con desplazamiento horizontal" tabIndex={0}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
+          style={{ minWidth: width }}
+          role="img"
+          aria-label="Comparación de estrategias. Los datos del día seleccionado se detallan debajo."
           className="w-full h-auto select-none cursor-crosshair"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -146,7 +153,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
                   x={padLeft - 6}
                   y={y + 3}
                   textAnchor="end"
-                  className="fill-slate-400 text-[10px] font-mono"
+                  className="fill-slate-400 text-sm font-mono"
                 >
                   {val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}
                 </text>
@@ -163,7 +170,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
                 x={toX(d)}
                 y={height - 8}
                 textAnchor="middle"
-                className="fill-slate-400 text-[10px] font-mono"
+                className="fill-slate-400 text-sm font-mono"
               >
                 Día {d}
               </text>
@@ -190,7 +197,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
                 x={width - padRight - 6}
                 y={hospY - 5}
                 textAnchor="end"
-                className="fill-cyan-300 text-[10px] font-mono"
+                className="fill-cyan-300 text-sm font-mono"
               >
                 🏥 Colapso Hospital Rodríguez Zambrano ({result.params.hospitalCapacity.toLocaleString()})
               </text>
@@ -251,34 +258,34 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
       </div>
 
       {/* Day Readout Footer */}
-      <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-        <div className="bg-rose-950/30 border border-rose-800/40 rounded-xl px-3 py-2 flex items-center justify-between">
+      <div className="mt-2 grid grid-cols-1 lg:grid-cols-3 gap-2 text-sm" aria-live="polite" aria-atomic="true">
+        <div className="bg-rose-950/30 border border-rose-800/40 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-3 min-w-0">
           <div>
-            <div className="text-[10px] text-rose-300">🔴 Sin Intervención (Día {currentDay})</div>
+            <div className="text-sm text-rose-300">🔴 Sin Intervención (Día {currentDay})</div>
             <div className="font-mono font-bold text-rose-400">
               {getValue(noIntBands[currentDay], 'mean').toLocaleString()} casos
             </div>
           </div>
-          <span className="text-[10px] font-mono text-rose-300/80">
+          <span className="text-sm font-mono text-rose-300/80">
             Pico: {result.strategies.NO_INTERVENTION.meanPeakZombies.toLocaleString()}
           </span>
         </div>
 
-        <div className="bg-amber-950/30 border border-amber-800/40 rounded-xl px-3 py-2 flex items-center justify-between">
+        <div className="bg-amber-950/30 border border-amber-800/40 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-3 min-w-0">
           <div>
-            <div className="text-[10px] text-amber-300">🟡 Azar (Día {currentDay})</div>
+            <div className="text-sm text-amber-300">🟡 Azar (Día {currentDay})</div>
             <div className="font-mono font-bold text-amber-400">
               {getValue(randomBands[currentDay], 'mean').toLocaleString()} casos
             </div>
           </div>
-          <span className="text-[10px] font-mono text-amber-300/80">
+          <span className="text-sm font-mono text-amber-300/80">
             Contagios evitados: +{result.strategies.RANDOM.meanLivesSavedVsBaseline.toLocaleString()}
           </span>
         </div>
 
-        <div className="bg-emerald-950/40 border border-emerald-600/50 rounded-xl px-3 py-2 flex items-center justify-between">
+        <div className="bg-emerald-950/40 border border-emerald-600/50 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-3 min-w-0">
           <div>
-            <div className="text-[10px] text-emerald-300 flex items-center gap-1">
+            <div className="text-sm text-emerald-300 flex items-center gap-1">
               <TrendingDown className="w-3 h-3" />
               <span>🟢 Smart Cortafuegos (Día {currentDay})</span>
             </div>
@@ -286,7 +293,7 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
               {getValue(smartBands[currentDay], 'mean').toLocaleString()} casos
             </div>
           </div>
-          <span className="text-[10px] font-mono font-semibold text-emerald-300">
+          <span className="text-sm font-mono font-semibold text-emerald-300">
             Contagios evitados: +{result.strategies.SMART_CORTAFUEGOS.meanLivesSavedVsBaseline.toLocaleString()}
           </span>
         </div>

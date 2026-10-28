@@ -5,6 +5,7 @@
   --ink: #0d1b22;
   --panel: #122129;
   --line: #293940;
+  --control-border: #7f9eaa;
   --muted: #b4c5cc;
   --text: #e9e8df;
   --mint: #b1dfc8;
@@ -3839,7 +3840,7 @@ svg {
 .news-flash { width: min(440px, calc(100vw - 36px)); bottom: calc(var(--command-height, 200px) + 16px); max-height: 44dvh; overflow-y: auto; }
 .news-body { font-size: 16px; color: #d1dee2; line-height: 1.6; }
 .news-foot, .news-facts { color: #b4c5cc; }
-.game-dialog { width: 660px; line-height: 1.6; }
+.game-dialog { width: 660px; line-height: 1.6; max-height: min(90dvh, calc(100% - 16px)); }
 .game-dialog.wide { width: 1000px; }
 .game-dialog .quick-action { padding: 14px; gap: 12px; }
 .game-dialog .quick-action strong { font-size: 16px; white-space: normal; }
@@ -3869,7 +3870,7 @@ svg {
   .hud-metric > strong { font-size: 24px; }
   .hud-metric > span:not(.hud-icon) { font-size: 12px; }
   .map-stage .earth-top-controls { top: 200px; left: 10px; right: 10px; }
-  .map-stage .earth-camera-controls { top: 256px; }
+  .map-stage .earth-camera-controls { top: auto; bottom: calc(var(--command-height, 320px) + 16px); flex-direction: row; }
   .command-bar { padding: 12px 10px calc(12px + env(safe-area-inset-bottom)); max-height: 48dvh; }
   .command-row.primary { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'cash day' 'zone zone' 'cure cure' 'advance advance'; gap: 10px; }
   .cash-block { min-width: 0; }
@@ -3889,3 +3890,24 @@ svg {
 .map-stage .map-scale { bottom: calc(var(--command-height, 200px) + 16px); }
 .map-stage .map-legend { bottom: calc(var(--command-height, 200px) + 16px); }
 .map-stage .osm-attribution { bottom: calc(var(--command-height, 200px) + 44px); }
+
+.settings-fields input, .settings-fields select { border-color: var(--control-border); }
+.comparison-chart { min-width: 0; }
+.comparison-chart button { min-height: 44px; font: inherit; }
+.comparison-day { display: grid; gap: 8px; margin-block: 16px; color: var(--text); font-size: 16px; }
+.comparison-day input { width: 100%; min-height: 32px; accent-color: var(--mint); }
+/* Low-height screens need document flow, not competing fixed panels. */
+@media (max-height: 600px) {
+  .dialog-backdrop { padding: 8px; }
+  .game-shell { overflow-y: auto; overflow-x: hidden; }
+  .game-shell > .hub-topbar { position: relative; inset: auto; }
+  .game-shell > .map-stage { position: relative; inset: auto; height: 280px; }
+  .game-shell > .hud-situation { position: relative; inset: auto; transform: none; width: auto; margin: 12px; flex-direction: row; gap: 16px; }
+  .game-shell .hud-title { display: none; }
+  .game-shell .hud-metric { flex: 1; padding: 0; margin: 0; border: 0; }
+  .game-shell > .command-bar { position: relative; inset: auto; max-height: none; overflow: visible; }
+  .game-shell > .news-flash { position: relative; inset: auto; width: auto; margin: 12px; max-height: none; }
+  .game-shell .map-stage .earth-top-controls { top: 12px; }
+  .game-shell .map-stage .earth-camera-controls { top: auto; bottom: 12px; flex-direction: row; }
+  .game-shell .map-stage .map-heading, .game-shell .map-scale, .game-shell .map-legend { display: none; }
+}

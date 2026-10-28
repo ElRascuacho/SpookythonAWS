@@ -751,3 +751,6 @@
     scroll-behavior: auto !important;
   }
 }
+
+.research-workspace input, .research-workspace select, .research-workspace textarea { border-color: var(--control-border); }
+.rw-agent-status { color: var(--muted); font-size: 14px; }

@@ -12,12 +12,14 @@ type Phase = 'ready' | 'playing' | 'paused' | 'won' | 'lost';
 
 function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; onWin: () => void; receipt: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const resultHeading = useRef<HTMLHeadingElement>(null);
   const shooter = useRef(createShooter()), parkour = useRef(createParkour());
   const keys = useRef(new Set<string>()), jump = useRef(false);
   const callback = useRef(onWin); callback.current = onWin;
   const [phase, setPhase] = useState<Phase>('ready');
   const [hud, setHud] = useState({ progress: 0, health: 3, ammo: 6, reloading: false, checkpoint: false, distance: 0 });
   const [canvasError, setCanvasError] = useState(false);
+  useEffect(() => { if (phase === 'paused' || phase === 'won' || phase === 'lost') resultHeading.current?.focus(); }, [phase]);
   const art = useRef<{ background?: HTMLImageElement; sprite?: HTMLImageElement; weapon?: HTMLImageElement }>({});
   const [artVersion, setArtVersion] = useState(0);
   useEffect(() => {
@@ -76,7 +78,7 @@ function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; 
     shooter.current.aimX = (e.clientX - b.left - (b.width - VIEW_W * scale) / 2) / scale;
     shooter.current.aimY = (e.clientY - b.top - (b.height - VIEW_H * scale) / 2) / scale;
   };
-  return <>
+  return <div className="field-arcade" onBlur={e => { if (phase === 'playing' && !e.currentTarget.contains(e.relatedTarget)) { keys.current.clear(); jump.current = false; setPhase('paused'); } }}>
     <div className="field-livebar">
       <span><ShieldCheck size={18} /> {hud.health} / 3 {kind === 'shooter' ? 'escudos' : 'intentos'}</span>
       <strong>{hud.progress} / {kind === 'shooter' ? '8 objetivos' : '3 reservas'}</strong>
@@ -84,8 +86,7 @@ function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; 
       <button onClick={() => setPhase(p => p === 'playing' ? 'paused' : p === 'paused' ? 'playing' : p)} disabled={phase !== 'playing' && phase !== 'paused'}><Pause size={16} /> Pausa</button>
     </div>
     <div className={`field-viewport field-${kind}`}>
-      <canvas ref={canvas} width={VIEW_W} height={VIEW_H} tabIndex={0} aria-label={kind === 'shooter' ? 'Shooter en primera persona. Apunta con el ratón o flechas; dispara con clic o espacio; R recarga; P pausa.' : 'Parkour. A D o flechas para moverte, espacio o flecha arriba para saltar, P pausa.'}
-        onBlur={() => { if (phase === 'playing') { keys.current.clear(); setPhase('paused'); } }}
+      <canvas ref={canvas} width={VIEW_W} height={VIEW_H} tabIndex={phase === 'playing' ? 0 : -1} aria-label={kind === 'shooter' ? 'Shooter en primera persona. Apunta con el ratón o flechas; dispara con clic o espacio; R recarga; P pausa.' : 'Parkour. A D o flechas para moverte, espacio o flecha arriba para saltar, P pausa.'}
         onPointerMove={e => { if (kind === 'shooter') aimAt(e); }}
         onPointerDown={e => { if (phase !== 'playing') return; e.currentTarget.focus(); if (kind === 'shooter') { aimAt(e); shoot(shooter.current); } }}
         onKeyDown={e => {
@@ -100,20 +101,29 @@ function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; 
         }} onKeyUp={e => keys.current.delete(e.code)} />
       {(phase !== 'playing' || canvasError) && <div className="field-overlay">
         <span className="field-kicker">{phase === 'won' ? 'OPERACIÓN COMPLETADA' : phase === 'lost' ? 'SEÑAL PERDIDA' : phase === 'paused' ? 'OPERACIÓN EN PAUSA' : 'ENLACE DE CAMPO ESTABLECIDO'}</span>
-        <h3>{canvasError ? 'No se pudo iniciar el visor' : phase === 'won' ? 'La ciudad tiene una oportunidad más.' : phase === 'lost' ? 'Puedes volver a intentarlo.' : phase === 'paused' ? 'Respira. Tu misión espera.' : FIELD_MISSIONS[kind].title}</h3>
+        <h3 ref={resultHeading} tabIndex={-1}>{canvasError ? 'No se pudo iniciar el visor' : phase === 'won' ? 'La ciudad tiene una oportunidad más.' : phase === 'lost' ? 'Puedes volver a intentarlo.' : phase === 'paused' ? 'Respira. Tu misión espera.' : FIELD_MISSIONS[kind].title}</h3>
         <p>{canvasError ? 'Tu navegador no permite Canvas 2D. Puedes salir sin perder recursos.' : phase === 'won' ? receipt : phase === 'lost' ? 'Sin recompensa y sin penalización para la ciudad.' : FIELD_MISSIONS[kind].objective}</p>
         {!canvasError && phase !== 'won' && <button className="field-primary" onClick={phase === 'paused' ? () => setPhase('playing') : restart}>{phase === 'paused' ? <Play size={18} /> : phase === 'lost' ? <RotateCcw size={18} /> : <ArrowRight size={18} />}{phase === 'paused' ? 'Continuar misión' : phase === 'lost' ? 'Reintentar' : 'Comenzar misión'}</button>}
       </div>}
     </div>
+    {kind === 'parkour' && <div className="field-touch-controls" role="group" aria-label="Controles de parkour">
+      {([['ArrowLeft', 'Mover a la izquierda', '←'], ['ArrowRight', 'Mover a la derecha', '→'], ['Space', 'Saltar', 'Saltar']] as const).map(([code, label, text]) => <button key={code} type="button" aria-label={label} disabled={phase !== 'playing'}
+        onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); keys.current.add(code); if (code === 'Space') jump.current = true; }}
+        onPointerUp={() => keys.current.delete(code)} onPointerCancel={() => keys.current.delete(code)} onLostPointerCapture={() => keys.current.delete(code)}
+        onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); keys.current.add(code); if (code === 'Space' && !e.repeat) jump.current = true; } }}
+        onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); keys.current.delete(code); } }} onBlur={() => keys.current.delete(code)}>{text}</button>)}
+    </div>}
     <p className="field-controls">{FIELD_MISSIONS[kind].controls} <span>P para pausar. Cambiar de pestaña también pausa.</span></p>
     <p className="field-sr" role="status">{phase === 'won' ? receipt : phase === 'lost' ? 'Operación fallida, puedes reintentar.' : phase === 'paused' ? 'Operación pausada.' : ''}</p>
-  </>;
+  </div>;
 }
 
 function LabPuzzle({ seed, day, onWin, receipt }: { seed: number; day: number; onWin: () => void; receipt: string }) {
   const [pieces, setPieces] = useState(() => createPipePuzzle(seed, day));
   const [moves, setMoves] = useState(0), [message, setMessage] = useState(''), [won, setWon] = useState(false);
   const claimed = useRef(false);
+  const resultMessage = useRef<HTMLParagraphElement>(null);
+  useEffect(() => { if (won) resultMessage.current?.focus(); }, [won]);
   const reached = connectedPipes(pieces), solved = reached.has(11) && !!(pieces[11] & 2);
   const hint = () => { const cell = PIPE_PATH.find(i => pieces[i] !== PIPE_SOLUTION[i]); if (cell === undefined) return; setPieces(p => p.map((mask, i) => i === cell ? PIPE_SOLUTION[i] : mask)); setMoves(n => n + 1); setMessage(`Conducto ${cell + 1} calibrado. Sigue la luz desde la entrada.`); };
   return <div className="field-lab">
@@ -123,7 +133,7 @@ function LabPuzzle({ seed, day, onWin, receipt }: { seed: number; day: number; o
         <svg viewBox="0 0 100 100" aria-hidden="true"><path d={[[50, 0], [100, 50], [50, 100], [0, 50]].map(([x, y], n) => mask & (1 << n) ? `M50 50 L${x} ${y}` : '').join(' ')} /><circle cx="50" cy="50" r="8" /></svg><span>{String(i + 1).padStart(2, '0')}</span>
       </button>)}
     </div><span className="field-port field-port-out">→ CURA</span></div>
-    <div className="field-puzzle-footer"><p role="status">{won ? receipt : message || 'Gira los conductos y verifica la conexión.'}</p>{!won && <><button className="field-secondary" onClick={hint}>Pedir pista</button><button className="field-primary" onClick={() => { if (claimed.current) return; if (!solved) { setMessage('El flujo no llega a la salida. Revisa las conexiones iluminadas.'); return; } claimed.current = true; setWon(true); onWin(); }}><FlaskConical size={18} /> Sintetizar cura</button></>}</div>
+    <div className="field-puzzle-footer"><p ref={resultMessage} tabIndex={-1} role="status">{won ? receipt : message || 'Gira los conductos y verifica la conexión.'}</p>{!won && <><button className="field-secondary" onClick={hint}>Pedir pista</button><button className="field-primary" onClick={() => { if (claimed.current) return; if (!solved) { setMessage('El flujo no llega a la salida. Revisa las conexiones iluminadas.'); return; } claimed.current = true; setWon(true); onWin(); }}><FlaskConical size={18} /> Sintetizar cura</button></>}</div>
   </div>;
 }
 
