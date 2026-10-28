@@ -55,3 +55,20 @@ Este apartado actualiza el estado anterior, que se conserva como **instantánea 
 
 - El control independiente detect� que `JSON.stringify` rechazaba pares y reportes equivalentes si sus propiedades llegaban en distinto orden. Se reprodujo en RED para ambos casos y se corrigi� mediante comparaci�n JSON can�nica con claves ordenadas recursivamente; las diferencias reales siguen rechaz�ndose.
 - Verificaci�n posterior: prueba focal 3/3; `bun test` 288/288 (53 archivos); `bun run build` y `bun run build:lambda` pasan, con los avisos web ya indicados. Esta correcci�n no conecta el ciclo central ni cambia los bloqueos o el estado 503 documentados arriba; AWS real sigue sin probarse.
+\
+
+### Avance adicional: Conexión de Evaluación Central Duradera y Admisión de Entrenamiento (Prioridades 1 y 3)
+
+- `backend/committee/evaluationExecutor.ts`: Implementa la orquestación secuencial en servidor (`evaluateFrozenPolicySequential`), vinculando `EvaluationJobService`, `CommitteeAdmissionService`, `PolicyRegistry` y `EvaluationStore`. Realiza claim atómico, consulta de cancelación entre pares, persistencia de cada par compacto en S3, avance monotónico de progreso en DynamoDB, publicación del informe final (`report.json`) y terminalización (`completed`, `cancelled` o `failed`) con liberación del slot global.
+- `backend/committee/http.ts`: Conecta las rutas HTTP autenticadas con aislamiento de propietario (`ownerHash`):
+  - `POST /api/committee/evaluations`: Admisión duradera con `Idempotency-Key`, verificación de versión aprobada en `PolicyRegistry`, cuota y slot global. Despacha al worker Lambda o ejecutor asíncrono devolviendo 202.
+  - `GET /api/committee/evaluations/{jobId}`: Consulta de estado y progreso de pares (`completedPairs`/`plannedPairs`).
+  - `DELETE /api/committee/evaluations/{jobId}`: Solicitud de cancelación cooperativa en DynamoDB.
+  - `GET /api/committee/evaluations/{jobId}/report`: Descarga autenticada del informe final una vez completado (409 si sigue en curso, 404 si no existe).
+  - `POST /api/committee/training/jobs`: Conectado a `CommitteeAdmissionService` para validar idempotencia y cuotas; permanece en 503 fail-closed mientras `COMMITTEE_TRAINING_ENABLED !== 'true'`.
+- `backend/workerHandler.ts`: Enrutamiento de eventos `{ type: 'evaluation' }` hacia `EvaluationExecutor`.
+- Pruebas y verificación:
+  - `backend/__tests__/committeeEvaluationExecutor.test.ts`: 3/3 pasan (ciclo exitoso, cancelación en vuelo y aislamiento entre propietarios).
+  - `backend/__tests__/committeeHttp.test.ts`: 7/7 pasan (validación de parámetros, códigos 200/202/400/401/404/409/429/503, reportes y entrenamiento duradero).
+  - `backend/__tests__/workerHandler.test.ts`: 2/2 pasan.
+  - Estado completo: `bun test` **316/316 pasan** (58 archivos), `bun run build:lambda` y `bun run build` exitosos.
