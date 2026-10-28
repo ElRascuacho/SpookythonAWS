@@ -107,8 +107,15 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
     let selectedPolicy: PublishedPolicy | null = null;
     if (plan === "COMMITTEE") {
       try {
-        const response = await fetch("/api/committee/policies/latest", { credentials: "same-origin" });
-        if (!response.ok) throw new Error(response.status === 404 ? "No hay una política publicada del Comité." : "No se pudo obtener la política publicada del Comité.");
+                const response = await fetch("/api/committee/policies/latest", { credentials: "same-origin" });
+        const contentType = response.headers.get("content-type") ?? "";
+        if (!response.ok || !contentType.includes("application/json")) {
+          throw new Error(
+            response.status === 404
+              ? "No hay una política publicada del Comité disponible en este momento."
+              : "No se pudo obtener la política publicada del Comité (el registro no está disponible o el servidor respondió con un formato no válido)."
+          );
+        }
         selectedPolicy = parsePublishedPolicy(await response.json());
       } catch (cause) {
         if (current === generation.current) { setError(cause instanceof Error ? cause.message : "No se pudo obtener la política."); setRunning(false); }
@@ -175,9 +182,14 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
         <label>Simulaciones (1–200)<input type="number" min="1" max="200" step="1" value={count} disabled={running} onChange={(event) => setCount(Number(event.target.value))} /></label>
         <label>Semilla<select value={seedMode} disabled={running} onChange={(event) => setSeedMode(event.target.value as "fixed" | "random")}><option value="fixed">Específica</option><option value="random">Aleatoria</option></select></label>
         {seedMode === "fixed" && <label>Valor de semilla<input type="number" min="0" max="4294967295" step="1" value={seed} disabled={running} onChange={(event) => setSeed(Number(event.target.value))} /></label>}
-        <button className="primary-button" disabled={running} onClick={start}>Ejecutar simulaciones</button>
+                <button className="primary-button" disabled={running} onClick={start}>Ejecutar simulaciones</button>
         {running && <button className="secondary-button" onClick={() => { stop(); setRunning(false); setError("Simulación cancelada."); }}>Cancelar</button>}
       </section>
+      {plan === "COMMITTEE" && (
+        <p className="simulation-note" style={{ marginTop: "-8px", marginBottom: "8px", color: "#94a3b8" }}>
+          💡 <strong>Nota sobre dificultad:</strong> La política del Comité está optimizada sobre el grafo original de 16 zonas, por lo que la dificultad permanece fijada en <em>Normal · 16 zonas</em>. Para probar 32 o 48 sectores, selecciona <em>Cortafuegos automático</em> o <em>Intervención al azar</em>.
+        </p>
+      )}
       <p className="simulation-note">Cada corrida combina la semilla base con un índice secuencial para simular variantes probabilísticas distintas del mismo brote (método Monte Carlo). Repetir la misma semilla reproducirá exactamente las mismas variantes. Máximo cuatro procesos paralelos. La política del Comité se consulta al servidor; las corridas permanecen en el navegador. En difícil y extremo, los sectores son subdivisiones sintéticas: conservan la población, pero sus conexiones son estimadas y no están calibradas.</p>
       <p role="status" className="simulation-status">{error || (running ? `Simulando ${completedCount} de ${total}…` : finished ? `Completadas ${total} simulaciones · semilla ${actualSeed}` : "Configura tu análisis para comenzar.")}</p>
       {running && <progress max={total} value={completedCount} aria-label="Progreso de simulación" />}
