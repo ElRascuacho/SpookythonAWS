@@ -4,9 +4,9 @@
 }
 .rw-voice-card {
   padding: 10px 12px;
-  border: 1px solid #ffad6628;
+  border: 1px solid #f5a62338;
   border-radius: 12px;
-  background: linear-gradient(120deg, #ffad6607, #0d1a2200);
+  background: linear-gradient(120deg, #f5a62310, #09151e00);
   animation: rw-voice-card-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
   transition:
     opacity 220ms ease,
@@ -80,7 +80,7 @@
   height: calc(3px + var(--shape) * var(--voice-level) * 29px);
   flex-shrink: 0;
   border-radius: 2px;
-  background: #ffad66;
+  background: var(--research-accent, #f5a623);
   opacity: calc(0.35 + var(--voice-level) * 0.65);
   transition:
     height 90ms linear,

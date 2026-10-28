@@ -2,10 +2,10 @@
   flex-shrink: 0;
   min-width: 0;
   padding: 14px;
-  border: 1px solid #ffad6640;
+  border: 1px solid #f5a6234d;
   border-radius: 10px;
-  background: #142832;
-  color: #e5edf1;
+  background: #0e202d;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 .rw-live-report header,

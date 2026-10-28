@@ -1,5 +1,5 @@
 .research-workspace .header-actions .rw-research-info {
-  color: #ffad66;
+  color: var(--research-accent, #f5a623);
 }
 .rw-welcome {
   position: fixed;
@@ -8,12 +8,12 @@
   width: min(620px, calc(100vw - 32px));
   max-height: calc(100dvh - 40px);
   padding: 28px;
-  border: 1px solid #ffad663d;
+  border: 1px solid #f5a6234d;
   border-radius: 18px;
-  background: #101d26;
-  color: #e7eff3;
+  background: #0b1822;
+  color: var(--text);
   font-family: "Segoe UI", sans-serif;
-  box-shadow: 0 24px 90px #0007;
+  box-shadow: 0 24px 90px #000a;
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -119,13 +119,13 @@
   display: flex;
   align-items: center;
   gap: 18px;
-  border: 1px solid #ffad6660;
+  border: 1px solid #ffc45c;
   border-radius: 9px;
   padding: 12px 15px;
-  background: #ffad66;
-  color: #21190f;
+  background: var(--research-accent, #f5a623);
+  color: #1c1204;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .rw-welcome button:focus-visible {
   outline: 2px solid #ffe1c4;

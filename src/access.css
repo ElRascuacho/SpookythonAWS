@@ -240,20 +240,20 @@
 .access-guest {
   display: block;
   margin: 12px 0 16px;
-  color: #efb09a;
+  color: var(--amber);
   font-size: 15px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.access-guest:hover { color: #f7d0c2; }
+.access-guest:hover { color: #ffd07a; }
 .access-hint {
-  color: #8ca1a8;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
   margin: 9px 0 20px;
 }
 .access-error {
-  color: #ffad99;
+  color: #ff9482;
   font-size: 15px;
   line-height: 1.6;
   margin: -6px 0 17px;
@@ -264,15 +264,18 @@
   width: 100%;
   min-height: 50px;
   background: var(--mint);
-  border: 1px solid var(--mint);
-  border-radius: 2px;
+  border: 1px solid #63f5b8;
+  border-radius: 4px;
   padding: 14px 17px;
-  color: #10291e;
+  color: var(--mint-ink);
   font-size: 15px;
   font-weight: 700;
+  box-shadow: 0 6px 22px #2ee59d29;
 }
 .access-submit:not(:disabled):hover {
-  background: #c8efda;
+  background: var(--mint-hover);
+  border-color: #8af7c9;
+  box-shadow: 0 8px 26px #2ee59d45;
   transform: translateY(-1px);
 }
 .access-page button:disabled {
@@ -465,8 +468,8 @@
   position: relative;
   isolation: isolate;
   overflow-x: hidden;
-  color: #edf1e9;
-  background: #091114;
+  color: var(--text);
+  background: var(--ink);
 }
 .access-cinematic {
   position: absolute;
@@ -485,8 +488,8 @@
   animation: access-establishing-shot 32s cubic-bezier(.4, 0, .6, 1) infinite alternate;
 }
 .access-cinematic-shade {
-  background: linear-gradient(90deg, #071014c9 0%, #07101483 42%, #071014ed 100%),
-    linear-gradient(0deg, #071014 0%, transparent 45%, #0710149c 100%);
+  background: linear-gradient(90deg, #060f16d8 0%, #060f1688 42%, #060f16f2 100%),
+    linear-gradient(0deg, #060f16 0%, transparent 45%, #060f16a6 100%);
 }
 @keyframes access-establishing-shot {
   from { transform: scale(1.02); }
@@ -496,18 +499,19 @@
   position: relative;
 }
 .access-brand-icon {
-  border-color: #e9b4a14d;
-  color: #f09c81;
-  background: #101b1cc9;
+  border-color: #2ee59d66;
+  color: var(--mint);
+  background: #091822d9;
+  box-shadow: 0 0 18px #2ee59d1f;
 }
-.access-private { color: #efb09a; }
-.access-private > span { background: #ef9278; box-shadow: 0 0 12px #ef927888; }
+.access-private { color: var(--amber); }
+.access-private > span { background: var(--amber); box-shadow: 0 0 12px #f5a62399; }
 .access-layout {
   max-width: 1300px;
   grid-template-columns: minmax(0, 1.3fr) minmax(350px, 440px);
 }
-.access-story { text-shadow: 0 3px 24px #000a; }
-.access-story .access-eyebrow { color: #f3a78d; }
+.access-story { text-shadow: 0 3px 24px #000b; }
+.access-story .access-eyebrow { color: var(--amber); }
 .access-story h1 {
   font-family: Impact, 'Arial Narrow', sans-serif;
   font-size: clamp(58px, 6.4vw, 100px);
@@ -515,23 +519,24 @@
   letter-spacing: .01em;
   text-transform: uppercase;
 }
-.access-story h1 em { color: #ef987d; }
-.access-lead { color: #d3dcd7; max-width: 470px; }
+.access-story h1 em { color: var(--coral); }
+.access-lead { color: #cee0eb; max-width: 470px; }
 .access-radar { display: none; }
-.access-mission { margin-top: 44px; border-color: #e5ebe13d; }
-.access-mission > span { color: #f3a78d; }
+.access-mission { margin-top: 44px; border-color: #2ee59d33; }
+.access-mission > span { color: var(--mint); }
 .access-card {
-  background: #0c171aeb;
-  border-color: #b7c9bd3d;
-  box-shadow: 0 30px 90px #0009;
+  background: #0a1721f0;
+  border-color: #26485a;
+  box-shadow: 0 30px 90px #02080dcc;
 }
-.access-card::before { background: #ef987d; }
-.access-card-top { color: #d2a293; }
-.access-fingerprint { color: #efad98; border-color: #e8a18a55; }
-.access-card .access-eyebrow { color: #eaa28b; }
-.access-card h2 { color: #f1f2e9; }
-.access-input { background: #050c0ee6; border-color: #abc0b45c; }
-.access-submit { background: #d6e9d7; border-color: #d6e9d7; color: #13251c; }
+.access-card::before { background: var(--mint); }
+.access-card-top { color: var(--mint); border-bottom-color: #1c3645; }
+.access-fingerprint { color: var(--mint); border-color: #2ee59d4d; background: #2ee59d0f; }
+.access-card .access-eyebrow { color: var(--amber); }
+.access-card h2 { color: var(--text); }
+.access-input { background: #061017f2; border-color: #2b4c5e; }
+.access-submit { background: var(--mint); border-color: #63f5b8; color: var(--mint-ink); }
+.access-submit:disabled { opacity: 1; background: #122929; border-color: #214a44; color: #75a398; box-shadow: none; }
 .access-story > .access-eyebrow,
 .access-story h1,
 .access-lead,

@@ -55,8 +55,8 @@ const CITY_FLYOVER_MIN_ZOOM = 12.6;
 
 function drawTrafficVehicle(ctx: CanvasRenderingContext2D, type: "car" | "bus") {
   const bus = type === "bus";
-  ctx.fillStyle = bus ? "#80e0bc" : "#f0c879";
-  ctx.strokeStyle = "#08141a";
+  ctx.fillStyle = bus ? "#2ee59d" : "#f5a623";
+  ctx.strokeStyle = "#060f16";
   ctx.lineWidth = 0.8;
   ctx.beginPath();
   if (bus) {
@@ -220,7 +220,7 @@ function buildNode3DCompound(
     properties: {
       id: node.id,
       part: "perimeter-ring",
-      color: isSelected ? "#b1dfc8" : hasCordon ? "#80e0bc" : coreColor,
+      color: isSelected ? "#2ee59d" : hasCordon ? "#38bdf8" : coreColor,
       base: 0,
       height: isSelected ? 14 : 9,
     },
@@ -401,7 +401,7 @@ function buildNode3DCompound(
       properties: {
         id: node.id,
         part: "intervention-crown",
-        color: hasVaccine ? "#b1dfc8" : "#d3bc80",
+        color: hasVaccine ? "#2ee59d" : "#f5a623",
         base: Math.round(coreHeight + 10),
         height: Math.round(coreHeight + 24),
       },
@@ -437,7 +437,7 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       id: "background-void",
       type: "background",
       paint: {
-        "background-color": "#08141a",
+        "background-color": "#060e14",
       },
     },
     {
@@ -446,9 +446,9 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       source: "aws-terrain-dem",
       paint: {
         "hillshade-exaggeration": 0.5,
-        "hillshade-shadow-color": "#040b0f",
-        "hillshade-highlight-color": "#7fb8a4",
-        "hillshade-accent-color": "#132a34",
+        "hillshade-shadow-color": "#03080c",
+        "hillshade-highlight-color": "#4fd1a5",
+        "hillshade-accent-color": "#0f2432",
       },
     },
     {
@@ -458,9 +458,9 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       "source-layer": "transportation",
       minzoom: 11,
       paint: {
-        "line-color": "#386878",
+        "line-color": "#2d6278",
         "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.7, 15, 2.8],
-        "line-opacity": 0.48,
+        "line-opacity": 0.52,
       },
     },
     {
@@ -470,7 +470,7 @@ const EARTH_3D_STYLE: maplibregl.StyleSpecification = {
       "source-layer": "building",
       minzoom: 12,
       paint: {
-        "fill-extrusion-color": "#152932",
+        "fill-extrusion-color": "#10222f",
         "fill-extrusion-height": [
           "coalesce",
           ["get", "render_height"],
@@ -557,20 +557,20 @@ export function CureEarth3DMap({
       const coreColor =
         layer === "protection"
           ? state.R > 0
-            ? "#6fd4af"
-            : "#355863"
+            ? "#2ee59d"
+            : "#2b4d5c"
           : state.I > 250
-            ? "#ff5d47"
+            ? "#ff4757"
             : state.I > 0
-              ? "#f58a72"
-              : "#4c727d";
+              ? "#ff6b57"
+              : "#386275";
 
       const accentColor =
         layer === "protection"
-          ? "#b1dfc8"
+          ? "#7ef5c4"
           : state.I > 0
-            ? "#ffb19e"
-            : "#87adb7";
+            ? "#ffa394"
+            : "#7cb0c4";
 
       const coreHeight =
         layer === "protection"
@@ -596,12 +596,12 @@ export function CureEarth3DMap({
           ? 190 + Math.min(160, state.I * 0.1)
           : 155 + state.vectorIndex * 60;
       const haloColor = hasCordon
-        ? "#80e0bc"
+        ? "#38bdf8"
         : state.I > 0
-          ? "#f58a72"
+          ? "#ff6b57"
           : hasFumigate
-            ? "#d3bc80"
-            : "#3d6975";
+            ? "#f5a623"
+            : "#2e5c70";
       const haloOpacity = hasCordon
         ? 0.25
         : state.I > 0
@@ -638,12 +638,12 @@ export function CureEarth3DMap({
         edge.source === selectedNode || edge.target === selectedNode;
 
       const color = closed
-        ? "#a7ddc4"
+        ? "#38bdf8"
         : infected
-          ? "#f58a72"
+          ? "#ff6b57"
           : touchesSelected
-            ? "#9ec8bb"
-            : "#567d87";
+            ? "#2ee59d"
+            : "#436d80";
       const width = closed
         ? 3
         : touchesSelected
@@ -1026,7 +1026,7 @@ export function CureEarth3DMap({
             ctx.quadraticCurveTo(cx, cy, p2.x, p2.y);
 
             if (isClosed) {
-              ctx.strokeStyle = "rgba(128, 224, 188, 0.78)";
+              ctx.strokeStyle = "rgba(56, 189, 248, 0.82)";
               ctx.lineWidth = 2;
               ctx.setLineDash([4, 5]);
               ctx.stroke();
@@ -1035,9 +1035,9 @@ export function CureEarth3DMap({
               ctx.strokeStyle =
                 infectedFlow > 0
                   ? touchesSelected
-                    ? "rgba(245, 138, 114, 0.72)"
-                    : "rgba(245, 138, 114, 0.38)"
-                  : "rgba(177, 223, 200, 0.35)";
+                    ? "rgba(255, 107, 87, 0.78)"
+                    : "rgba(255, 107, 87, 0.42)"
+                  : "rgba(46, 229, 157, 0.42)";
               ctx.lineWidth = touchesSelected ? 1.9 : 1.3;
               ctx.stroke();
 
@@ -1054,9 +1054,9 @@ export function CureEarth3DMap({
 
                 ctx.beginPath();
                 ctx.arc(px, py, 3, 0, Math.PI * 2);
-                ctx.fillStyle = "#ff967d";
-                ctx.shadowColor = "#f58a72";
-                ctx.shadowBlur = 7;
+                ctx.fillStyle = "#ff8a78";
+                ctx.shadowColor = "#ff6b57";
+                ctx.shadowBlur = 8;
                 ctx.fill();
                 ctx.shadowBlur = 0;
               }
@@ -1121,8 +1121,8 @@ export function CureEarth3DMap({
               ctx.translate(pt.x, pt.y);
               ctx.scale(1, squashY);
               ctx.rotate(prefersReducedMotion ? 0 : elapsed * 0.55);
-              ctx.strokeStyle = "rgba(177, 223, 200, 0.85)";
-              ctx.lineWidth = 1.5;
+              ctx.strokeStyle = "rgba(46, 229, 157, 0.9)";
+              ctx.lineWidth = 1.6;
               ctx.setLineDash([6, 4]);
               ctx.beginPath();
               ctx.arc(0, 0, baseR * 1.15, 0, Math.PI * 2);
@@ -1135,8 +1135,8 @@ export function CureEarth3DMap({
               const domeH = domeR * (0.7 + pitchFactor * 0.3);
 
               ctx.save();
-              ctx.strokeStyle = "rgba(128, 224, 188, 0.7)";
-              ctx.fillStyle = "rgba(128, 224, 188, 0.08)";
+              ctx.strokeStyle = "rgba(56, 189, 248, 0.78)";
+              ctx.fillStyle = "rgba(56, 189, 248, 0.1)";
               ctx.lineWidth = 1.3;
 
               ctx.beginPath();

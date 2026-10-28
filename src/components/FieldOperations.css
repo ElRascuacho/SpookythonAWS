@@ -1,8 +1,8 @@
-.game-dialog.field-dialog { width: 1140px; padding: 22px; background: #0c1c24; border-color: #56716c; }
+.game-dialog.field-dialog { width: 1140px; padding: 22px; background: #0b1923; border-color: #26485a; }
 .field-dialog .dialog-heading { padding-bottom: 14px; margin-bottom: 14px; }
 .field-dialog .dialog-heading h2 { font-size: 26px; }
 .field-dialog .dialog-heading .eyebrow { font-size: 15px; letter-spacing: 1.6px; }
-.field-operations { --field-ink: #e7f0e9; --field-muted: #afc0bf; --field-mint: #b9e4ce; color: var(--field-ink); font: 16px/1.55 var(--body); }
+.field-operations { --field-ink: var(--text); --field-muted: var(--muted); --field-mint: var(--mint); color: var(--field-ink); font: 16px/1.55 var(--body); }
 .field-operations button { font: 600 16px/1.4 var(--body); cursor: pointer; }
 .field-operations button:disabled { opacity: .55; cursor: default; }
 .field-operations button:focus-visible, .field-operations canvas:focus-visible { outline: 3px solid #f0cf85; outline-offset: 3px; }
