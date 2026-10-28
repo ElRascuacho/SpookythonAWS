@@ -11,7 +11,6 @@ import {
   HeartPulse,
   House,
   LogOut,
-  Clapperboard,
   MapPin,
   Microscope,
   RotateCcw,
@@ -616,22 +615,29 @@ export default function App({
         <source src="/audio/bgm-manta-cero.mp3" type="audio/mpeg" />
       </audio>
       <header className="hub-topbar">
-        <a className="brand" href="#" aria-label="Operación Zero Day">
-          <span className="brand-mark">
-            <Dna size={26} />
-          </span>
-          <span>
-            ZERO <span className="brand-zero">DAY</span>
-            <small>LA CURA ESTÁ EN TUS MANOS</small>
-          </span>
-        </a>
-        <div className="mission-badge">
-          <span className="live-dot" />
-          OPERACIÓN NECRO-DENGUE
+        <div className="hub-identity">
+          <a className="brand" href="#" aria-label="Operación Zero Day">
+            <span className="brand-mark">
+              <Dna size={26} />
+            </span>
+            <span>
+              ZERO <span className="brand-zero">DAY</span>
+              <small>LA CURA ESTÁ EN TUS MANOS</small>
+            </span>
+          </a>
+          <div className="mission-badge">
+            <span className="live-dot" />
+            OPERACIÓN NECRO-DENGUE
+          </div>
         </div>
+        {!tutorial && <ModeTabs onSelect={(mode) => {
+          if (mode === "campaign" && activeMode === "campaign") {
+            setBriefingChapter(0);
+            setModal("campaign");
+          }
+        }} />}
         <nav className="header-actions" aria-label="Opciones de misión">
           {!tutorial && <>
-          <ModeTabs />
           <button aria-label="Modo simulación múltiple" disabled={dayTransition !== null} onClick={() => setSimulationMode(true)}>
             <Activity size={16} /><span>Simulación</span>
           </button>
@@ -640,10 +646,6 @@ export default function App({
               <FlaskConical size={16} /><span>Investigación</span>
             </button>
           )}
-          <button aria-label="Campaña cinematográfica" onClick={() => { setBriefingChapter(0); setModal("campaign"); onModeChange?.("campaign"); }}>
-            <Clapperboard size={16} />
-            <span>Campaña</span>
-          </button>
           <button aria-label="Evaluar mi estrategia" onClick={openAnalysis}>
             <TrendingDown size={16} />
             <span>Evaluar</span>
