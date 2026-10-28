@@ -7,16 +7,19 @@ import {
   FolderOpen,
   MessageSquare,
   PanelLeftClose,
+  Maximize2,
+  Minimize2,
   ChartNoAxesCombined,
   X,
 } from "lucide-react";
-import { CureEarth3DMap } from "../components/CureEarth3DMap";
+import { ResearchVoiceControls } from "./ResearchVoiceControls";
 import { ModeTabs } from "../ModeShell";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { AgentReplyText } from "./AgentReplyText";
+import { CureEarth3DMap } from "../components/CureEarth3DMap";
 import { MANTA_NODES, NODE_MAP } from "../domain/mantaGraph";
 import { runSingleSeirSimulation } from "../domain/seirEngine";
 import {
-  AgentReplySchema,
+  AgentResponseSchema,
   MeasureSchema,
   WorkspaceSchema,
   STORAGE_KEY,
@@ -85,7 +88,11 @@ export function ResearchWorkspace({
   const [selected, setSelected] = useState("N01");
   const [draftId, setDraftId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [chat, setChat] = useState<{ role: string; text: string }[]>([]);
+  const [chat, setChat] = useState<
+    { id: string; role: string; text: string }[]
+  >([]);
+  const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
+  const typingScrollUntil = useRef(0);
   const [busy, setBusy] = useState(false);
   const [running, setRunning] = useState(false);
   const [speed, setSpeed] = useState(800);
@@ -96,11 +103,15 @@ export function ResearchWorkspace({
   const [manifest, setManifest] = useState<Workspace | null>(null);
   const [view, setView] = useState<"scenario" | "measures">("measures");
   const [panelOpen, setPanelOpen] = useState(true);
-  const [agentWide, setAgentWide] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(false);
   const [inspecting, setInspecting] = useState(false);
   const [curveOpen, setCurveOpen] = useState(false);
   const [fileOpen, setFileOpen] = useState(false);
   const request = useRef<AbortController | null>(null);
+  const chatScroll = useRef<HTMLDivElement | null>(null);
+  const followChat = useRef(true);
+  const autoScrolling = useRef(false);
+  const [unreadChat, setUnreadChat] = useState(false);
   const latest = useRef(w);
   latest.current = w;
   const draft = w.drafts.find((d) => d.id === draftId) ?? null;
@@ -143,6 +154,63 @@ export function ResearchWorkspace({
     );
     return () => clearTimeout(timer);
   }, [visible, running, day, speed, result]);
+  useEffect(() => {
+    const scroll = chatScroll.current;
+    if (!visible || view !== "measures" || !scroll) return;
+    if (!followChat.current) {
+      setUnreadChat(true);
+      return;
+    }
+    autoScrolling.current = true;
+    scroll.scrollTo({
+      top: scroll.scrollHeight,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+    setUnreadChat(false);
+    const timer = setTimeout(() => {
+      autoScrolling.current = false;
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [chat, busy, view, visible, draftId]);
+
+  useEffect(() => {
+    const scroll = chatScroll.current;
+    if (!visible || view !== "measures" || !scroll) return;
+    const observer = new ResizeObserver(() => {
+      if (followChat.current)
+        scroll.scrollTo({ top: scroll.scrollHeight, behavior: "instant" });
+    });
+    observer.observe(scroll);
+    return () => observer.disconnect();
+  }, [visible, view]);
+
+  useEffect(() => {
+    if (!visible || view !== "measures") setTypingMessageId(null);
+  }, [visible, view, typingMessageId]);
+
+  function userScrollChat() {
+    autoScrolling.current = false;
+    typingScrollUntil.current = 0;
+  }
+
+  function followTyping() {
+    const scroll = chatScroll.current;
+    if (!scroll || !visible || view !== "measures") return;
+    if (!followChat.current) {
+      setUnreadChat(true);
+      return;
+    }
+    typingScrollUntil.current = performance.now() + 600;
+    scroll.scrollTo({
+      top: scroll.scrollHeight,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+  }
+
   function updateMeasure(definition: Measure) {
     setRunning(false);
     setW((s) => ({
@@ -272,8 +340,12 @@ export function ResearchWorkspace({
       setError(e instanceof Error ? e.message : "Archivo inválido.");
     }
   }
-  async function ask() {
-    if (busy || !prompt.trim()) return;
+  async function ask(
+    voiceMessage?: string,
+    voiceSignal?: AbortSignal,
+    voiceTool = false,
+  ) {
+    if (busy || !(voiceMessage ?? prompt).trim()) return;
     if (!draft && w.drafts.length >= 8) {
       setError("Máximo ocho medidas por experimento.");
       return;
@@ -286,14 +358,24 @@ export function ResearchWorkspace({
     }
     const base = JSON.stringify(w),
       target = draftId,
-      message = prompt.trim();
-    setChat((s) => [...s, { role: "Tú", text: message }].slice(-20));
-    setPrompt("");
+      message = (voiceMessage ?? prompt).trim();
+    followChat.current = true;
+    setTypingMessageId(null);
+    if (!voiceTool)
+      setChat((s) =>
+        [...s, { id: crypto.randomUUID(), role: "Tú", text: message }].slice(
+          -20,
+        ),
+      );
+    if (voiceMessage === undefined) setPrompt("");
     setBusy(true);
     setError("");
     const controller = new AbortController();
     request.current = controller;
     const timeout = setTimeout(() => controller.abort(), 12000);
+    const signal = voiceSignal
+      ? AbortSignal.any([controller.signal, voiceSignal])
+      : controller.signal;
     try {
       const response = await fetch("/api/research/agent", {
         method: "POST",
@@ -307,25 +389,40 @@ export function ResearchWorkspace({
             text: m.text,
           })),
         }),
-        signal: controller.signal,
+        signal,
       });
       const body = await response.json();
       if (!response.ok)
         throw Error(body.message ?? "No se pudo consultar al agente.");
-      const parsed = AgentReplySchema.parse({
-        reply: body.reply,
-        proposal: body.proposal ?? null,
-      });
+      const validated = AgentResponseSchema.safeParse(body);
+      if (!validated.success)
+        throw Error(
+          "La respuesta del agente no tiene un formato válido. No se modificó la medida; vuelve a intentarlo.",
+        );
+      const parsed = validated.data;
       if (base !== JSON.stringify(latest.current))
         throw Error(
           "La configuración cambió durante la consulta. La respuesta no sobrescribió tus cambios; vuelve a solicitarla.",
         );
-      if (controller.signal.aborted) return;
-      setChat((s) =>
-        [...s, { role: `Agente · ${body.model}`, text: parsed.reply }].slice(
-          -20,
-        ),
+      if (signal.aborted) return;
+      const replyId = crypto.randomUUID();
+      setTypingMessageId(
+        voiceMessage !== undefined ||
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? null
+          : replyId,
       );
+      if (!voiceTool)
+        setChat((s) =>
+          [
+            ...s,
+            {
+              id: replyId,
+              role: `Agente · ${parsed.model}`,
+              text: parsed.reply,
+            },
+          ].slice(-20),
+        );
       if (parsed.proposal) {
         const id = target ?? crypto.randomUUID();
         setW((s) => ({
@@ -355,14 +452,16 @@ export function ResearchWorkspace({
         }));
         setDraftId(id);
       }
+      return parsed;
     } catch (e) {
-      setError(
-        controller.signal.aborted
-          ? "Consulta cancelada o tiempo agotado. No se modificó la medida."
-          : e instanceof Error
-            ? e.message
-            : "Error del proveedor.",
-      );
+      if (!(voiceTool && signal.aborted))
+        setError(
+          signal.aborted
+            ? "Consulta cancelada o tiempo agotado. No se modificó la medida."
+            : e instanceof Error
+              ? e.message
+              : "Error del proveedor.",
+        );
     } finally {
       clearTimeout(timeout);
       setBusy(false);
@@ -400,7 +499,7 @@ export function ResearchWorkspace({
   const max = Math.max(1, ...observed.map((s) => s.totalI));
   return (
     <section
-      className={`research-workspace ${visible ? "is-active" : ""} ${panelOpen ? "rw-panel-open" : ""} ${agentWide ? "rw-agent-wide" : ""}`}
+      className={`research-workspace ${visible ? "is-active" : ""} ${panelOpen ? "rw-panel-open" : ""} ${panelExpanded ? "rw-panel-expanded" : ""}`}
       inert={!visible}
       aria-hidden={!visible}
       aria-label="Espacio de investigación"
@@ -424,8 +523,8 @@ export function ResearchWorkspace({
             <small>LABORATORIO · MODELO SEIR-V</small>
           </span>
         </a>
-        <div className="mission-badge">
-          <span className="live-dot" /> INVESTIGACIÓN{" "}
+        <div className="mission-badge research-mode-badge">
+          <FlaskConical size={14} aria-hidden="true" /> INVESTIGACIÓN{" "}
           <span className="badge-divider">/</span>
           <b>EXPERIMENTO INDEPENDIENTE</b>
         </div>
@@ -439,6 +538,8 @@ export function ResearchWorkspace({
             aria-pressed={panelOpen && view === "measures"}
             onClick={() => {
               setPanelOpen(true);
+              setInspecting(false);
+              setCurveOpen(false);
               setView("measures");
             }}
           >
@@ -450,6 +551,8 @@ export function ResearchWorkspace({
             aria-pressed={panelOpen && view === "scenario"}
             onClick={() => {
               setPanelOpen(true);
+              setInspecting(false);
+              setCurveOpen(false);
               setView("scenario");
             }}
           >
@@ -459,7 +562,11 @@ export function ResearchWorkspace({
           <button
             aria-label="Evolución del experimento"
             aria-pressed={curveOpen}
-            onClick={() => setCurveOpen((v) => !v)}
+            onClick={() => {
+              if (window.matchMedia("(max-width: 720px)").matches)
+                setPanelOpen(false);
+              setCurveOpen((v) => !v);
+            }}
           >
             <ChartNoAxesCombined size={16} />
             <span>Evolución</span>
@@ -535,16 +642,26 @@ export function ResearchWorkspace({
         >
           <div className="rw-panel-title">
             <span>
-              <FlaskConical size={14} /> LABORATORIO
+              <FlaskConical size={16} />{" "}
+              {view === "measures"
+                ? "Agente de investigación"
+                : "Escenario experimental"}
             </span>
-            <span>
+            <div className="rw-panel-actions">
               <button
-                type="button"
-                aria-pressed={agentWide}
-                aria-label={agentWide ? "Reducir panel del agente" : "Ampliar panel del agente a un tercio"}
-                onClick={() => setAgentWide((open) => !open)}
+                aria-label={
+                  panelExpanded
+                    ? "Reducir panel del agente"
+                    : "Ampliar panel del agente"
+                }
+                aria-pressed={panelExpanded}
+                onClick={() => setPanelExpanded((v) => !v)}
               >
-                {agentWide ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                {panelExpanded ? (
+                  <Minimize2 size={16} />
+                ) : (
+                  <Maximize2 size={16} />
+                )}
               </button>
               <button
                 aria-label="Plegar panel del agente"
@@ -552,22 +669,8 @@ export function ResearchWorkspace({
               >
                 <PanelLeftClose size={16} />
               </button>
-            </span>
+            </div>
           </div>
-          <nav className="rw-subtabs">
-            {[
-              ["scenario", "Escenario"],
-              ["measures", "Medidas / Agente"],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                aria-pressed={view === id}
-                onClick={() => setView(id as typeof view)}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
           {view === "scenario" && (
             <div className="rw-content">
               <h2>Configuración independiente</h2>
@@ -637,8 +740,8 @@ export function ResearchWorkspace({
             </div>
           )}
           {view === "measures" && (
-            <div className="rw-content">
-              <div className="rw-actions">
+            <div className="rw-content rw-agent-content">
+              <div className="rw-actions rw-agent-toolbar">
                 <select
                   aria-label="Medida a editar"
                   value={draftId ?? ""}
@@ -651,36 +754,330 @@ export function ResearchWorkspace({
                     </option>
                   ))}
                 </select>
-                <button onClick={() => setDraftId(null)}>Nueva</button>
+                <button onClick={() => setDraftId(null)}>Nueva medida</button>
               </div>
-              <div className="rw-chat" role="log" aria-live="polite" aria-relevant="additions" aria-atomic="false" aria-label="Conversación con el agente">
-                {chat.length === 0 && (
-                  <div>
-                    <strong>AGENTE DE INVESTIGACIÓN</strong>
-                    <p>
-                      Describe la intervención que deseas explorar. Revisaremos
-                      sus parámetros, supuestos y efectos antes de aplicarla al
-                      experimento.
-                    </p>
-                  </div>
-                )}
-                {chat.length ? (
-                  chat.map((m, i) => (
-                    <article key={i}>
-                      <small>{m.role}</small>
-                      <p>{m.text}</p>
-                    </article>
-                  ))
-                ) : (
-                  <p>
-                    Describe una medida o una modificación: «Crea un toque de
-                    queda de 22:00 a 05:00 en Tarqui, exceptúa corredores del
-                    hospital y deja editables cumplimiento y costo». El agente
-                    real pedirá aclaraciones o propondrá supuestos visibles.
+              <div
+                className="rw-agent-scroll"
+                ref={chatScroll}
+                tabIndex={0}
+                aria-label="Historial del agente"
+                onKeyDown={(e) => {
+                  if (
+                    [
+                      "ArrowUp",
+                      "ArrowDown",
+                      "PageUp",
+                      "PageDown",
+                      "Home",
+                      "End",
+                    ].includes(e.key)
+                  )
+                    userScrollChat();
+                }}
+                onWheel={userScrollChat}
+                onTouchStart={userScrollChat}
+                onPointerDown={userScrollChat}
+                onScroll={(e) => {
+                  if (
+                    autoScrolling.current ||
+                    performance.now() < typingScrollUntil.current
+                  )
+                    return;
+                  const el = e.currentTarget;
+                  followChat.current =
+                    el.scrollHeight - el.scrollTop - el.clientHeight < 64;
+                  if (followChat.current) setUnreadChat(false);
+                }}
+              >
+                <div
+                  className="rw-chat"
+                  role="log"
+                  aria-live="polite"
+                  aria-relevant="additions"
+                  aria-atomic="false"
+                  aria-label="Conversación con el agente"
+                >
+                  {chat.length === 0 && (
+                    <div>
+                      <strong>AGENTE DE INVESTIGACIÓN</strong>
+                      <p>
+                        Describe la intervención que deseas explorar.
+                        Revisaremos sus parámetros, supuestos y efectos antes de
+                        aplicarla al experimento.
+                      </p>
+                    </div>
+                  )}
+                  {chat.length
+                    ? chat.map((m) => (
+                        <article
+                          key={m.id}
+                          data-role={m.role === "Tú" ? "user" : "assistant"}
+                        >
+                          <small>{m.role}</small>
+                          {m.role === "Tú" ? (
+                            <p>{m.text}</p>
+                          ) : (
+                            <AgentReplyText
+                              text={m.text}
+                              animate={typingMessageId === m.id}
+                              onProgress={followTyping}
+                              onComplete={() =>
+                                setTypingMessageId((id) =>
+                                  id === m.id ? null : id,
+                                )
+                              }
+                            />
+                          )}
+                        </article>
+                      ))
+                    : null}
+                </div>
+                {busy && (
+                  <p className="rw-chat-pending" role="status">
+                    El agente está preparando su respuesta
+                    <span className="rw-typing-dots" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
                   </p>
                 )}
+                {draft && (
+                  <details className="rw-draft-drawer" key={draft.id}>
+                    <summary>
+                      Editar y confirmar: {draft.definition.name}
+                    </summary>
+                    <section className="rw-measure">
+                      <h2>{draft.definition.name}</h2>
+                      <p>{draft.definition.description}</p>
+                      <small>
+                        Revisión {draft.revision} ·{" "}
+                        {draft.confirmedRevision === draft.revision
+                          ? "Confirmada"
+                          : "Pendiente de confirmación"}
+                      </small>
+                      <label className="rw-check">
+                        <input
+                          type="checkbox"
+                          checked={draft.enabled}
+                          onChange={(e) => {
+                            setRunning(false);
+                            setW((s) => ({
+                              ...s,
+                              drafts: s.drafts.map((d) =>
+                                d.id === draft.id
+                                  ? { ...d, enabled: e.target.checked }
+                                  : d,
+                              ),
+                            }));
+                          }}
+                        />
+                        Incluir en la próxima ejecución
+                      </label>
+                      <div className="rw-fields">
+                        {draft.definition.times.map((p, i) => (
+                          <label key={p.key}>
+                            {p.label}
+                            <input
+                              type="time"
+                              value={p.value}
+                              onChange={(e) =>
+                                updateMeasure({
+                                  ...draft.definition,
+                                  times: draft.definition.times.map((x, j) =>
+                                    j === i
+                                      ? { ...x, value: e.target.value }
+                                      : x,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                        ))}
+                        {draft.definition.numbers.map((p, i) => (
+                          <label key={p.key}>
+                            {p.label} ({p.unit})
+                            <input
+                              type="number"
+                              min={p.min}
+                              max={p.max}
+                              step="any"
+                              value={p.value}
+                              onChange={(e) =>
+                                updateMeasure({
+                                  ...draft.definition,
+                                  numbers: draft.definition.numbers.map(
+                                    (x, j) =>
+                                      j === i
+                                        ? {
+                                            ...x,
+                                            value: Number(e.target.value),
+                                          }
+                                        : x,
+                                  ),
+                                })
+                              }
+                            />
+                            <small>
+                              {p.min}–{p.max}
+                            </small>
+                          </label>
+                        ))}
+                        <label>
+                          Día inicial
+                          <input
+                            type="number"
+                            min="1"
+                            max="60"
+                            value={draft.definition.firstDay}
+                            onChange={(e) =>
+                              updateMeasure({
+                                ...draft.definition,
+                                firstDay: Number(e.target.value),
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Día final
+                          <input
+                            type="number"
+                            min="1"
+                            max="60"
+                            value={draft.definition.lastDay}
+                            onChange={(e) =>
+                              updateMeasure({
+                                ...draft.definition,
+                                lastDay: Number(e.target.value),
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <fieldset>
+                        <legend>Zonas</legend>
+                        {researchNodes.map((n) => (
+                          <label key={n.id} className="rw-check">
+                            <input
+                              type="checkbox"
+                              checked={draft.definition.zones.includes(n.id)}
+                              onChange={(e) =>
+                                updateMeasure({
+                                  ...draft.definition,
+                                  zones: e.target.checked
+                                    ? [...draft.definition.zones, n.id]
+                                    : draft.definition.zones.filter(
+                                        (id) => id !== n.id,
+                                      ),
+                                })
+                              }
+                            />
+                            {n.name}
+                          </label>
+                        ))}
+                      </fieldset>
+                      <p className="rw-warning">
+                        Supuestos a aceptar: {draft.definition.assumptions}
+                      </p>
+                      <p>
+                        Canales:{" "}
+                        {draft.definition.effects
+                          .map((e) => e.channel)
+                          .join(", ")}
+                        . Horario uniforme aproximado; condición:{" "}
+                        {draft.definition.thresholdKey ?? "ninguna"}. Corredores
+                        exceptuados:{" "}
+                        {draft.definition.excludedEdges.join(", ") || "ninguno"}
+                        .
+                      </p>
+                      {draft.history.length > 0 && (
+                        <details>
+                          <summary>
+                            Historial de confirmaciones ({draft.history.length})
+                          </summary>
+                          {draft.history.map((h) => (
+                            <p key={h.revision}>
+                              Revisión {h.revision}: {h.definition.name} ·{" "}
+                              {h.definition.assumptions}
+                            </p>
+                          ))}
+                        </details>
+                      )}
+                      <button
+                        disabled={
+                          !MeasureSchema.safeParse(draft.definition).success
+                        }
+                        onClick={() => {
+                          setRunning(false);
+                          setW((s) => ({
+                            ...s,
+                            drafts: s.drafts.map((d) =>
+                              d.id === draft.id
+                                ? {
+                                    ...d,
+                                    confirmed: structuredClone(d.definition),
+                                    confirmedRevision: d.revision,
+                                    history: [
+                                      ...d.history.filter(
+                                        (h) => h.revision !== d.revision,
+                                      ),
+                                      {
+                                        revision: d.revision,
+                                        definition: structuredClone(
+                                          d.definition,
+                                        ),
+                                      },
+                                    ].slice(-20),
+                                  }
+                                : d,
+                            ),
+                          }));
+                        }}
+                      >
+                        Confirmar revisión y supuestos
+                      </button>
+                      <button
+                        onClick={() => {
+                          setRunning(false);
+                          setW((s) => ({
+                            ...s,
+                            drafts: s.drafts.filter((d) => d.id !== draft.id),
+                          }));
+                          setDraftId(null);
+                        }}
+                      >
+                        Eliminar medida
+                      </button>
+                      {!MeasureSchema.safeParse(draft.definition).success && (
+                        <p role="alert">
+                          Parámetros inválidos: revisa rangos, calendario,
+                          horario y referencias antes de confirmar.
+                        </p>
+                      )}
+                    </section>
+                  </details>
+                )}
               </div>
-              <p className="rw-agent-status" role="status">{busy ? 'Consultando al agente…' : ''}</p>
+              {unreadChat && (
+                <button
+                  className="rw-new-messages"
+                  onClick={() => {
+                    followChat.current = true;
+                    autoScrolling.current = true;
+                    chatScroll.current?.scrollTo({
+                      top: chatScroll.current.scrollHeight,
+                      behavior: window.matchMedia(
+                        "(prefers-reduced-motion: reduce)",
+                      ).matches
+                        ? "instant"
+                        : "smooth",
+                    });
+                    setUnreadChat(false);
+                  }}
+                >
+                  Ver mensajes recientes ↓
+                </button>
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -688,217 +1085,82 @@ export function ResearchWorkspace({
                 }}
                 className="rw-composer"
               >
+                <ResearchVoiceControls
+                  active={visible && panelOpen && view === "measures"}
+                  processing={busy}
+                  onQuery={async (text, signal) => {
+                    const result = await ask(text, signal, true);
+                    if (!result)
+                      throw Error(
+                        "No se pudo completar la consulta de investigación.",
+                      );
+                    return JSON.stringify({
+                      reply: result.reply,
+                      proposal_ready: Boolean(result.proposal),
+                      confirmed: false,
+                      applied: false,
+                    });
+                  }}
+                  getContext={() => ({
+                    engine: w.engineVersion,
+                    execution_prepared: Boolean(manifest),
+                    configuration_differs_from_execution: Boolean(stale),
+                    editable_parameters: w.params,
+                    execution_parameters: manifest?.params ?? null,
+                    observed_snapshot: snapshot,
+                    current_proposal: draft
+                      ? {
+                          definition: draft.definition,
+                          confirmed: draft.confirmedRevision === draft.revision,
+                        }
+                      : null,
+                    note: "Solo instantánea del día observado; no son resultados futuros ni observaciones clínicas. Las propuestas requieren confirmación manual.",
+                  })}
+                  onTranscript={(turn) => {
+                    setTypingMessageId(null);
+                    setChat((s) =>
+                      s.some((m) => m.id === turn.id)
+                        ? s
+                        : [
+                            ...s,
+                            {
+                              id: turn.id,
+                              role:
+                                turn.role === "user" ? "Tú" : "Agente de voz",
+                              text: turn.text,
+                            },
+                          ].slice(-20),
+                    );
+                  }}
+                />
                 <textarea
                   aria-label="Petición al agente"
+                  aria-describedby="rw-composer-hint"
                   maxLength={2000}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing &&
+                      e.keyCode !== 229
+                    ) {
+                      e.preventDefault();
+                      if (!busy && prompt.trim())
+                        e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
                   placeholder="Describe tu medida…"
                   required
                 />
-                <button disabled={busy} type="submit">
-                  {busy ? "Consultando Luna…" : "Enviar a Luna"}
+                <small id="rw-composer-hint">
+                  Enter para enviar · Shift + Enter para una nueva línea
+                </small>
+                <button disabled={busy || !prompt.trim()} type="submit">
+                  {busy ? "Consultando agente…" : "Enviar al agente"}
                 </button>
               </form>
-              {draft && (
-                <section className="rw-measure">
-                  <h2>{draft.definition.name}</h2>
-                  <p>{draft.definition.description}</p>
-                  <small>
-                    Revisión {draft.revision} ·{" "}
-                    {draft.confirmedRevision === draft.revision
-                      ? "Confirmada"
-                      : "Pendiente de confirmación"}
-                  </small>
-                  <label className="rw-check">
-                    <input
-                      type="checkbox"
-                      checked={draft.enabled}
-                      onChange={(e) => {
-                        setRunning(false);
-                        setW((s) => ({
-                          ...s,
-                          drafts: s.drafts.map((d) =>
-                            d.id === draft.id
-                              ? { ...d, enabled: e.target.checked }
-                              : d,
-                          ),
-                        }));
-                      }}
-                    />
-                    Incluir en la próxima ejecución
-                  </label>
-                  <div className="rw-fields">
-                    {draft.definition.times.map((p, i) => (
-                      <label key={p.key}>
-                        {p.label}
-                        <input
-                          type="time"
-                          value={p.value}
-                          onChange={(e) =>
-                            updateMeasure({
-                              ...draft.definition,
-                              times: draft.definition.times.map((x, j) =>
-                                j === i ? { ...x, value: e.target.value } : x,
-                              ),
-                            })
-                          }
-                        />
-                      </label>
-                    ))}
-                    {draft.definition.numbers.map((p, i) => (
-                      <label key={p.key}>
-                        {p.label} ({p.unit})
-                        <input
-                          type="number"
-                          min={p.min}
-                          max={p.max}
-                          step="any"
-                          value={p.value}
-                          onChange={(e) =>
-                            updateMeasure({
-                              ...draft.definition,
-                              numbers: draft.definition.numbers.map((x, j) =>
-                                j === i
-                                  ? { ...x, value: Number(e.target.value) }
-                                  : x,
-                              ),
-                            })
-                          }
-                        />
-                        <small>
-                          {p.min}–{p.max}
-                        </small>
-                      </label>
-                    ))}
-                    <label>
-                      Día inicial
-                      <input
-                        type="number"
-                        min="1"
-                        max="60"
-                        value={draft.definition.firstDay}
-                        onChange={(e) =>
-                          updateMeasure({
-                            ...draft.definition,
-                            firstDay: Number(e.target.value),
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Día final
-                      <input
-                        type="number"
-                        min="1"
-                        max="60"
-                        value={draft.definition.lastDay}
-                        onChange={(e) =>
-                          updateMeasure({
-                            ...draft.definition,
-                            lastDay: Number(e.target.value),
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                  <fieldset>
-                    <legend>Zonas</legend>
-                    {researchNodes.map((n) => (
-                      <label key={n.id} className="rw-check">
-                        <input
-                          type="checkbox"
-                          checked={draft.definition.zones.includes(n.id)}
-                          onChange={(e) =>
-                            updateMeasure({
-                              ...draft.definition,
-                              zones: e.target.checked
-                                ? [...draft.definition.zones, n.id]
-                                : draft.definition.zones.filter(
-                                    (id) => id !== n.id,
-                                  ),
-                            })
-                          }
-                        />
-                        {n.name}
-                      </label>
-                    ))}
-                  </fieldset>
-                  <p className="rw-warning">
-                    Supuestos a aceptar: {draft.definition.assumptions}
-                  </p>
-                  <p>
-                    Canales:{" "}
-                    {draft.definition.effects.map((e) => e.channel).join(", ")}.
-                    Horario uniforme aproximado; condición:{" "}
-                    {draft.definition.thresholdKey ?? "ninguna"}. Corredores
-                    exceptuados:{" "}
-                    {draft.definition.excludedEdges.join(", ") || "ninguno"}.
-                  </p>
-                  {draft.history.length > 0 && (
-                    <details>
-                      <summary>
-                        Historial de confirmaciones ({draft.history.length})
-                      </summary>
-                      {draft.history.map((h) => (
-                        <p key={h.revision}>
-                          Revisión {h.revision}: {h.definition.name} ·{" "}
-                          {h.definition.assumptions}
-                        </p>
-                      ))}
-                    </details>
-                  )}
-                  <button
-                    disabled={
-                      !MeasureSchema.safeParse(draft.definition).success
-                    }
-                    onClick={() => {
-                      setRunning(false);
-                      setW((s) => ({
-                        ...s,
-                        drafts: s.drafts.map((d) =>
-                          d.id === draft.id
-                            ? {
-                                ...d,
-                                confirmed: structuredClone(d.definition),
-                                confirmedRevision: d.revision,
-                                history: [
-                                  ...d.history.filter(
-                                    (h) => h.revision !== d.revision,
-                                  ),
-                                  {
-                                    revision: d.revision,
-                                    definition: structuredClone(d.definition),
-                                  },
-                                ].slice(-20),
-                              }
-                            : d,
-                        ),
-                      }));
-                    }}
-                  >
-                    Confirmar revisión y supuestos
-                  </button>
-                  <button
-                    onClick={() => {
-                      setRunning(false);
-                      setW((s) => ({
-                        ...s,
-                        drafts: s.drafts.filter((d) => d.id !== draft.id),
-                      }));
-                      setDraftId(null);
-                    }}
-                  >
-                    Eliminar medida
-                  </button>
-                  {!MeasureSchema.safeParse(draft.definition).success && (
-                    <p role="alert">
-                      Parámetros inválidos: revisa rangos, calendario, horario y
-                      referencias antes de confirmar.
-                    </p>
-                  )}
-                </section>
-              )}
             </div>
           )}
         </aside>

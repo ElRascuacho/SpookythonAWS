@@ -36,7 +36,7 @@ describe('accessible UI contracts', () => {
     expect(lab).toContain('tabindex="-1" role="status"');
     const research = renderToStaticMarkup(createElement(ResearchWorkspace, { visible: true, gameParams: null, onBack: () => {} }));
     expect(research).toContain('role="log" aria-live="polite" aria-relevant="additions" aria-atomic="false"');
-    expect(research).toContain('class="rw-agent-status" role="status"');
+    expect(research).toContain('aria-label="Historial del agente"');
   });
 
   test('control boundary token exceeds 3:1 against both form surfaces', () => {

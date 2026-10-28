@@ -106,12 +106,22 @@ export const AgentReplyShape = z
     proposal: MeasureShape.nullable(),
   })
   .strict();
-export const AgentReplySchema = AgentReplyShape.superRefine((r, ctx) => {
+const validateAgentProposal = (
+  r: z.infer<typeof AgentReplyShape>,
+  ctx: z.RefinementCtx,
+) => {
   if (r.proposal) {
     const v = MeasureSchema.safeParse(r.proposal);
     if (!v.success) ctx.addIssue({ code: "custom", message: v.error.message });
   }
-});
+};
+// Provider-generated content and server-added metadata have distinct contracts.
+export const AgentReplySchema = AgentReplyShape.superRefine(
+  validateAgentProposal,
+);
+export const AgentResponseSchema = AgentReplyShape.extend({
+  model: z.string().min(1).max(200),
+}).superRefine(validateAgentProposal);
 export const DraftSchema = z
   .object({
     id: z.string().uuid(),
