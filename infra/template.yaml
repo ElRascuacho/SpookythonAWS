@@ -129,18 +129,20 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:GetObject
-              Resource: !Sub "${CommitteeResultsBucket.Arn}/committee/*"
+              Resource:
+                - !Sub "${CommitteeResultsBucket.Arn}/committee/*"
+                - !Sub "${CommitteeResultsBucket.Arn}/committee-policies/*"
             - Effect: Allow
               Action:
                 - s3:GetObject
-              Resource: !Sub "${CommitteeResultsBucket.Arn}/committee-policies/versions/*"
+              Resource: !Sub "${CommitteeResultsBucket.Arn}/committee-policies/*"
             - Effect: Allow
               Action:
                 - s3:ListBucket
               Resource: !GetAtt CommitteeResultsBucket.Arn
               Condition:
                 StringLike:
-                  s3:prefix: "committee-policies/versions/*"
+                  s3:prefix: "committee-policies/*"
             - Effect: Allow
               Action:
                 - s3:ListBucket
@@ -214,7 +216,9 @@ Resources:
               Action:
                 - s3:PutObject
                 - s3:GetObject
-              Resource: !Sub "${CommitteeResultsBucket.Arn}/committee/*"
+              Resource:
+                - !Sub "${CommitteeResultsBucket.Arn}/committee/*"
+                - !Sub "${CommitteeResultsBucket.Arn}/committee-policies/*"
             - Effect: Deny
               Action:
                 - s3:PutObjectAcl

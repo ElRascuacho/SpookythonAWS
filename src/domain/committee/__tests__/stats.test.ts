@@ -69,4 +69,13 @@ describe("computeCommitteeStats", () => {
     expect(stats.reductionPct).toBe(15.0);
     expect(stats.dailyStats).toEqual([]);
   });
+
+  it("keeps worse candidate outcomes negative with and without playback", () => {
+    const snapshots = [createMockSnapshot(0, 100), createMockSnapshot(1, 300)];
+    for (const playback of [snapshots, []]) {
+      const stats = computeCommitteeStats(playback, 10000, 11000);
+      expect(stats.reductionAbsolute).toBe(-1000);
+      expect(stats.reductionPct).toBe(-10);
+    }
+  });
 });

@@ -1,5 +1,5 @@
 import { createWeightedPolicy } from './committee/weightedPolicy';
-import { DEFAULT_COMPATIBILITY_VERSIONS, ZERO_POLICY_WEIGHTS, type PolicyWeights } from './committee/types';
+import { DEFAULT_COMPATIBILITY_VERSIONS, ZERO_POLICY_WEIGHTS, type PolicyWeights, type PublicPolicyProjection } from './committee/types';
 import { DEFAULT_SIMULATION_PARAMS } from './mantaGraph';
 import { computePercentile } from './monteCarlo';
 import { createSeededRng } from './prng';
@@ -89,16 +89,76 @@ export const DEFAULT_PUBLISHED_POLICY: PublishedPolicy = {
 export interface PolicySample { infected: number; peak: number; peakDay: number; spent: number; vaccines: number; hospitalCollapseDays: number; daily: number[] }
 export interface PolicyPair { index: number; candidate: PolicySample; sgc: PolicySample }
 
+export type { PublicPolicyProjection } from './committee/types';
+
 // Integrity and publication approval are validated by the authenticated registry endpoint.
-export function parsePublishedPolicy(value: unknown): PublishedPolicy {
-  const record = value as PublishedPolicy;
-  const a = record?.artifact;
-  if (!record || typeof record.registryVersion !== 'string' || !a || !Number.isInteger(a.policyVersion) || a.policyVersion < 0 || !['trained', 'sgc-fallback'].includes(a.recommendation) || (a.recommendation === 'trained' ? a.policyVersion === 0 : a.policyVersion !== 0) || !Array.isArray(a.weights) || a.weights.length !== 4 || a.weights.some(w => !Number.isFinite(w) || w < -3 || w > 3)) throw new Error('Política publicada inválida.');
-  const versions = a.manifest?.versions;
-  if (!versions || Object.entries(DEFAULT_COMPATIBILITY_VERSIONS).some(([key, expected]) => versions[key as keyof typeof versions] !== expected)) throw new Error('La política publicada no es compatible con esta versión del simulador.');
-  if (!Array.isArray(a.manifest.pools?.final?.runIndices) || !a.manifest.pools.final.runIndices.length || a.manifest.pools.final.runIndices.some(index => !Number.isSafeInteger(index) || index < 0 || index > 4294967095)) throw new Error("Índices de evaluación incompatibles.");
-  if (!a.params || Object.entries(DEFAULT_SIMULATION_PARAMS).some(([key, expected]) => Array.isArray(expected) ? !Array.isArray(a.params[key as keyof SimulationParams]) : typeof a.params[key as keyof SimulationParams] !== typeof expected) || !Number.isInteger(a.params.days) || a.params.days < 20 || a.params.days > 60) throw new Error('La configuración de la política publicada es inválida.');
-  return record;
+export function parsePublishedPolicy(value: unknown): PublicPolicyProjection {
+  if (!value || typeof value !== 'object') throw new Error('Política publicada inválida.');
+  const record = value as Record<string, any>;
+  if (typeof record.registryVersion !== 'string') throw new Error('Política publicada inválida.');
+
+  // If projection provided directly (sanitized public projection)
+  if (Array.isArray(record.weights) && Number.isInteger(record.policyVersion)) {
+    const { policyVersion, weights, recommendation, compatibilityVersions } = record;
+    if (policyVersion < 0 || !['trained', 'sgc-fallback'].includes(recommendation) || (recommendation === 'trained' ? policyVersion === 0 : policyVersion !== 0) || weights.length !== 4 || weights.some((w: number) => !Number.isFinite(w) || w < -3 || w > 3)) {
+      throw new Error('Política publicada inválida.');
+    }
+    const versions = compatibilityVersions ?? DEFAULT_COMPATIBILITY_VERSIONS;
+    if (Object.entries(DEFAULT_COMPATIBILITY_VERSIONS).some(([k, expected]) => versions[k] !== expected)) {
+      throw new Error('La política publicada no es compatible con esta versión del simulador.');
+    }
+    return {
+      registryVersion: record.registryVersion,
+      publishedAt: record.publishedAt ?? new Date().toISOString(),
+      policyVersion,
+      recommendation,
+      weights: [...weights] as unknown as PolicyWeights,
+      audit: record.audit === 'passed' ? 'passed' : 'failed',
+      finalEvidence: record.finalEvidence ?? null,
+      compatibilityVersions: { ...versions },
+      projectionHash: record.projectionHash ?? 'verified',
+      artifact: {
+        policyVersion,
+        recommendation,
+        weights: [...weights] as unknown as PolicyWeights,
+        params: record.params ?? DEFAULT_SIMULATION_PARAMS,
+      },
+    };
+  }
+
+  // Legacy full artifact wrapper
+  const a = record.artifact;
+  if (!a || !Number.isInteger(a.policyVersion) || a.policyVersion < 0 || !['trained', 'sgc-fallback'].includes(a.recommendation) || (a.recommendation === 'trained' ? a.policyVersion === 0 : a.policyVersion !== 0) || !Array.isArray(a.weights) || a.weights.length !== 4 || a.weights.some((w: number) => !Number.isFinite(w) || w < -3 || w > 3)) {
+    throw new Error('Política publicada inválida.');
+  }
+  const versions = a.manifest?.versions ?? DEFAULT_COMPATIBILITY_VERSIONS;
+  if (Object.entries(DEFAULT_COMPATIBILITY_VERSIONS).some(([key, expected]) => versions[key as keyof typeof versions] !== expected)) {
+    throw new Error('La política publicada no es compatible con esta versión del simulador.');
+  }
+  if (a.manifest?.pools?.final?.runIndices && (!Array.isArray(a.manifest.pools.final.runIndices) || !a.manifest.pools.final.runIndices.length || a.manifest.pools.final.runIndices.some((index: number) => !Number.isSafeInteger(index) || index < 0 || index > 4294967095))) {
+    throw new Error("Índices de evaluación incompatibles.");
+  }
+  if (a.params && (Object.entries(DEFAULT_SIMULATION_PARAMS).some(([key, expected]) => Array.isArray(expected) ? !Array.isArray(a.params[key as keyof SimulationParams]) : typeof a.params[key as keyof SimulationParams] !== typeof expected) || !Number.isInteger(a.params.days) || a.params.days < 20 || a.params.days > 60)) {
+    throw new Error('La configuración de la política publicada es inválida.');
+  }
+
+  return {
+    registryVersion: record.registryVersion,
+    publishedAt: record.publishedAt ?? new Date().toISOString(),
+    policyVersion: a.policyVersion,
+    recommendation: a.recommendation,
+    weights: [...a.weights] as unknown as PolicyWeights,
+    audit: record.audit === 'passed' ? 'passed' : 'failed',
+    finalEvidence: record.finalEvidence ?? null,
+    compatibilityVersions: { ...versions },
+    projectionHash: record.projectionHash ?? record.recordHash ?? a.artifactHash ?? 'verified',
+    artifact: {
+      policyVersion: a.policyVersion,
+      recommendation: a.recommendation,
+      weights: [...a.weights] as unknown as PolicyWeights,
+      params: a.params ?? DEFAULT_SIMULATION_PARAMS,
+    },
+  };
 }
 export function simulatePolicyPair(params: SimulationParams, weights: PolicyWeights, index: number): PolicyPair {
   const run = (w: PolicyWeights): PolicySample => {

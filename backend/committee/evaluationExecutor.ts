@@ -53,9 +53,13 @@ export class EvaluationExecutor {
 
     try {
       const result = await evaluateFrozenPolicySequential({
-        artifact: policy.artifact as any,
+        policy: 'toPublicProjection' in registry && typeof (registry as any).toPublicProjection === 'function'
+          ? (registry as any).toPublicProjection(policy)
+          : policy.artifact,
         policyVersion: policy.artifact.policyVersion,
         baseSeed: job.scenario.seed,
+        params: job.scenario as any,
+        startIndex: 0,
         pairs: job.evaluation.plannedPairs,
         simulate,
         shouldCancel: async () => {

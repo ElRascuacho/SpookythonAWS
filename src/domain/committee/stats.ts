@@ -65,8 +65,8 @@ export function computeCommitteeStats(
     const redPct = baselineMean > 0 ? (diff / baselineMean) * 100 : 0;
 
     return {
-      reductionAbsolute: Math.max(0, Math.round(diff)),
-      reductionPct: Math.max(0, Number(redPct.toFixed(1))),
+      reductionAbsolute: Math.round(diff),
+      reductionPct: Number(redPct.toFixed(1)),
       attackRatePct: 0,
       totalPopulation: 0,
       finalInfected: Math.round(candidate),
@@ -95,8 +95,8 @@ export function computeCommitteeStats(
   const finalInfected = final.cumulativeInfected;
 
   const candidate = candidateMean ?? finalInfected;
-  const reductionAbsolute = baselineMean > 0 ? Math.max(0, Math.round(baselineMean - candidate)) : 0;
-  const reductionPct = baselineMean > 0 ? Math.max(0, Number((((baselineMean - candidate) / baselineMean) * 100).toFixed(1))) : 0;
+  const reductionAbsolute = baselineMean > 0 ? Math.round(baselineMean - candidate) : 0;
+  const reductionPct = baselineMean > 0 ? Number((((baselineMean - candidate) / baselineMean) * 100).toFixed(1)) : 0;
   const attackRatePct = totalPopulation > 0 ? Math.min(100, Number(((finalInfected / totalPopulation) * 100).toFixed(1))) : 0;
 
   let peakInfected = 0;

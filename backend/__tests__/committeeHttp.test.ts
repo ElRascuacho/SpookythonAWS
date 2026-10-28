@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { authorize, hashInvitation } from "../auth";
+import { authorize, hashInvitation, ownerHash } from "../auth";
 import { handleCommitteeRoute } from "../committee/http";
 import { resetCommitteeJobs } from "../committee/jobStore";
 import { CommitteeAdmissionService } from "../committee/admissionService";
 import { EvaluationJobService } from "../committee/evaluationJobService";
 import { EvaluationStore } from "../committee/evaluationStore";
+import { TrainingEvidenceStore } from "../committee/trainingEvidenceStore";
 import { PolicyRegistry } from "../committee/policyRegistry";
 import { trainOffline } from "../../src/domain/committee/offline";
 import { InMemoryDynamoDBClient } from "./committee/inMemoryDynamoClient";
@@ -177,6 +178,33 @@ test("latest policy returns not found separately from registry failures", async 
   const response = await handleCommitteeRoute(request(), env, undefined, { latest: async () => record });
   expect(response!.status).toBe(200);
   expect(await response!.json()).toEqual(record);
+
+  const fullRecord = {
+    registryVersion: "2026-10-28T12:00:00.000Z_v1-abc",
+    publishedAt: "2026-10-28T12:00:00.000Z",
+    audit: "passed",
+    finalEvidence: { meanDifference: -100, upperBound: -50 },
+    artifact: {
+      policyVersion: 1,
+      recommendation: "trained",
+      weights: [1, 0, -1, 0],
+      params: { days: 40, patientZeroIds: [1], seed: 42 },
+      manifest: { jobId: "private-job-id", rngSeeds: { baseSeed: 1 } },
+      artifactHash: "hash-123",
+      manifestHash: "hash-456",
+    },
+    recordHash: "rec-hash",
+  } as any;
+  const sanitizedResp = await handleCommitteeRoute(request(), env, undefined, { latest: async () => fullRecord });
+  expect(sanitizedResp!.status).toBe(200);
+  const sanitizedBody = await sanitizedResp!.json();
+  expect(sanitizedBody.registryVersion).toBe(fullRecord.registryVersion);
+  expect(sanitizedBody.weights).toEqual([1, 0, -1, 0]);
+  expect(sanitizedBody.artifact).toBeUndefined();
+  expect(sanitizedBody.params).toBeUndefined();
+  expect(sanitizedBody.manifest).toBeUndefined();
+  expect(sanitizedBody.jobId).toBeUndefined();
+  expect(sanitizedBody.projectionHash).toBeDefined();
 });
 
 test("storage failure returns controlled service unavailable", async () => {
@@ -338,7 +366,7 @@ describe("central evaluation and training lifecycle routes", () => {
     expect(cancelBody.cancelRequested).toBe(true);
   });
 
-  test("training jobs: admits job when feature flag is enabled and rejects when slot is busy", async () => {
+  test("training jobs remain unavailable even when feature flag and storage are present", async () => {
     const cookie = await sessionCookie();
     const ddb = new InMemoryDynamoDBClient() as unknown as DynamoDBClient;
     const admission = new CommitteeAdmissionService(ddb, "test-training-table");
@@ -348,7 +376,6 @@ describe("central evaluation and training lifecycle routes", () => {
       COMMITTEE_TRAINING_ENABLED: "true",
     };
 
-    // Successful training admission
     const admitted = await handleCommitteeRoute(
       new Request("https://manta.example/api/committee/training/jobs", {
         method: "POST",
@@ -361,11 +388,10 @@ describe("central evaluation and training lifecycle routes", () => {
       undefined,
       { admissionService: admission },
     );
-    expect(admitted!.status).toBe(202);
+    expect(admitted!.status).toBe(503);
     const body = await admitted!.json();
-    expect(body.status).toBe("queued");
+    expect(body.code).toBe("committee.training_unavailable");
 
-    // Second caller tries concurrently -> 409 slot busy
     const busy = await handleCommitteeRoute(
       new Request("https://manta.example/api/committee/training/jobs", {
         method: "POST",
@@ -378,7 +404,110 @@ describe("central evaluation and training lifecycle routes", () => {
       undefined,
       { admissionService: admission },
     );
-    expect(busy!.status).toBe(409);
-    expect((await busy!.json()).code).toBe("committee.slot_busy");
+    expect(busy!.status).toBe(503);
+    expect((await busy!.json()).code).toBe("committee.training_unavailable");
+  });
+
+  test("authenticated training lifecycle routes enforce owner isolation for status, cancellation and artifact", async () => {
+    const cookieA = await sessionCookie();
+    const cookieB = await sessionCookie();
+    const ownerA = ownerHash(new Request("https://manta.example/", { headers: { cookie: cookieA } }), env)!;
+    const ddb = new InMemoryDynamoDBClient() as unknown as DynamoDBClient;
+    const admission = new CommitteeAdmissionService(ddb, "test-training-table");
+    const s3 = fakeS3();
+    const store = new TrainingEvidenceStore(s3 as any, "test-bucket");
+
+    // Admit a training job directly for ownerA
+    const admitted = await admission.admitJob({
+      ownerHash: ownerA,
+      idempotencyKey: "test-train-iso-1",
+      scenario: { scenarioKey: "test", horizonDays: 20, seed: 42 },
+    });
+
+    const deps = { admissionService: admission, trainingEvidenceStore: store };
+
+    // 1. Unauthenticated request rejected with 401
+    const unauth = await handleCommitteeRoute(
+      new Request(`https://manta.example/api/committee/training/jobs/${admitted.jobId}`),
+      env,
+      undefined,
+      undefined,
+      undefined,
+      deps,
+    );
+    expect(unauth!.status).toBe(401);
+
+    // 2. Foreign ownerB request receives 404 (isolated)
+    const foreignGet = await handleCommitteeRoute(
+      new Request(`https://manta.example/api/committee/training/jobs/${admitted.jobId}`, {
+        headers: { cookie: cookieB },
+      }),
+      env,
+      undefined,
+      undefined,
+      undefined,
+      deps,
+    );
+    expect(foreignGet!.status).toBe(404);
+
+    // 3. Owning ownerA receives 200 with job details
+    const ownerGet = await handleCommitteeRoute(
+      new Request(`https://manta.example/api/committee/training/jobs/${admitted.jobId}`, {
+        headers: { cookie: cookieA },
+      }),
+      env,
+      undefined,
+      undefined,
+      undefined,
+      deps,
+    );
+    expect(ownerGet!.status).toBe(200);
+    const bodyGet = await ownerGet!.json();
+    expect(bodyGet.jobId).toBe(admitted.jobId);
+    expect(bodyGet.status).toBe("queued");
+    expect(bodyGet.cancelRequested).toBe(false);
+
+    // 4. Foreign ownerB cannot cancel (404)
+    const foreignCancel = await handleCommitteeRoute(
+      new Request(`https://manta.example/api/committee/training/jobs/${admitted.jobId}`, {
+        method: "DELETE",
+        headers: { cookie: cookieB },
+      }),
+      env,
+      undefined,
+      undefined,
+      undefined,
+      deps,
+    );
+    expect(foreignCancel!.status).toBe(404);
+
+    // 5. Owning ownerA can cancel (200)
+    const ownerCancel = await handleCommitteeRoute(
+      new Request(`https://manta.example/api/committee/training/jobs/${admitted.jobId}`, {
+        method: "DELETE",
+        headers: { cookie: cookieA },
+      }),
+      env,
+      undefined,
+      undefined,
+      undefined,
+      deps,
+    );
+    expect(ownerCancel!.status).toBe(200);
+    const bodyCancel = await ownerCancel!.json();
+    expect(bodyCancel.cancelRequested).toBe(true);
+
+    // 6. Artifact download while not completed returns 409
+    const inProgressArtifact = await handleCommitteeRoute(
+      new Request(`https://manta.example/api/committee/training/jobs/${admitted.jobId}/artifact`, {
+        headers: { cookie: cookieA },
+      }),
+      env,
+      undefined,
+      undefined,
+      undefined,
+      deps,
+    );
+    expect(inProgressArtifact!.status).toBe(409);
   });
 });

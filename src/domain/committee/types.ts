@@ -50,6 +50,28 @@ export const DEFAULT_COMPATIBILITY_VERSIONS: CompatibilityVersions = {
 export const MAX_POLICY_LIBRARY_ENTRIES = 8;
 
 /**
+ * Public, sanitized policy projection delivered to clients and evaluators.
+ * Strips all private training params, patientZeroIds, manifest, jobId, rngSeeds, and pools.
+ */
+export interface PublicPolicyProjection {
+  readonly registryVersion: string;
+  readonly publishedAt: string;
+  readonly policyVersion: number;
+  readonly recommendation: 'trained' | 'sgc-fallback';
+  readonly weights: PolicyWeights;
+  readonly audit: 'passed' | 'failed';
+  readonly finalEvidence: { readonly meanDifference: number; readonly upperBound: number } | null;
+  readonly compatibilityVersions: CompatibilityVersions;
+  readonly projectionHash: string;
+  readonly artifact?: {
+    readonly policyVersion: number;
+    readonly recommendation: 'trained' | 'sgc-fallback';
+    readonly weights: PolicyWeights;
+    readonly params?: any;
+  };
+}
+
+/**
  * Policy library snapshot entry (algorithm.md §7, data-model.md).
  * No owner, jobId, seeds, or private history.
  */

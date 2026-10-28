@@ -3,7 +3,7 @@ import type { CureGame } from "../domain/cureGame";
 import type { SimulationPlan, SimulationSample } from "../domain/multiSimulation";
 import { createDifficultyGraph, type GraphDifficulty } from "../domain/difficultyGraph";
 import "./SimulationDashboard.css";
-import { DEFAULT_PUBLISHED_POLICY, parsePublishedPolicy, summarizePolicyPairs, type PolicyPair, type PublishedPolicy } from "../domain/policyEvaluation";
+import { DEFAULT_PUBLISHED_POLICY, parsePublishedPolicy, summarizePolicyPairs, type PolicyPair, type PublicPolicyProjection } from "../domain/policyEvaluation";
 import { dailyCumulativeBand, distribution, pairsToCsv, samplesToCsv, type DailyBand } from "../domain/simulationAudit";
 import { StrategyReport } from "./StrategyReport";
 
@@ -208,7 +208,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
   const [actualDifficulty, setActualDifficulty] = useState<GraphDifficulty>(difficulty);
   const [samples, setSamples] = useState<SimulationSample[]>([]);
   const [pairs, setPairs] = useState<PolicyPair[]>([]);
-  const [policy, setPolicy] = useState<PublishedPolicy | null>(null);
+  const [policy, setPolicy] = useState<PublicPolicyProjection | null>(null);
   const [total, setTotal] = useState(0);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
@@ -237,7 +237,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
     const current = generation.current;
     const chosenSeed = seed;
     setActualSeed(chosenSeed); setActualPlan(plan); setActualDifficulty(difficulty); setTotal(count); setSamples([]); setPairs([]); setPolicy(null); setSelectedIndex(null); setError(""); setRunning(true);
-    let selectedPolicy: PublishedPolicy | null = null;
+    let selectedPolicy: PublicPolicyProjection | null = null;
     if (plan === "COMMITTEE") {
       try {
         const response = await fetch("/api/committee/policies/latest", { credentials: "same-origin" });
@@ -260,7 +260,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
       if (current !== generation.current) return;
       setPolicy(selectedPolicy);
     }
-    const params = selectedPolicy ? { ...selectedPolicy.artifact.params, seed: chosenSeed } : { ...game.params, seed: chosenSeed, days: plan === "PLAYER" ? game.day : game.params.days };
+    const params = { ...game.params, seed: chosenSeed, days: plan === "PLAYER" ? game.day : game.params.days };
     let next = 0;
     let completed = 0;
     const results: SimulationSample[] = [];
@@ -269,7 +269,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
     try {
       const poolSize = Math.min(count, 4, Math.max(1, navigator.hardwareConcurrency || 2));
       const dispatch = (worker: Worker) => {
-        if (next < count) worker.postMessage({ params, plan, index: (selectedPolicy ? Math.max(...selectedPolicy.artifact.manifest.pools.final.runIndices) + 1 : 0) + next++, actions: game.actions, difficulty, weights: selectedPolicy?.artifact.weights });
+        if (next < count) worker.postMessage({ params, plan, index: next++, actions: game.actions, difficulty, weights: selectedPolicy?.weights });
       };
       for (let i = 0; i < poolSize; i++) {
         const worker = new Worker(new URL("../workers/multiSimulation.worker.ts", import.meta.url), { type: "module" });
@@ -330,7 +330,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
       <p role="status" className="simulation-status">{error || (running ? `Simulando ${completedCount} de ${total}…` : finished ? `Completadas ${total} simulaciones · semilla ${actualSeed}` : "Configura tu análisis para comenzar.")}</p>
       {running && <progress max={total} value={completedCount} aria-label="Progreso de simulación" />}
       {finished && comparison && policy && candidateInfected && <section aria-label="Evaluación de la política del Comité" className="simulation-results">
-        <p className="simulation-note">Política {policy.artifact.policyVersion} · registro {policy.registryVersion} · {policy.artifact.recommendation === "sgc-fallback" ? "alternativa SGC (sin mejora aprobada)" : "entrenada y publicada"} · 16 zonas · {policy.artifact.params.days} días · semilla {actualSeed} · {pairs.length} pares ({pairs.length * 2} corridas).</p>
+        <p className="simulation-note">Política {policy.policyVersion} · registro {policy.registryVersion} · {policy.recommendation === "sgc-fallback" ? "alternativa SGC (sin mejora aprobada)" : "entrenada y publicada"} · 16 zonas · {game.params.days} días · semilla {actualSeed} · {pairs.length} pares ({pairs.length * 2} corridas).</p>
         <div className="simulation-metrics">
           <MetricCard
             label="Mejora de contagios frente a SGC"
@@ -366,7 +366,7 @@ export function SimulationDashboard({ game, onBack }: { game: CureGame; onBack: 
         <p>Diferencia pareada promedio (SGC menos política): {format(comparison.meanDifference)} contagios. Intervalo bootstrap del 95%: {format(comparison.confidenceInterval[0])} a {format(comparison.confidenceInterval[1])} contagios.</p>
         <CumulativeChart title="Contagios de la política vs. SGC" caption={selectedPair ? `Par ${selectedPair.index}: política ${format(selectedPair.candidate.infected)} · SGC ${format(selectedPair.sgc.infected)}` : `Promedio de la política (verde) vs. promedio SGC (coral) y banda P10–P90 · semilla ${actualSeed}`} band={pairBand} selected={selectedPair?.candidate.daily ?? null} comparison={selectedPair?.sgc.daily ?? sgcMeanDaily} label={selectedPair ? `Curva del par ${selectedPair.index}. La línea clara es la política y la coral es SGC.` : "Comparación del promedio de la política con banda P10–P90 frente al promedio de SGC."} />
         {selectedPair && <button className="secondary-button" type="button" onClick={() => setSelectedIndex(null)}>Volver al promedio</button>}
-        <div className="simulation-toolbar"><p className="simulation-note">Cada fila es un par con la misma semilla y el mismo índice. La diferencia es SGC menos política. El CSV trae ambos lados sin redondear.</p><button className="secondary-button" type="button" onClick={() => downloadCsv(`comite-${actualSeed}.csv`, pairsToCsv({ plan: planLabel, difficulty: "16 zonas", seed: actualSeed!, policyVersion: policy.artifact.policyVersion, registryVersion: policy.registryVersion }, pairs))}>Descargar CSV</button></div>
+        <div className="simulation-toolbar"><p className="simulation-note">Cada fila es un par con la misma semilla y el mismo índice. La diferencia es SGC menos política. El CSV trae ambos lados sin redondear.</p><button className="secondary-button" type="button" onClick={() => downloadCsv(`comite-${actualSeed}.csv`, pairsToCsv({ plan: planLabel, difficulty: "16 zonas", seed: actualSeed!, policyVersion: policy.policyVersion, registryVersion: policy.registryVersion }, pairs))}>Descargar CSV</button></div>
         <DatasetDictionary mode="committee" />
         <div className="simulation-table-wrap">
           <table className="simulation-table">

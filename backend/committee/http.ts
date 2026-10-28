@@ -1,7 +1,7 @@
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { PolicyRegistry, type RegisteredPolicy } from "./policyRegistry";
+import { PolicyRegistry, toPublicProjection, type RegisteredPolicy, type PublicPolicyProjection } from "./policyRegistry";
 import { json, ownerHash } from "../auth";
 import {
   cancelCommitteeJob,
@@ -14,6 +14,10 @@ import { loadCommitteeResult } from "./resultStore";
 import { CommitteeAdmissionService } from "./admissionService";
 import { EvaluationJobService } from "./evaluationJobService";
 import { EvaluationStore, type EvaluationIdentity } from "./evaluationStore";
+import { TrainingJobService } from "./trainingJobService";
+import { TrainingEvidenceStore, type TrainingEvidenceIdentity } from "./trainingEvidenceStore";
+import type { TrainingExecutor } from "./trainingExecutor";
+import { DEFAULT_COMPATIBILITY_VERSIONS } from "../../src/domain/committee/types";
 import { hashPayload } from "./conditions";
 import {
   IdempotencyConflictError,
@@ -30,6 +34,9 @@ export interface CommitteeHttpDependencies {
   evaluationStore?: EvaluationStore;
   admissionService?: CommitteeAdmissionService;
   evaluationExecutor?: { execute(jobId: string, ownerHash?: string): Promise<unknown> };
+  trainingJobService?: TrainingJobService;
+  trainingEvidenceStore?: TrainingEvidenceStore;
+  trainingExecutor?: TrainingExecutor;
 }
 
 export async function handleCommitteeRoute(
@@ -52,8 +59,13 @@ export async function handleCommitteeRoute(
     const bucket = env.COMMITTEE_RESULTS_BUCKET;
     if (!policyReader && !bucket) return json(503, { code: "committee.policy_unavailable", message: "Policy registry unavailable" });
     try {
-      const policy = await (policyReader ?? new PolicyRegistry(new S3Client({}), bucket!)).latest();
-      return policy ? json(200, policy) : json(404, { code: "committee.not_found", message: "No published policy" });
+      const registry = policyReader ?? new PolicyRegistry(new S3Client({}), bucket!);
+      const rawPolicy = 'latestProjection' in registry && typeof (registry as any).latestProjection === 'function'
+        ? await (registry as any).latestProjection()
+        : await registry.latest();
+      if (!rawPolicy) return json(404, { code: "committee.not_found", message: "No published policy" });
+      const policy = 'artifact' in rawPolicy ? toPublicProjection(rawPolicy as RegisteredPolicy) : rawPolicy;
+      return json(200, policy);
     } catch {
       return json(503, { code: "committee.policy_unavailable", message: "Policy registry unavailable" });
     }
@@ -70,75 +82,121 @@ export async function handleCommitteeRoute(
     }
   }
 
-  // 2. Training jobs (Priority 1)
-  if (request.method === "POST" && url.pathname === "/api/committee/training/jobs") {
-    if (env.COMMITTEE_TRAINING_ENABLED !== "true") {
+  // Training jobs: POST remains unavailable (503), while authenticated status, cancellation, and artifact routes enforce owner isolation
+  if (parts[2] === "training" && parts[3] === "jobs") {
+    const getAdmissionService = () => {
+      if (deps?.admissionService) return deps.admissionService;
+      if (env.DDB_COMMITTEE_TABLE) {
+        return new CommitteeAdmissionService(new DynamoDBClient({}), env.DDB_COMMITTEE_TABLE);
+      }
+      return null;
+    };
+
+    const getTrainingStore = () => {
+      if (deps?.trainingEvidenceStore) return deps.trainingEvidenceStore;
+      if (env.COMMITTEE_RESULTS_BUCKET) {
+        return new TrainingEvidenceStore(new S3Client({}), env.COMMITTEE_RESULTS_BUCKET);
+      }
+      return null;
+    };
+
+    // POST /api/committee/training/jobs -> 503 until full cloud profiling & approval
+    if (request.method === "POST" && parts.length === 4) {
       return json(503, { code: "committee.training_unavailable", message: "Training is not available" });
     }
-    const admission = deps?.admissionService ?? (
-      env.DDB_COMMITTEE_TABLE
-        ? new CommitteeAdmissionService(new DynamoDBClient({}), env.DDB_COMMITTEE_TABLE)
-        : null
-    );
-    if (!admission) {
-      return json(503, { code: "committee.training_unavailable", message: "Training is not available" });
-    }
-    const idempotencyKey = request.headers.get("idempotency-key") ?? "";
-    if (idempotencyKey.length < 8) {
-      return json(400, { code: "committee.invalid_request", message: "Idempotency-Key is required" });
-    }
-    let body: Record<string, unknown> = {};
-    try {
-      body = await request.json();
-    } catch {
-      return json(400, { code: "committee.invalid_request", message: "Invalid JSON" });
-    }
-    if (forbidden.some((key) => key in body)) {
-      return json(400, { code: "committee.invalid_request", message: "Internal search fields are rejected" });
-    }
-    const horizonDays = Number(body.horizonDays ?? 40);
-    const baseSeed = Number(body.seed ?? 20261030);
-    const audit = Boolean(body.audit);
-    try {
-      const admitted = await admission.admitJob({
-        ownerHash: owner,
-        idempotencyKey,
-        scenario: {
-          scenarioKey: "committee-training",
-          horizonDays,
-          seed: baseSeed,
-        },
-      });
-      const workerName = env.COMMITTEE_WORKER_FUNCTION_NAME;
-      if (workerName) {
-        try {
-          await new LambdaClient({}).send(new InvokeCommand({
-            FunctionName: workerName,
-            InvocationType: "Event",
-            Payload: Buffer.from(JSON.stringify({ type: "training", jobId: admitted.jobId, ownerHash: owner, horizonDays, baseSeed, audit })),
-          }));
-        } catch {
-          return json(503, { code: "committee.worker_unavailable", message: "Worker invocation failed" });
+
+    // GET /api/committee/training/jobs/{jobId}/artifact
+    if (request.method === "GET" && parts.length === 6 && parts[5] === "artifact") {
+      const admission = getAdmissionService();
+      const store = getTrainingStore();
+      if (!admission || !store) {
+        return json(503, { code: "committee.storage_unavailable", message: "Storage unavailable" });
+      }
+      try {
+        const job = await admission.getJob(parts[4], owner);
+        if (!job || job.evaluation) {
+          return json(404, { code: "committee.not_found", message: "Training job not found" });
         }
+        if (job.status !== "completed" && job.status !== "no-improvement") {
+          return json(409, { code: "committee.training_in_progress", message: "Training is still in progress" });
+        }
+        if (!job.trainingArtifactKey || !job.trainingArtifactHash) {
+          return json(404, { code: "committee.not_found", message: "Training artifact not found" });
+        }
+        const scenarioHash = hashPayload(job.scenario);
+        const storedArtifact = await store.getArtifact({
+          ownerHash: owner,
+          jobId: parts[4],
+          scenarioHash,
+          manifestHash: job.trainingArtifactHash,
+          versions: (job.scenario as any)?.versions ?? DEFAULT_COMPATIBILITY_VERSIONS,
+        }).catch(() => null);
+
+        return json(200, {
+          jobId: parts[4],
+          status: job.status,
+          artifactKey: job.trainingArtifactKey,
+          artifactHash: job.trainingArtifactHash,
+          artifact: storedArtifact?.artifact ?? null,
+          finalAudit: storedArtifact?.finalAudit ?? null,
+        });
+      } catch (err: unknown) {
+        if (err instanceof JobNotFoundError) {
+          return json(404, { code: "committee.not_found", message: "Training job not found" });
+        }
+        return json(503, { code: "committee.storage_unavailable", message: "Storage unavailable" });
       }
-      return json(202, {
-        jobId: admitted.jobId,
-        status: admitted.status,
-        stateRevision: admitted.stateRevision,
-        idempotent: admitted.idempotent,
-        note: "Entrenamiento de comité admitido.",
-      });
-    } catch (err: unknown) {
-      if (err instanceof SlotBusyError) {
-        return json(409, { code: "committee.slot_busy", message: err.message });
+    }
+
+    // GET /api/committee/training/jobs/{jobId}
+    if (request.method === "GET" && parts.length === 5) {
+      const admission = getAdmissionService();
+      if (!admission) {
+        return json(503, { code: "committee.storage_unavailable", message: "Storage unavailable" });
       }
-      if (err instanceof QuotaExhaustedError) {
-        return json(429, { code: "committee.quota_exceeded", message: err.message });
+      try {
+        const job = await admission.getJob(parts[4], owner);
+        if (!job || job.evaluation) {
+          return json(404, { code: "committee.not_found", message: "Training job not found" });
+        }
+        return json(200, {
+          jobId: job.jobId,
+          status: job.status,
+          stateRevision: job.stateRevision,
+          cancelRequested: Boolean(job.cancelRequested),
+          trainingCompletedTrajectories: job.trainingCompletedTrajectories ?? 0,
+          finalAuditStatus: job.finalAuditStatus ?? "not-run",
+          trainingArtifactKey: job.trainingArtifactKey,
+          trainingArtifactHash: job.trainingArtifactHash,
+        });
+      } catch (err: unknown) {
+        if (err instanceof JobNotFoundError) {
+          return json(404, { code: "committee.not_found", message: "Training job not found" });
+        }
+        return json(503, { code: "committee.storage_unavailable", message: "Storage error" });
       }
-      if (err instanceof IdempotencyConflictError) {
-        return json(409, { code: "committee.idempotency_conflict", message: err.message });
+    }
+
+    // DELETE /api/committee/training/jobs/{jobId}
+    if (request.method === "DELETE" && parts.length === 5) {
+      const admission = getAdmissionService();
+      if (!admission) {
+        return json(503, { code: "committee.storage_unavailable", message: "Storage unavailable" });
       }
-      return json(503, { code: "committee.storage_unavailable", message: "Service unavailable" });
+      try {
+        const cancelled = await admission.requestCancel(parts[4], owner);
+        return json(200, {
+          jobId: cancelled.jobId,
+          status: cancelled.status,
+          stateRevision: cancelled.stateRevision,
+          cancelRequested: Boolean(cancelled.cancelRequested),
+        });
+      } catch (err: unknown) {
+        if (err instanceof JobNotFoundError) {
+          return json(404, { code: "committee.not_found", message: "Training job not found" });
+        }
+        return json(503, { code: "committee.storage_unavailable", message: "Storage error" });
+      }
     }
   }
 
