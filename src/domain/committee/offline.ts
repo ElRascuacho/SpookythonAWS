@@ -157,4 +157,3 @@ export async function evaluateFrozenPolicySequential(request: SequentialEvaluati
   }
   return { status: 'completed', summary: summarizeEvaluation(summaryContext, runs) };
 }
-

@@ -52,4 +52,3 @@ describe('durable evaluation storage', () => {
     await expect(store.putReport(identity, { ...report, completedPairs: 1 })).rejects.toThrow('Invalid');
   });
 });
-

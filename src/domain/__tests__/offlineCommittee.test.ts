@@ -81,9 +81,3 @@ describe('offline committee protocol', () => {
     expect(result.meanImprovement).toBe(0);
   });
 });
-
-
-
-
-
-

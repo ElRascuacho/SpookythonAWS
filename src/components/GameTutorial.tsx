@@ -10,8 +10,9 @@ const STEPS = [
   { title: "Ejecuta tu plan", text: "Revisa el presupuesto y pulsa Avanzar un día. El motor aplicará tus decisiones en esta práctica.", file: "04-turno.png" },
 ];
 
-export function GameTutorial({ state, required = false, inline = false, onStart, onTarget, onClose, onComplete }: {
+export function GameTutorial({ state, required = false, inline = false, onStart, onTarget, onClose, onComplete, onGuidedTour }: {
   state: TutorialState; required?: boolean; inline?: boolean;
+  onGuidedTour?:()=>void;
   onStart: () => void; onTarget: () => void; onClose: () => void; onComplete: () => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -28,7 +29,8 @@ export function GameTutorial({ state, required = false, inline = false, onStart,
       <p>Elegirás una zona, asignarás una brigada, financiarás la cura y avanzarás un día con los controles reales del juego.</p>
       {required && <p>Primera visita: te guiamos en cuatro acciones. Puedes saltar la práctica y volver desde «Cómo jugar».</p>}
       <ol className="tutorial-roadmap">{TUTORIAL_STEPS.map(label => <li key={label}>{label}</li>)}</ol>
-      <button className="primary-button" onClick={onStart}>Empezar práctica <ArrowRight size={18} /></button>
+      {onGuidedTour&&<><p>Recorre también la interfaz con foco guiado: elige una zona, financia la cura, completa Perímetro cero (disparos) y ejecuta el turno. El día queda bloqueado hasta ganar el minijuego. Tu partida se restaura al terminar o salir.</p><button className="primary-button" onClick={onGuidedTour}>Recorrer la interfaz del juego <ArrowRight size={18}/></button></>}
+      <button className={onGuidedTour?'secondary-button':'primary-button'} onClick={onStart}>Empezar práctica <ArrowRight size={18} /></button>
       <button className="secondary-button" onClick={required ? onComplete : onClose}>{required ? "Saltar tutorial" : "Cerrar guía"}</button>
     </> : <>
       <p className="tutorial-progress" aria-label="Progreso del tutorial">{finished ? "4 de 4 · práctica completada" : `Paso ${step + 1} de 4 · ${TUTORIAL_STEPS[step]}`}</p>

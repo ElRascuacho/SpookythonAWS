@@ -18,6 +18,11 @@ export function missionFitsZone(kind: FieldMissionKind, nodeId: string) {
   return Object.hasOwn(NODE_MAP, nodeId) && (kind === 'lab' ? hospital : !hospital);
 }
 
+export function pendingFieldOperation(game:CureGame, operation:FieldOperation|null):FieldOperation|null {
+  if(game.status!=='playing'||!operation||!Object.hasOwn(FIELD_MISSIONS,operation.kind)||!missionFitsZone(operation.kind,operation.nodeId)||game.actions[game.day]?.fieldRewards?.[operation.kind])return null;
+  return missionRewardAmount(game,operation.kind,operation.nodeId)>0?operation:null;
+}
+
 export function randomFieldOperation(game: CureGame, rng = Math.random): FieldOperation | null {
   if (game.status !== 'playing') return null;
   const available = (Object.keys(FIELD_MISSIONS) as FieldMissionKind[]).map(kind => ({
