@@ -8,6 +8,7 @@ import { PartialSimulationParamsSchema } from "../src/domain/schemas/simulationP
 import { authorize } from "./auth";
 import { NEWS_ROUTE, handleNewsRoute } from "./news";
 import { RESEARCH_ROUTE, handleResearchAgent } from './researchAgent';
+import { handleCommitteeRoute } from './committee/http';
 
 export interface APIGatewayProxyEventV2 {
   rawPath?: string;
@@ -136,6 +137,16 @@ export async function handler(
       };
     }
     // Se resuelve antes del enrutado de simulación: comparte contrato con el dev server.
+    if (path.startsWith("/api/committee/")) {
+      const committeeResponse = await handleCommitteeRoute(request);
+      if (committeeResponse) {
+        return {
+          statusCode: committeeResponse.status,
+          headers: Object.fromEntries(committeeResponse.headers.entries()),
+          body: await committeeResponse.text(),
+        };
+      }
+    }
     if (path === NEWS_ROUTE || path === RESEARCH_ROUTE) {
       const newsResponse = path === RESEARCH_ROUTE ? await handleResearchAgent(request, clientIp) : await handleNewsRoute(request, clientIp);
       return {

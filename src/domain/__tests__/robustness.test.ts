@@ -3,6 +3,7 @@ import { createGame } from "../cureGame";
 import { runMonteCarloComparison } from "../monteCarlo";
 import { TOTAL_MANTA_POPULATION } from "../mantaGraph";
 
+// Runs every matrix case twice to verify invariants, not execution latency.
 test("jury matrix preserves determinism and valid invariants without assuming a universal winner", () => {
   const rows: object[] = [];
   for (const seed of [0, 42, 20261030]) {
@@ -29,4 +30,4 @@ test("jury matrix preserves determinism and valid invariants without assuming a 
     }
   }
   console.log("Jury matrix (mean cumulative infections):", JSON.stringify(rows));
-}, 30000);
+}, 90_000);

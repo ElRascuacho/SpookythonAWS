@@ -19,7 +19,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-const Game = lazy(() => import("./WorkspaceShell"));
+const Workspace = lazy(() => import("./WorkspaceShell"));
+const ModeShell = lazy(() => import("./ModeShell"));
 
 async function access(path: string, credentials?: { email: string; password: string }) {
   const response = await fetch(`/api/auth/${path}`, {
@@ -177,7 +178,13 @@ export default function InvitationGate() {
             </div>
           }
         >
-          <Game onLogout={logout} loggingOut={busy} />
+          <ModeShell
+            onLogout={logout}
+            loggingOut={busy}
+            renderApp={(props) => (
+              <Workspace {...props} />
+            )}
+          />
         </Suspense>
       </>
     );

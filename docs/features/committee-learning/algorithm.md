@@ -31,7 +31,7 @@ Implementación: Mulberry32 + Box-Muller ya disponibles en scripts de research; 
 
 RANDOM y NO_INTERVENTION conservan namespaces fuente existentes cuando se evalúan como baselines de auditoría final.
 
-Collision checks: al construir pools, verificar que ningún índice de réplica se reutiliza entre train / selection / promotion / final dentro del job.
+Collision checks: al construir pools, verificar que ningún índice de réplica se reutiliza entre train / selection / promotion / final dentro del job. Cada una de las 8 generaciones reserva 24 índices selection distintos y cada uno de los 8 intentos reserva 64 índices promotion distintos; cada par de políticas comparadas dentro de una ronda comparte sus índices. El manifiesto guarda el primer rango de cada fase y el resto se deriva con desplazamientos deterministas de 24 y 64, respectivamente. Train sí se reutiliza durante la búsqueda, nunca selection/promotion/final.
 
 ## 4. Presupuesto de trayectorias (máximo protocolo)
 
@@ -69,7 +69,7 @@ Comparar campeón de train vs searchIncumbent en pool selection fresco. Desempat
 Requisitos simultáneos para publicar ProgressVersion:
 
 1. Media de candidata **estrictamente menor** que incumbente publicado en pool promotion.
-2. Upper del bootstrap unilateral 95% de diferencias pareadas (candidata − incumbente) **< 0**, con Bonferroni α = 0.05/8.
+2. Upper del bootstrap unilateral con Bonferroni α = 0.05/8 (cuantil 99,375 % de las medias remuestreadas de diferencias pareadas candidata − incumbente) **< 0**.
 3. Candidata congelada (pesos inmutables) **antes** de tocar el pool promotion.
 
 Resamples bootstrap default: 2000; semilla en manifiesto. Limitación: heurística de control de error, no garantía estadística universal.

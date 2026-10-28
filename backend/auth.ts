@@ -7,16 +7,113 @@ import {
 } from "node:crypto";
 
 export const SESSION_SECONDS = 8 * 60 * 60;
-const COOKIE = "manta_session";
+export const COOKIE = "manta_session";
 const WINDOW_MS = 60_000;
 // shortcut: rate limit por proceso; usar un límite compartido/WAF antes de escalar a varias instancias.
 const attempts = new Map<string, { count: number; until: number }>();
-type Environment = Record<string, string | undefined>;
+export type Environment = Record<string, string | undefined>;
 
 export function hashInvitation(code: string): string {
   return createHash("sha256")
     .update(code.replace(/[\s-]/g, "").toUpperCase())
     .digest("hex");
+}
+
+export function extractSessionToken(source: Request | string): string {
+  if (typeof source !== "string") {
+    source = source.headers.get("cookie") ?? "";
+  }
+  const match = source
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${COOKIE}=`));
+  if (match) {
+    return match.slice(COOKIE.length + 1);
+  }
+  return source.includes(".") ? source.trim() : "";
+}
+
+export interface ValidatedSession {
+  hash: string;
+  expiresAt: number;
+  nonce: string;
+}
+
+export function validateSessionToken(
+  token: string,
+  env: Environment = process.env,
+  now = Date.now(),
+): ValidatedSession | null {
+  const secret = env.INVITE_SESSION_SECRET ?? "";
+  const hashes = (env.INVITE_CODE_HASHES ?? "").split(",").map((h) => h.trim());
+
+  const demoEnabled = env.DEMO_LOGIN_ENABLED !== "false";
+  const demoId = createHash("sha256").update("demo:manta-cero").digest("hex");
+  const email = (env.LOGIN_EMAIL ?? "").trim().toLowerCase();
+  const passwordHash = env.LOGIN_PASSWORD_SCRYPT ?? "";
+  const accountConfigured = !!email && /^[a-f0-9]{32}:[a-f0-9]{128}$/i.test(passwordHash);
+  const accountId = createHash("sha256").update(`account:${email}:${passwordHash}`).digest("hex");
+
+  if (
+    !/^[a-f0-9]{64}$/i.test(secret) ||
+    hashes.some((h) => h.length > 0 && !/^[a-f0-9]{64}$/.test(h))
+  ) {
+    return null;
+  }
+
+  const [hash, expiry, nonce, signature, extra] = token.split(".");
+  const expiresAt = Number(expiry);
+  const knownIdentity =
+    !!hash &&
+    (hashes.some((h) => equal(h, hash)) ||
+      (demoEnabled && equal(hash, demoId)) ||
+      (accountConfigured && equal(hash, accountId)));
+
+  if (
+    extra !== undefined ||
+    !hash ||
+    !nonce ||
+    !signature ||
+    token.length > 512 ||
+    !Number.isSafeInteger(expiresAt) ||
+    expiresAt <= now ||
+    expiresAt > now + SESSION_SECONDS * 1000 ||
+    !knownIdentity
+  ) {
+    return null;
+  }
+
+  const expectedSignature = createHmac("sha256", secret)
+    .update(`${hash}.${expiry}.${nonce}`)
+    .digest("base64url");
+
+  if (!equal(expectedSignature, signature)) {
+    return null;
+  }
+
+  return { hash, expiresAt, nonce };
+}
+
+/** Computes the SHA-256 digest of a session nonce. */
+export function ownerHashFromNonce(nonce: string): string {
+  return createHash("sha256").update(nonce).digest("hex");
+}
+
+/**
+ * Derives a deterministic ownerHash for the session from its validated nonce.
+ * Returns null if the session cookie or token is missing, expired, forged, or invalid.
+ */
+export function ownerHash(
+  source: Request | string,
+  env: Environment = process.env,
+  now = Date.now(),
+): string | null {
+  if (!source) return null;
+  const token = extractSessionToken(source);
+  if (!token) return null;
+  const session = validateSessionToken(token, env, now);
+  if (!session) return null;
+  return ownerHashFromNonce(session.nonce);
 }
 
 export function json(
@@ -167,26 +264,9 @@ export async function authorize(
     return json(200, { ok: true }, { "Set-Cookie": cookie("", 0) });
   }
 
-  const token =
-    (request.headers.get("cookie") ?? "")
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(`${COOKIE}=`))
-      ?.slice(COOKIE.length + 1) ?? "";
-  const [hash, expiry, nonce, signature, extra] = token.split(".");
-  const expiresAt = Number(expiry);
-  if (
-    extra !== undefined ||
-    !hash ||
-    !nonce ||
-    !signature ||
-    token.length > 512 ||
-    !Number.isSafeInteger(expiresAt) ||
-    expiresAt <= now ||
-    expiresAt > now + SESSION_SECONDS * 1000 ||
-    (!hashes.includes(hash) && !(demoEnabled && equal(hash, demoId)) && !(accountConfigured && equal(hash, accountId))) ||
-    !equal(sign(`${hash}.${expiry}.${nonce}`), signature)
-  ) {
+  const token = extractSessionToken(request);
+  const session = validateSessionToken(token, env, now);
+  if (!session) {
     return json(
       401,
       { error: "Tu sesión terminó. Inicia sesión para volver a entrar." },
@@ -195,7 +275,7 @@ export async function authorize(
   }
   if (path === "/api/auth/session") {
     return request.method === "GET"
-      ? json(200, { expiresAt })
+      ? json(200, { expiresAt: session.expiresAt })
       : json(405, { error: "Método no permitido." }, { Allow: "GET" });
   }
   return null;

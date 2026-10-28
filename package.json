@@ -9,7 +9,7 @@
     "invite:cloud": "bun scripts/issue-cloud-invite.ts",
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:lambda": "bun build backend/handler.ts --target=node --format=esm --outfile=build/lambda/handler.mjs",
+    "build:lambda": "bun build backend/handler.ts --target=node --format=esm --outfile=build/lambda/handler.mjs && bun build backend/workerHandler.ts --target=node --format=esm --outfile=build/lambda/workerHandler.mjs",
     "preview": "vite preview",
     "test": "bun test",
     "ingest": "bun scripts/ingest-fixtures.ts",
