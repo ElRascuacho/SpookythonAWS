@@ -50,10 +50,11 @@ describe("first-visit tutorial completion", () => {
     expect(hasCompletedTutorial()).toBe(false);
     expect(() => rememberTutorialCompletion()).not.toThrow();
   });
-  test("required welcome has no skip while replay can be closed", () => {
+  test("first visit offers an explicit skip while replay can be closed", () => {
     const props = { config: { seed: 42, scenario: "standard" as const, patientZeroId: "N01", dailyBudget: 7500 }, onClose: () => {}, onComplete: () => {} };
     const required = renderToStaticMarkup(createElement(GameTutorial, { ...props, required: true }));
     expect(required).toContain("Primera visita");
+    expect(required).toContain("Saltar tutorial");
     expect(required).not.toContain("Cerrar guía");
     expect(required).not.toContain("omitir");
     expect(renderToStaticMarkup(createElement(GameTutorial, props))).toContain("Cerrar guía");

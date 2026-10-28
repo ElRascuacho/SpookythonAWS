@@ -32,7 +32,7 @@ export function GameTutorial({ config, onClose, onComplete, required = false }: 
   return (
     <section className="tutorial" aria-label="Tutorial interactivo">
       <p className="tutorial-safe"><ShieldCheck size={15} aria-hidden="true" /> Práctica segura · tu partida no cambia</p>
-      {required && <p className="tutorial-required">Primera visita: completa estos 4 pasos para desbloquear el juego. Sin límite de tiempo.</p>}
+      {required && <p className="tutorial-required">Primera visita: aprende en 4 pasos, sin límite de tiempo. También puedes saltar la guía y volver desde «Cómo jugar».</p>}
       {step === -1 ? (
         <>
           <div className="tutorial-welcome">
@@ -44,7 +44,7 @@ export function GameTutorial({ config, onClose, onComplete, required = false }: 
             {TUTORIAL_STEPS.map((label, index) => <li key={label}><span>{index + 1}</span>{label}</li>)}
           </ol>
           <button className="primary-button" onClick={() => dispatch({ type: "next" })}>Practicar mi primer día <ArrowRight size={18} /></button>
-          {!required && <button className="secondary-button" onClick={onClose}>Cerrar guía</button>}
+          <button className="secondary-button" onClick={required ? onComplete : onClose}>{required ? "Saltar tutorial" : "Cerrar guía"}</button>
           <p className="tutorial-caption">Puedes volver cuando quieras desde «Cómo jugar».</p>
         </>
       ) : (
@@ -155,7 +155,7 @@ export function GameTutorial({ config, onClose, onComplete, required = false }: 
             </button>
             <div className="tutorial-navigation">
               {step > 0 && step < 4 && <button onClick={() => dispatch({ type: "back" })}><ArrowLeft size={15} /> Atrás</button>}
-              {!required && step < 4 && <button onClick={onClose}>Cerrar guía</button>}
+              {step < 4 && <button onClick={required ? onComplete : onClose}>{required ? "Saltar tutorial" : "Cerrar guía"}</button>}
             </div>
           </div>
         </>

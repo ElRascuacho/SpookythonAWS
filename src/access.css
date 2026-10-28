@@ -237,7 +237,7 @@
   color: var(--mint);
 }
 .access-password-label { margin-top: 16px; }
-.access-demo {
+.access-guest {
   display: block;
   margin: 12px 0 16px;
   color: #efb09a;
@@ -245,7 +245,7 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.access-demo:hover { color: #f7d0c2; }
+.access-guest:hover { color: #f7d0c2; }
 .access-hint {
   color: #8ca1a8;
   font-size: 14px;
