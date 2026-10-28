@@ -31,6 +31,7 @@ export function startCommitteeJob(input: {
   idempotencyKey: string;
   horizonDays: number;
   baseSeed: number;
+  audit?: boolean;
   run?: (request: CommitteeRunRequest) => CommitteeRunResult;
 }): CommitteeJob | { error: "slot" | "invalid" } {
   const horizonDays = Math.round(input.horizonDays);
@@ -71,6 +72,7 @@ export function startCommitteeJob(input: {
       jobId: id,
       baseSeed: input.baseSeed,
       horizonDays,
+      limits: input.audit ? { includePromotion: true, includeFinalAudit: true } : undefined,
       shouldCancel: () => jobs.get(id)?.status === "cancelled",
     });
     job.result = result;
@@ -89,10 +91,11 @@ export function readCommitteeJob(ownerHash: string, id: string): CommitteeJob | 
 }
 
 export function cancelCommitteeJob(ownerHash: string, id: string): CommitteeJob | null {
-  const job = readCommitteeJob(ownerHash, id);
-  if (!job) return null;
+  const job = jobs.get(id);
+  if (!job || job.ownerHash !== ownerHash) return null;
   job.status = "cancelled";
   job.stateRevision += 1;
-  job.result = { ...job.result, status: "cancelled", finalAudit: "not-run", stateRevision: job.stateRevision };
+  job.result.status = "cancelled";
+  job.result.stateRevision = job.stateRevision;
   return job;
 }

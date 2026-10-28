@@ -8,15 +8,17 @@ import {
   type CemState,
 } from "./cemSearch";
 import { createRunManifest, createStreamRng, deriveStreamSeeds } from "./manifest";
-import { attemptPromotion, createPromotionState } from "./promotion";
+import { attemptPromotion, auditFinalRecommendation, createPromotionState } from "./promotion";
 import { createWeightedPolicy } from "./weightedPolicy";
 import { ZERO_POLICY_WEIGHTS, type PolicyWeights, type SeedPools } from "./types";
 
 export interface CommitteeRunLimits {
   generations?: number;
   trainIndices?: readonly number[];
-  /** Preview does not spend the 64-replicate promotion pool. */
+  /** Preview does not spend the 64-replicate promotion pool unless true. */
   includePromotion?: boolean;
+  /** Evaluate 128 held-out seeds for rigorous audit. */
+  includeFinalAudit?: boolean;
 }
 
 export interface CommitteeRunRequest {
@@ -33,7 +35,7 @@ export interface CommitteeRunResult {
   status: "completed" | "cancelled";
   stateRevision: number;
   recommendedPolicyVersion: number;
-  finalAudit: "not-run";
+  finalAudit: "not-run" | "passed" | "failed";
   weights: PolicyWeights;
   baselineMean: number;
   candidateMean: number | null;
@@ -83,6 +85,29 @@ export function runCommitteePreview(request: CommitteeRunRequest): CommitteeRunR
     });
   };
 
+  const scorePolicy = (
+    policy: "weighted" | "sgc" | "random" | "none",
+    policyWeights: PolicyWeights,
+    indices: readonly number[],
+  ): number[] => {
+    const strategy = policy === "random" ? "RANDOM" : policy === "none" ? "NO_INTERVENTION" : "SMART_CORTAFUEGOS";
+    const onDailyDecision = policy === "weighted" || policy === "sgc"
+      ? createWeightedPolicy(policy === "sgc" ? ZERO_POLICY_WEIGHTS : policyWeights)
+      : undefined;
+    return indices.map((runIndex) => {
+      if (request.shouldCancel?.()) {
+        cancelled = true;
+        return Number.POSITIVE_INFINITY;
+      }
+      trajectories += 1;
+      const run = runSingleSeirSimulation(params, strategy, runIndex, undefined, onDailyDecision ? {
+        onDailyDecision,
+        envNamespace: "committee-env",
+      } : undefined);
+      return run.totalCumulativeInfected;
+    });
+  };
+
   const baselineScores = score([...ZERO_POLICY_WEIGHTS], trainIndices);
   if (cancelled) {
     return finishCancelled(request, params, trajectories);
@@ -109,9 +134,13 @@ export function runCommitteePreview(request: CommitteeRunRequest): CommitteeRunR
   let recommendedPolicyVersion = 0;
   let stateRevision = 2;
   let weights = bestWeights;
+  let finalAudit: "not-run" | "passed" | "failed" = "not-run";
+  let note = "Vista previa local: baseline y candidata sobre el pool de entrenamiento. La auditoría final no se ejecutó.";
+
   if (request.limits?.includePromotion) {
+    let promotionState = createPromotionState();
     const promotion = attemptPromotion(
-      createPromotionState(),
+      promotionState,
       bestWeights,
       manifest.pools,
       createStreamRng("bootstrap", seeds, 0),
@@ -121,9 +150,33 @@ export function runCommitteePreview(request: CommitteeRunRequest): CommitteeRunR
         return { candidate: candidateScores, incumbent: incumbentScores };
       },
     );
-    recommendedPolicyVersion = promotion.state.recommendedPolicyVersion;
-    stateRevision = promotion.state.stateRevision;
-    weights = promotion.promoted ? promotion.state.publishedWeights : [...ZERO_POLICY_WEIGHTS];
+    promotionState = promotion.state;
+    recommendedPolicyVersion = promotionState.recommendedPolicyVersion;
+    stateRevision = promotionState.stateRevision;
+    weights = promotion.promoted ? promotionState.publishedWeights : [...ZERO_POLICY_WEIGHTS];
+
+    if (request.limits?.includeFinalAudit) {
+      promotionState = auditFinalRecommendation(
+        promotionState,
+        manifest.pools.final,
+        createStreamRng("bootstrap", seeds, 1),
+        (candidate, runIndices) => ({
+          candidate: scorePolicy("weighted", candidate, runIndices),
+          sgc: scorePolicy("sgc", ZERO_POLICY_WEIGHTS, runIndices),
+          random: scorePolicy("random", ZERO_POLICY_WEIGHTS, runIndices),
+          none: scorePolicy("none", ZERO_POLICY_WEIGHTS, runIndices),
+        }),
+      );
+      recommendedPolicyVersion = promotionState.recommendedPolicyVersion;
+      stateRevision = promotionState.stateRevision;
+      finalAudit = promotionState.finalAudit;
+      weights = promotionState.recommendedPolicyVersion > 0 ? promotionState.publishedWeights : [...ZERO_POLICY_WEIGHTS];
+      note = finalAudit === "passed"
+        ? "Auditoría en semillas ciegas superada: la candidata redujo contagios con significancia estadística."
+        : "Auditoría final no superada: la candidata no demostró mejora reproducible sobre semillas ciegas (revertido a baseline).";
+    } else {
+      note = "Promoción evaluada en el pool del manifiesto. La auditoría final de 128 réplicas no se ejecutó.";
+    }
   }
 
   const playback = runSingleSeirSimulation(
@@ -139,15 +192,13 @@ export function runCommitteePreview(request: CommitteeRunRequest): CommitteeRunR
     status: "completed",
     stateRevision,
     recommendedPolicyVersion,
-    finalAudit: "not-run",
+    finalAudit,
     weights,
     baselineMean: mean(baselineScores),
     candidateMean: Number.isFinite(bestMean) ? bestMean : null,
     trajectories,
     playback,
-    note: request.limits?.includePromotion
-      ? "Promoción evaluada en el pool del manifiesto. La auditoría final de 128 réplicas no se ejecutó."
-      : "Vista previa local: baseline y candidata sobre el pool de entrenamiento. La auditoría final no se ejecutó.",
+    note,
   };
 }
 

@@ -81,6 +81,7 @@ export async function handleCommitteeRoute(
     }
     const horizonDays = Number(body.horizonDays ?? 40);
     const baseSeed = Number(body.seed ?? 20261030);
+    const audit = Boolean(body.audit);
     try {
       const admitted = await admission.admitJob({
         ownerHash: owner,
@@ -323,6 +324,7 @@ export async function handleCommitteeRoute(
     }
     const horizonDays = Number(body.horizonDays ?? 40);
     const baseSeed = Number(body.seed ?? 20261030);
+    const audit = Boolean(body.audit);
     const workerName = env.COMMITTEE_WORKER_FUNCTION_NAME;
     if (workerName && !run) {
       const jobId = crypto.randomUUID();
@@ -351,6 +353,7 @@ export async function handleCommitteeRoute(
       idempotencyKey,
       horizonDays,
       baseSeed,
+      audit,
       run,
     });
     if ("error" in started) {
@@ -366,6 +369,7 @@ export async function handleCommitteeRoute(
       baselineMean: started.result.baselineMean,
       candidateMean: started.result.candidateMean,
       note: started.result.note,
+      trajectories: started.result.trajectories,
     });
   }
 
@@ -378,6 +382,9 @@ export async function handleCommitteeRoute(
     return json(503, { code: "committee.storage_unavailable", message: "Committee storage unavailable" });
   }
   if (stored && parts[4] === "playback") {
+    if (parts[5] === undefined) {
+      return json(200, { playback: stored.result.playback, policyVersion: stored.result.recommendedPolicyVersion });
+    }
     const day = Number(parts[5]);
     const snapshot = stored.result.playback[day];
     if (!snapshot) return json(404, { code: "committee.not_found", message: "Not found" });
@@ -396,9 +403,12 @@ export async function handleCommitteeRoute(
     });
   }
   if (parts[4] === "playback") {
-    const day = Number(parts[5]);
     const job = readCommitteeJob(owner, jobId);
     if (!job) return json(404, { code: "committee.not_found", message: "Not found" });
+    if (parts[5] === undefined) {
+      return json(200, { playback: job.result.playback, policyVersion: job.result.recommendedPolicyVersion });
+    }
+    const day = Number(parts[5]);
     const snapshot = job.result.playback[day];
     if (!snapshot) return json(404, { code: "committee.not_found", message: "Not found" });
     return json(200, { day, snapshot, policyVersion: job.result.recommendedPolicyVersion });
@@ -426,5 +436,6 @@ function publicJob(job: ReturnType<typeof readCommitteeJob> & object) {
     baselineMean: job.result.baselineMean,
     candidateMean: job.result.candidateMean,
     note: job.result.note,
+    trajectories: job.result.trajectories,
   };
 }
