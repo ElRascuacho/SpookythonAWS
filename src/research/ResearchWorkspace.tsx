@@ -309,7 +309,10 @@ export function ResearchWorkspace({
       const body = await response.json();
       if (!response.ok)
         throw Error(body.message ?? "No se pudo consultar al agente.");
-      const parsed = AgentReplySchema.parse(body);
+      const parsed = AgentReplySchema.parse({
+        reply: body.reply,
+        proposal: body.proposal ?? null,
+      });
       if (base !== JSON.stringify(latest.current))
         throw Error(
           "La configuración cambió durante la consulta. La respuesta no sobrescribió tus cambios; vuelve a solicitarla.",
