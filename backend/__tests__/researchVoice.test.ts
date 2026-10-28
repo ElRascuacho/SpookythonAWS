@@ -44,7 +44,11 @@ describe("research voice session boundary", () => {
       expect(payload.session.model).toBe("gpt-realtime-2.1-mini");
       expect(
         payload.session.tools.map((t: { name: string }) => t.name),
-      ).toEqual(["get_research_context", "propose_measure"]);
+      ).toEqual([
+        "generate_research_report",
+        "get_research_context",
+        "propose_measure",
+      ]);
       expect(
         payload.session.tools.every(
           (t: { parameters: { additionalProperties: boolean } }) =>
@@ -52,6 +56,12 @@ describe("research voice session boundary", () => {
         ),
       ).toBe(true);
       expect(payload.session.instructions).toContain("NUNCA confirmes");
+      expect(payload.session.instructions).toContain(
+        "¿Quieres que genere un reporte en vivo de este experimento?",
+      );
+      expect(payload.session.instructions).toContain(
+        "Espera al siguiente turno del usuario",
+      );
       expect(payload.session.audio.input.turn_detection).toEqual({
         type: "semantic_vad",
         eagerness: "medium",

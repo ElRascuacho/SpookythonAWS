@@ -10,6 +10,7 @@ function setup(
   const cb = {
     status: mock(() => {}),
     propose,
+    report: mock(() => ({ generated: true })),
     context: mock(() => ({ day: 2, totalI: 17 })),
     transcript: mock(() => {}),
     partial: mock(() => {}),
@@ -150,5 +151,99 @@ describe("native research voice", () => {
     expect(cb.transcript).not.toHaveBeenCalled();
     expect(JSON.stringify(sent)).not.toContain("LATE SUCCESS");
     expect(sent.filter((e) => e.item?.call_id === "c1")).toHaveLength(1);
+  });
+  test("voice report offer waits for explicit acceptance in the next user turn", async () => {
+    const { event, cb } = setup();
+    await event({
+      type: "response.output_audio_transcript.done",
+      item_id: "offer",
+      transcript: "¿Quieres que genere un reporte en vivo de este experimento?",
+    });
+    expect(cb.report).not.toHaveBeenCalled();
+    await event({ type: "input_audio_buffer.speech_started", item_id: "yes" });
+    await event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "yes",
+      transcript: "Sí, por favor.",
+    });
+    await event({
+      type: "response.function_call_arguments.done",
+      call_id: "report1",
+      name: "generate_research_report",
+      arguments: "{}",
+    });
+    await event({
+      type: "response.function_call_arguments.done",
+      call_id: "report2",
+      name: "generate_research_report",
+      arguments: "{}",
+    });
+    expect(cb.report).toHaveBeenCalledTimes(1);
+    expect(cb.propose).not.toHaveBeenCalled();
+  });
+  test("no, ambiguous consent, stale offers and model-injected confirmation never generate a report", async () => {
+    for (const text of [
+      "No, gracias",
+      "¿Qué incluiría?",
+      "Sí, pero no lo generes",
+    ]) {
+      const { event, cb } = setup();
+      await event({
+        type: "response.output_audio_transcript.done",
+        item_id: "offer",
+        transcript:
+          "¿Quieres que genere un reporte en vivo de este experimento?",
+      });
+      await event({ type: "input_audio_buffer.speech_started", item_id: "u" });
+      await event({
+        type: "conversation.item.input_audio_transcription.completed",
+        item_id: "u",
+        transcript: text,
+      });
+      await event({
+        type: "response.function_call_arguments.done",
+        call_id: "r",
+        name: "generate_research_report",
+        arguments: "{}",
+      });
+      expect(cb.report).not.toHaveBeenCalled();
+    }
+    const { event, cb } = setup();
+    await event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "u",
+      transcript: "Sí",
+    });
+    await event({
+      type: "response.function_call_arguments.done",
+      call_id: "r",
+      name: "generate_research_report",
+      arguments: "{}",
+    });
+    await event({
+      type: "response.function_call_arguments.done",
+      call_id: "bad",
+      name: "generate_research_report",
+      arguments: '{"confirmed":true}',
+    });
+    expect(cb.report).not.toHaveBeenCalled();
+  });
+  test("direct report request works without an offer and waits for delayed transcription", async () => {
+    const { event, cb } = setup();
+    await event({ type: "input_audio_buffer.speech_started", item_id: "u" });
+    const pending = event({
+      type: "response.function_call_arguments.done",
+      call_id: "r",
+      name: "generate_research_report",
+      arguments: "{}",
+    });
+    expect(cb.report).not.toHaveBeenCalled();
+    await event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "u",
+      transcript: "Genera un reporte en vivo",
+    });
+    await pending;
+    expect(cb.report).toHaveBeenCalledTimes(1);
   });
 });

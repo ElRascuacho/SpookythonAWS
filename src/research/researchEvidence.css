@@ -1,0 +1,84 @@
+.rw-evidence {
+  flex-shrink: 0;
+  border: 1px solid #ffad6630 !important;
+  border-radius: 8px;
+  padding: 10px !important;
+  margin: 0 0 12px !important;
+  background: #10212a !important;
+  min-width: 0;
+}
+.rw-evidence summary {
+  font-size: 12px !important;
+  color: #f3d1b0 !important;
+  cursor: pointer;
+}
+.rw-evidence summary span {
+  display: block;
+  font-size: 10px;
+  color: #bdc8cf;
+  margin: 4px 0 0 13px;
+}
+.rw-evidence p {
+  font-size: 12px !important;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.rw-evidence code {
+  font-size: 10px;
+  color: #b9cbd2;
+  overflow-wrap: anywhere;
+}
+.rw-evidence table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 11px;
+}
+.rw-evidence th,
+.rw-evidence td {
+  padding: 7px 3px;
+  text-align: left;
+  border-bottom: 1px solid #ffffff15;
+  overflow-wrap: anywhere;
+}
+.rw-evidence th {
+  font-weight: 500;
+  color: #d8e2e7;
+}
+.rw-evidence-actions,
+.rw-evidence-variants {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.rw-evidence label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+}
+.rw-evidence input,
+.rw-evidence select {
+  width: 100%;
+  min-width: 0;
+}
+.rw-evidence button {
+  font-size: 11px !important;
+  padding: 7px 9px !important;
+}
+.rw-evidence-variants span {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: #adbdc5;
+}
+.rw-evidence [role="alert"] {
+  color: #ffb6a0;
+}
+.rw-evidence section > strong {
+  display: block;
+  color: #ffe1bd;
+  font-size: 12px;
+  margin-top: 14px;
+}

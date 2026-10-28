@@ -1,0 +1,86 @@
+.rw-live-report {
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #ffad6640;
+  border-radius: 10px;
+  background: #142832;
+  color: #e5edf1;
+  overflow-wrap: anywhere;
+}
+.rw-live-report header,
+.rw-live-report footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rw-chat .rw-live-report strong {
+  font:
+    600 13px "Segoe UI",
+    sans-serif;
+  color: #ffe0bd;
+}
+.rw-chat .rw-live-report p {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 9px 0;
+  color: #c8d5dc;
+}
+.rw-chat .rw-live-report .rw-report-status {
+  font-size: 10px;
+  color: #ffbd83;
+}
+.rw-chat .rw-live-report dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0;
+}
+.rw-chat .rw-live-report dt {
+  font-size: 10px;
+  color: #b7c8d1;
+}
+.rw-chat .rw-live-report dd {
+  font-size: 20px;
+  margin: 3px 0 0;
+  color: #f3e2d2;
+}
+.rw-live-report svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 130px;
+}
+.rw-live-report svg text {
+  fill: #a7bcc8;
+  font-size: 8px;
+}
+.rw-chat .rw-live-report button {
+  font:
+    11px "Segoe UI",
+    sans-serif;
+  padding: 6px 8px;
+  border: 1px solid #ffad6630;
+  border-radius: 6px;
+  background: transparent;
+  color: #ffd5af;
+  cursor: pointer;
+}
+.rw-live-report button:focus-visible {
+  outline: 2px solid #ffad66;
+  outline-offset: 3px;
+}
+.rw-live-report button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.rw-chat .rw-live-report .rw-report-note {
+  font-size: 10px;
+  color: #a5b9c5;
+}
+.rw-live-report footer {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
