@@ -1,4 +1,6 @@
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
+import { S3Client } from "@aws-sdk/client-s3";
+import { PolicyRegistry, type RegisteredPolicy } from "./policyRegistry";
 import { json, ownerHash } from "../auth";
 import { cancelCommitteeJob, readCommitteeJob, startCommitteeJob } from "./jobStore";
 import { loadCommitteeResult } from "./resultStore";
@@ -10,11 +12,31 @@ export async function handleCommitteeRoute(
   request: Request,
   env: Record<string, string | undefined> = process.env,
   run?: (request: CommitteeRunRequest) => CommitteeRunResult,
+  policyReader?: { latest(): Promise<RegisteredPolicy | null> },
+  resultReader: typeof loadCommitteeResult = loadCommitteeResult,
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/committee/")) return null;
   const owner = ownerHash(request, env);
   if (!owner) return json(401, { code: "auth.unauthorized", message: "Unauthorized" });
+
+  if (request.method === "POST" && url.pathname === "/api/committee/training/jobs") {
+    // Fail closed until durable admission and the worker lifecycle are connected.
+    return json(503, { code: "committee.training_unavailable", message: "Training is not available" });
+  }
+  if (request.method === "POST" && url.pathname === "/api/committee/evaluations") {
+    return json(503, { code: "committee.evaluation_unavailable", message: "Central evaluation is not available" });
+  }
+  if (request.method === "GET" && url.pathname === "/api/committee/policies/latest") {
+    const bucket = env.COMMITTEE_RESULTS_BUCKET;
+    if (!policyReader && !bucket) return json(503, { code: "committee.policy_unavailable", message: "Policy registry unavailable" });
+    try {
+      const policy = await (policyReader ?? new PolicyRegistry(new S3Client({}), bucket!)).latest();
+      return policy ? json(200, policy) : json(404, { code: "committee.not_found", message: "No published policy" });
+    } catch {
+      return json(503, { code: "committee.policy_unavailable", message: "Policy registry unavailable" });
+    }
+  }
 
   const parts = url.pathname.split("/").filter(Boolean);
   if (request.method === "POST" && url.pathname === "/api/committee/jobs") {
@@ -36,11 +58,15 @@ export async function handleCommitteeRoute(
     const workerName = env.COMMITTEE_WORKER_FUNCTION_NAME;
     if (workerName && !run) {
       const jobId = crypto.randomUUID();
-      await new LambdaClient({}).send(new InvokeCommand({
-        FunctionName: workerName,
-        InvocationType: "Event",
-        Payload: Buffer.from(JSON.stringify({ jobId, ownerHash: owner, horizonDays, baseSeed })),
-      }));
+      try {
+        await new LambdaClient({}).send(new InvokeCommand({
+          FunctionName: workerName,
+          InvocationType: "Event",
+          Payload: Buffer.from(JSON.stringify({ jobId, ownerHash: owner, horizonDays, baseSeed })),
+        }));
+      } catch {
+        return json(503, { code: "committee.worker_unavailable", message: "Preview worker unavailable" });
+      }
       return json(202, {
         jobId,
         status: "queued",
@@ -77,7 +103,12 @@ export async function handleCommitteeRoute(
 
   const jobId = parts[3];
   if (!jobId) return json(404, { code: "committee.not_found", message: "Not found" });
-  const stored = await loadCommitteeResult(owner, jobId);
+  let stored: Awaited<ReturnType<typeof loadCommitteeResult>>;
+  try {
+    stored = await resultReader(owner, jobId);
+  } catch {
+    return json(503, { code: "committee.storage_unavailable", message: "Committee storage unavailable" });
+  }
   if (stored && parts[4] === "playback") {
     const day = Number(parts[5]);
     const snapshot = stored.result.playback[day];

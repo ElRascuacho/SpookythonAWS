@@ -130,6 +130,24 @@ Resources:
               Action:
                 - s3:GetObject
               Resource: !Sub "${CommitteeResultsBucket.Arn}/committee/*"
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !Sub "${CommitteeResultsBucket.Arn}/committee-policies/versions/*"
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+              Resource: !GetAtt CommitteeResultsBucket.Arn
+              Condition:
+                StringLike:
+                  s3:prefix: "committee-policies/versions/*"
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+              Resource: !GetAtt CommitteeResultsBucket.Arn
+              Condition:
+                StringLike:
+                  s3:prefix: "committee/*"
       Events:
         InvitationRoute:
           Type: HttpApi
