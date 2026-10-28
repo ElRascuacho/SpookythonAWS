@@ -21,20 +21,22 @@ export function ResearchVoiceControls({
   onQuery,
   getContext,
   onTranscript,
+  onReport,
 }: {
   active: boolean;
   processing: boolean;
   onQuery: (text: string, signal: AbortSignal) => Promise<string>;
   getContext: () => unknown;
   onTranscript: (turn: VoiceTurn) => void;
+  onReport: () => unknown;
 }) {
   const [state, setState] = useState<VoiceState>("idle");
   const [message, setMessage] = useState("");
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [partial, setPartial] = useState("");
-  const callbacks = useRef({ onQuery, getContext, onTranscript });
-  callbacks.current = { onQuery, getContext, onTranscript };
+  const callbacks = useRef({ onQuery, getContext, onTranscript, onReport });
+  callbacks.current = { onQuery, getContext, onTranscript, onReport };
   const session = useRef<ResearchVoiceSession | null>(null);
   const waveform = useRef<HTMLDivElement>(null);
   const preview = useRef<HTMLParagraphElement>(null);
@@ -63,6 +65,7 @@ export function ResearchVoiceControls({
       },
       propose: (text, signal) => callbacks.current.onQuery(text, signal),
       context: () => callbacks.current.getContext(),
+      report: () => callbacks.current.onReport(),
       transcript: (turn) => callbacks.current.onTranscript(turn),
       partial: (delta) =>
         setPartial((s) => (delta ? (s + delta).slice(-6000) : "")),

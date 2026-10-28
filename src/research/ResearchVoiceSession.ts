@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isReportOffer, reportConsent } from "./reportConsent";
 export type VoiceState =
   "idle" | "connecting" | "listening" | "thinking" | "speaking" | "error";
 export type VoiceTurn = {
@@ -10,6 +11,7 @@ export interface VoiceCallbacks {
   status: (state: VoiceState, message?: string) => void;
   propose: (text: string, signal: AbortSignal) => Promise<string>;
   context: () => unknown;
+  report?: () => unknown;
   transcript: (turn: VoiceTurn) => void;
   partial: (text: string) => void;
   level: (value: number) => void;
@@ -37,6 +39,10 @@ export class ResearchVoiceSession {
   private seen = new Set<string>();
   private pending = new Set<string>();
   private turn = 0;
+  private reportOffer: { turn: number; at: number } | null = null;
+  private userTranscript: { turn: number; text: string } | null = null;
+  private inputTurns = new Map<string, number>();
+  private reportedTurn = -1;
   private toolCount = 0;
   private proposed = false;
   private responseActive = false;
@@ -93,6 +99,10 @@ export class ResearchVoiceSession {
       this.audio = null;
     }
     this.pending.clear();
+    this.reportOffer = null;
+    this.userTranscript = null;
+    this.inputTurns.clear();
+    this.reportedTurn = -1;
     this.seen.clear();
     this.responseActive = false;
     this.responseId = "";
@@ -339,6 +349,39 @@ export class ResearchVoiceSession {
       if (e.name === "get_research_context") {
         EmptyArgs.parse(args);
         output = { context: this.cb.context(), read_only: true };
+      } else if (e.name === "generate_research_report") {
+        EmptyArgs.parse(args);
+        if (!this.cb.report)
+          throw Error("El reporte no está disponible en esta vista.");
+        if (this.reportedTurn === turn)
+          throw Error("Ya se generó un reporte para esta petición.");
+        // Audio transcription can arrive after the native model has chosen a tool.
+        for (
+          let attempt = 0;
+          attempt < 30 && this.userTranscript?.turn !== turn;
+          attempt++
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          if (
+            signal.aborted ||
+            generation !== this.generation ||
+            turn !== this.turn
+          )
+            return;
+        }
+        const offered =
+          this.reportOffer?.turn === turn - 1 &&
+          Date.now() - this.reportOffer.at < 90000;
+        if (
+          this.userTranscript?.turn !== turn ||
+          !reportConsent(this.userTranscript.text, offered)
+        )
+          throw Error(
+            "Falta aceptación explícita del usuario. Pregunta si quiere generar el reporte; no lo generes todavía.",
+          );
+        output = this.cb.report();
+        this.reportedTurn = turn;
+        this.reportOffer = null;
       } else if (e.name === "propose_measure") {
         if (this.proposed)
           throw Error(
@@ -402,6 +445,8 @@ export class ResearchVoiceSession {
         return;
       case "input_audio_buffer.speech_started":
         this.interrupt(true);
+        if (typeof e.item_id === "string")
+          this.inputTurns.set(e.item_id, this.turn);
         this.toolCount = 0;
         this.proposed = false;
         return;
@@ -440,6 +485,10 @@ export class ResearchVoiceSession {
         const id = `${this.sessionId}:user:${e.item_id}`;
         if (this.seen.has(id)) return;
         this.seen.add(id);
+        this.userTranscript = {
+          turn: this.inputTurns.get(e.item_id) ?? this.turn,
+          text: e.transcript.trim().slice(0, 2000),
+        };
         this.cb.transcript({
           id,
           role: "user",
@@ -455,6 +504,8 @@ export class ResearchVoiceSession {
         const id = `${this.sessionId}:assistant:${e.item_id ?? e.response_id}`;
         if (this.seen.has(id)) return;
         this.seen.add(id);
+        if (isReportOffer(e.transcript))
+          this.reportOffer = { turn: this.turn, at: Date.now() };
         this.cb.transcript({
           id,
           role: "assistant",
