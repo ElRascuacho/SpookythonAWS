@@ -1,4 +1,4 @@
-.simulation-dashboard { min-height: 100dvh; overflow-y: auto; background: #101f26; color: #e8f4ee; padding: clamp(24px, 4vw, 64px); }
+.simulation-dashboard { height: 100dvh; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; background: #101f26; color: #e8f4ee; padding: clamp(24px, 4vw, 64px); }
 .simulation-dashboard__inner { max-width: 1180px; margin: auto; }
 .simulation-dashboard header { display: flex; justify-content: space-between; gap: 24px; align-items: center; margin-bottom: 32px; }
 .simulation-dashboard header .secondary-button { width: auto; flex: 0 0 auto; margin: 0; }
