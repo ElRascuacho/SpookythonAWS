@@ -1769,19 +1769,22 @@ export function ResearchWorkspace({
                   </button>
                 ))}
             </div>
-            <p>
-              {!manifest
-                ? "Configura y prepara una ejecución para comenzar."
-                : stale
-                  ? "Estás observando una configuración anterior congelada. Prepara otra ejecución para aplicar los cambios."
-                  : running
-                    ? "Reproduciendo trayectoria determinista."
-                    : "Ejecución preparada. Puedes avanzar, reproducir o inspeccionar días."}
-            </p>
-            <small className="rw-disclaimer">
-              Modelo educativo no calibrado · Sin cura ni condiciones de
-              victoria · {saveStatus}
-            </small>
+            <details className="rw-playback-info">
+              <summary>{!manifest ? "Sin ejecución preparada" : stale ? "Configuración anterior" : running ? "Reproduciendo trayectoria" : "Ejecución preparada"} · Detalles</summary>
+              <p>
+                {!manifest
+                  ? "Configura y prepara una ejecución para comenzar."
+                  : stale
+                    ? "Estás observando una configuración anterior congelada. Prepara otra ejecución para aplicar los cambios."
+                    : running
+                      ? "Reproduciendo trayectoria determinista."
+                      : "Ejecución preparada. Puedes avanzar, reproducir o inspeccionar días."}
+              </p>
+              <small className="rw-disclaimer">
+                Modelo educativo no calibrado · Sin cura ni condiciones de
+                victoria · {saveStatus}
+              </small>
+            </details>
           </footer>
           <section className="rw-results" aria-label="Situación experimental">
             <div>

@@ -45,7 +45,7 @@ export function ArcadeSandbox({ onBack }: { onBack: () => void }) {
   return <main className="arcade-screen" aria-label="Modo Arcade">
     {event && <button className="arcade-event-alert" onClick={() => document.getElementById('arcade-games-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>¡Evento disponible! Ver minijuego ↑</button>}
     <header className="arcade-topbar"><strong>ZERO DAY <span>/ ARCADE</span></strong><div><span>{event ? 'EVENTO' : running ? 'EN MARCHA' : 'PAUSADO'} · {state.ticks} PULSOS</span><button className="secondary-button" onClick={onBack}>Salir</button></div></header>
-    <section className="arcade-layout">
+    <section className={`arcade-layout ${event ? 'has-event' : ''}`}>
       <aside className="arcade-rail"><h1 id="arcade-title">Arcade</h1><p>Desafíos aleatorios y sandbox independiente.</p>
         <button className="primary-button" onClick={() => setRunning(!running)}>{running ? 'Pausar' : 'Iniciar'}</button>
         <div className="arcade-speed" role="group" aria-label="Velocidad de simulación"><span>Velocidad</span>{[1, 3].map(value => <button key={value} type="button" aria-pressed={speed === value} onClick={() => setSpeed(value)}>{value}×</button>)}</div>

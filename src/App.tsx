@@ -294,6 +294,8 @@ export default function App({
   const [tutorialRequired, setTutorialRequired] = useState(() => !initialSetup && !hasCompletedTutorial());
   const [modal, setModal] = useState<Modal>(() => initialResearch ? null : initialSetup && activeMode === "game" ? "settings" : tutorialRequired ? "help" : null);
   const [tourStep,setTourStep]=useState<GameTourStep|null>(null);
+  const [commandExpanded, setCommandExpanded] = useState(false);
+  const showCommandDetails = commandExpanded || !!tutorial || tourStep !== null;
   useEffect(() => { if (!tutorial&&tourStep===null) onScenarioChange?.(structuredClone(game.params)); }, [game.params, onScenarioChange, tutorial,tourStep]);
   const tourBackup=useRef<{game:typeof game;orders:Order[];funding:ResearchFunding;selectedNode:string;required:boolean;operation:FieldOperation|null;tutorial:TutorialState|null}|null>(null);
   const [briefingChapter, setBriefingChapter] = useState<CampaignChapter>(0);
@@ -792,18 +794,19 @@ export default function App({
       )}
 
       <footer ref={commandBarRef} className="command-bar">
-        {!tutorial && !chapter && <div className="campaign-objective" aria-label="Objetivo de la partida">
+        {!tutorial && !chapter && <details className="campaign-objective" aria-label="Objetivo de la partida">
+          <summary>Objetivo de la partida</summary>
           <strong>Tu misión: completar la cura al 100% en un máximo de {MAX_DAYS} días, antes de acumular contagios en el {LOSS_THRESHOLD * 100}% de la ciudad.</strong>
           <small>El tiempo no corre solo. Elige una zona, asigna medidas y pulsa «Avanzar un día» para ver el resultado.</small>
           {!playing && <button className="secondary-button" onClick={() => setModal("result")}>Ver resultado de la misión</button>}
-        </div>}
+        </details>}
         {chapter && chapterId !== undefined && (
-          <div className="campaign-objective" aria-label="Objetivo del capítulo">
-            <span>CAPÍTULO {chapterId + 1}/3 · {chapter.title}</span>
+          <details className="campaign-objective" aria-label="Objetivo del capítulo">
+            <summary>CAPÍTULO {chapterId + 1}/3 · {chapter.title}</summary>
             <strong>{chapter.objective}</strong>
             <small>{campaignReadout(chapterId, snapshot, game.research)}</small>
             {!playing && <button className="secondary-button" onClick={() => setModal("result")}>Ver resultado del capítulo</button>}
-          </div>
+          </details>
         )}
         <div className="command-row primary">
           <div className="cash-block">
@@ -895,7 +898,9 @@ export default function App({
           </button>
         </div>
 
-        {availableOperation&&<section id="field-day-lock" className="field-day-lock" role="status" aria-label="Minijuego pendiente"><div><strong>Día bloqueado · operación pendiente</strong><p>Completa {FIELD_MISSIONS[availableOperation.kind].title} en {NODE_MAP[availableOperation.nodeId].name}. La operación y su recompensa pertenecen al día actual: debes resolverla antes de simular el siguiente. Cerrar o fallar no la completa; puedes reintentar.</p></div><button type="button" data-game-tour="operation" onClick={openFieldOperation}>Realizar minijuego</button></section>}
+        {availableOperation&&<section id="field-day-lock" className="field-day-lock" role="status" aria-label="Minijuego pendiente"><div><strong>Día bloqueado · operación pendiente</strong><p>Completa {FIELD_MISSIONS[availableOperation.kind].title} en {NODE_MAP[availableOperation.nodeId].name} para avanzar. Puedes reintentar.</p></div><button type="button" data-game-tour="operation" onClick={openFieldOperation}>Realizar minijuego</button></section>}
+        {!tutorial && tourStep === null && <button type="button" className="command-details-toggle" aria-expanded={showCommandDetails} aria-controls="command-details" onClick={() => setCommandExpanded(open => !open)}>{showCommandDetails ? "Ocultar laboratorio y plan" : `Laboratorio y plan${orders.length ? ` · ${orders.length} brigadas` : ""}`}</button>}
+        <div id="command-details" className="command-details" hidden={!showCommandDetails}>
         {orders.length > 0 && (
           <div className="command-row plan-row">
             <span>
@@ -960,6 +965,7 @@ export default function App({
               </button>
             ))}
           </div>
+        </div>
         </div>
       </footer>
 

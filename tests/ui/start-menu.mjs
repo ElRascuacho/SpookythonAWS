@@ -19,6 +19,12 @@ try {
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.querySelector('.game-shell .earth-marker-host')?.style.opacity === '1', null, { timeout: 30000 });
   assert.equal(await page.locator('.game-shell.is-training').count(), 0);
+  const commandToggle = page.locator('.command-details-toggle');
+  assert.equal(await commandToggle.getAttribute('aria-expanded'), 'false');
+  await commandToggle.click();
+  assert.equal(await page.getByRole('group', { name: 'Inversión en la cura' }).isVisible(), true);
+  await commandToggle.click();
+  assert.equal(await page.getByRole('group', { name: 'Inversión en la cura' }).isVisible(), false);
   const guide = page.getByRole('button', { name: 'Cómo jugar' });
   assert.equal(await guide.locator('.game-guide-radar').evaluate(el => getComputedStyle(el, '::after').animationName), 'game-guide-sonar');
   await page.emulateMedia({ reducedMotion: 'reduce' });

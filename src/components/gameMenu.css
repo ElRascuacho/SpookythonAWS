@@ -115,7 +115,25 @@
 .arcade-rail .arcade-minigames h2 { font-size:18px; }.arcade-rail .arcade-minigames .game-menu-note { font-size:11px; }
 .arcade-map { position:relative; min-width:0; min-height:0; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#081820; }.arcade-map .city-map { position:absolute; inset:0; width:100%; height:100%; min-height:0; }
 .arcade-difficulty { margin-top:0; }.arcade-event-alert { bottom:24px; }
-@media(max-width:760px) { .arcade-topbar { padding:0 12px; }.arcade-layout { grid-template-columns:1fr; grid-template-rows:minmax(230px,38svh) minmax(0,1fr); overflow:auto; }.arcade-rail { order:2; }.arcade-map { order:1; min-height:230px; }.arcade-map .city-map { min-height:0; }.arcade-rail .arcade-minigames { order:-1; } }
+@media(max-width:760px) {
+  .arcade-topbar { padding:0 12px; }
+  .arcade-layout { display:flex; flex-direction:column; gap:6px; padding:6px; overflow:hidden; }
+  .arcade-map { order:1; flex:1 1 0; min-height:0; margin:0; }
+  .arcade-map .city-map { min-height:0; }
+  .arcade-rail { order:2; flex:none; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; max-height:31dvh; padding:8px; }
+  .arcade-rail h1 { font-size:16px; }
+  .arcade-rail > p { margin:0; font-size:11px; }
+  .arcade-rail > p:not([role="status"]) { display:none; }
+  .arcade-rail > .primary-button, .arcade-rail > .secondary-button { min-height:38px; padding:7px 9px; margin:0; font-size:12px; }
+  .arcade-rail .arcade-speed { padding:2px; }
+  .arcade-rail .arcade-speed span { font-size:10px; padding:0 6px; }
+  .arcade-rail .arcade-speed button { min-height:34px; min-width:36px; }
+  .arcade-rail .arcade-difficulty { grid-column:1 / -1; padding:4px 0 0; }
+  .arcade-rail .arcade-difficulty button { width:38px; height:38px; }
+  .arcade-layout:not(.has-event) .arcade-minigames { display:none; }
+  .arcade-layout.has-event .arcade-rail { max-height:60dvh; }
+  .arcade-rail .arcade-minigames { grid-column:1 / -1; order:-1; }
+}
 .arcade-setup { position:fixed; inset:0; display:grid; place-items:center; overflow:auto; color:var(--text); background:radial-gradient(ellipse at 50% 20%,#193d3b80,transparent 60%),var(--ink); }
 .arcade-setup-card { width:min(640px,calc(100% - 36px)); display:flex; flex-direction:column; gap:18px; padding:clamp(24px,5vw,48px); border:1px solid var(--line); border-radius:12px; background:#0c1922; box-shadow:0 24px 80px #0008; }
 .arcade-setup-card h1 { margin:0; font-size:clamp(32px,5vw,48px); }.arcade-setup-card p { color:var(--muted); line-height:1.6; }

@@ -1308,7 +1308,7 @@
     font-size: 9px;
   }
   .rw-disclaimer {
-    display: none;
+    display: block;
   }
   .rw-inspector {
     top: 166px;
@@ -1369,5 +1369,20 @@
   }
 }
 
+/* Compact playback without hiding the execution status or model disclaimer. */
+.research-workspace .rw-playback { padding: 8px 12px; gap: 6px 16px; }
+.rw-playback-info { grid-column: 1 / -1; min-width: 0; color: var(--muted); font-size: 11px; }
+.rw-playback-info summary { cursor: pointer; }
+.rw-playback-info p { margin: 5px 0; }
+.rw-console-summary { gap: 12px; }
+.rw-console-summary > div { gap: 2px; }
+.rw-console-summary strong { font-size: 16px; }
+.rw-timeline label { gap: 3px; }
+@media (max-width: 720px) {
+  .research-workspace .rw-playback { padding: 7px 9px; gap: 5px; max-height: 28dvh; }
+  .rw-console-summary { gap: 6px; }
+  .rw-playback-info { font-size: 10px; }
+  .rw-playback-info .rw-disclaimer { display: block; }
+}
 .research-workspace input, .research-workspace select, .research-workspace textarea { border-color: var(--control-border); }
 .rw-agent-status { color: var(--muted); font-size: 14px; }
