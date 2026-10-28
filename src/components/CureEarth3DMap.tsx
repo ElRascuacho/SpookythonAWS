@@ -695,7 +695,10 @@ export function CureEarth3DMap({
       maxBounds: MANTA_BOUNDS,
       minZoom: MANTA_MIN_ZOOM,
       maxZoom: MANTA_MAX_ZOOM,
-      attributionControl: false,
+      attributionControl: {
+        compact: true,
+        customAttribution: 'Vías © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · buses referenciales',
+      },
     });
 
     const resizeObserver = new ResizeObserver(() => {
@@ -1481,7 +1484,6 @@ export function CureEarth3DMap({
         <span />2 km
         <small>Relieve AWS DEM · Cartografía vectorial · Vista táctica</small>
       </div>
-      <div className="osm-attribution">Vías © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · buses referenciales</div>
 
       <div className="map-legend">
         <span>
