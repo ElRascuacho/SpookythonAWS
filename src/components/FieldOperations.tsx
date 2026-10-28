@@ -1,3 +1,4 @@
+import { ACHIEVEMENTS, ARCADE_KEY, COSMETICS, loadProgress, purchase, rewardWin, type ArcadeProgress } from '../domain/arcadeProgress';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, FlaskConical, Pause, Play, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { CureGame } from '../domain/cureGame';
@@ -11,6 +12,16 @@ import './FieldOperations.css';
 type Phase = 'ready' | 'playing' | 'paused' | 'won' | 'lost';
 
 function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; onWin: () => void; receipt: string }) {
+  const [progress, setProgress] = useState(loadProgress);
+  const progressRef = useRef(progress);
+  const [saveError, setSaveError] = useState('');
+  const claimed = useRef(false);
+  const updateProgress = (next: ArcadeProgress) => {
+    progressRef.current = next;
+    setProgress(next);
+    try { localStorage.setItem(ARCADE_KEY, JSON.stringify(next)); setSaveError(''); }
+    catch { setSaveError('No se pudo guardar el progreso; se perderá al cerrar.'); }
+  };
   const canvas = useRef<HTMLCanvasElement>(null);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const shooter = useRef(createShooter()), parkour = useRef(createParkour());
@@ -66,7 +77,7 @@ function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; 
       if (now - lastHud > 100 || s.result !== 'playing') {
         setHud({ progress: kind === 'shooter' ? shooter.current.kills : parkour.current.supplies.filter(Boolean).length, health: s.health, ammo: shooter.current.ammo, reloading: !!shooter.current.reloadUntil, checkpoint: parkour.current.checkpoint > 75, distance: Math.min(100, Math.round((parkour.current.x - 75) / 2045 * 100)) }); lastHud = now;
       }
-      if (s.result !== 'playing') { setPhase(s.result); if (s.result === 'won') callback.current(); return; }
+      if (s.result !== 'playing') { setPhase(s.result); if (s.result === 'won' && !claimed.current) { claimed.current = true; updateProgress(rewardWin(progressRef.current)); callback.current(); } return; }
       frame = requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop);
@@ -79,13 +90,20 @@ function ArcadeMission({ kind, onWin, receipt }: { kind: 'shooter' | 'parkour'; 
     shooter.current.aimY = (e.clientY - b.top - (b.height - VIEW_H * scale) / 2) / scale;
   };
   return <div className="field-arcade" onBlur={e => { if (phase === 'playing' && !e.currentTarget.contains(e.relatedTarget)) { keys.current.clear(); jump.current = false; setPhase('paused'); } }}>
+    <details className="field-progression">
+      <summary>Arcade · {progress.coins} monedas · Logros y cosméticos</summary>
+      <p>Gana una operación arcade: 10 monedas. Los logros dan bonos únicos. Los marcos no cambian la dificultad.</p>
+      <ul>{ACHIEVEMENTS.map(a => <li key={a.id}>{progress.wins >= a.target ? '✓' : '○'} {a.name} · {Math.min(progress.wins, a.target)}/{a.target} · +{a.reward} monedas</li>)}</ul>
+      <div role="group" aria-label="Tienda de marcos arcade">{COSMETICS.map(c => <button key={c.id} disabled={progress.equipped === c.id || (!progress.owned.includes(c.id) && progress.coins < c.price)} onClick={() => updateProgress(purchase(progress, c.id))}>{c.name} · {progress.equipped === c.id ? 'Equipado' : progress.owned.includes(c.id) ? 'Equipar' : c.price + ' monedas'}</button>)}</div>
+      <p role="status">{saveError || 'Progreso guardado en este navegador. Solo arcade.'}</p>
+    </details>
     <div className="field-livebar">
       <span><ShieldCheck size={18} /> {hud.health} / 3 {kind === 'shooter' ? 'escudos' : 'intentos'}</span>
       <strong>{hud.progress} / {kind === 'shooter' ? '8 objetivos' : '3 reservas'}</strong>
       <span>{kind === 'shooter' ? hud.reloading ? 'Recargando…' : `${hud.ammo} / 6 · munición` : `${hud.distance}% del trayecto${hud.checkpoint ? ' · punto de control' : ''}`}</span>
       <button onClick={() => setPhase(p => p === 'playing' ? 'paused' : p === 'paused' ? 'playing' : p)} disabled={phase !== 'playing' && phase !== 'paused'}><Pause size={16} /> Pausa</button>
     </div>
-    <div className={`field-viewport field-${kind}`}>
+    <div style={{ border: `3px solid ${COSMETICS.find(c => c.id === progress.equipped)!.color}` }} className={`field-viewport field-${kind}`}>
       <canvas ref={canvas} width={VIEW_W} height={VIEW_H} tabIndex={phase === 'playing' ? 0 : -1} aria-label={kind === 'shooter' ? 'Shooter en primera persona. Apunta con el ratón o flechas; dispara con clic o espacio; R recarga; P pausa.' : 'Parkour. A D o flechas para moverte, espacio o flecha arriba para saltar, P pausa.'}
         onPointerMove={e => { if (kind === 'shooter') aimAt(e); }}
         onPointerDown={e => { if (phase !== 'playing') return; e.currentTarget.focus(); if (kind === 'shooter') { aimAt(e); shoot(shooter.current); } }}
