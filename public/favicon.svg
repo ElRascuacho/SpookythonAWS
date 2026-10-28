@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <title>Manta Cero — ADN bajo contención</title>
+  <rect width="64" height="64" rx="16" fill="#0D1B22"/>
+  <path d="M10 23V16a6 6 0 0 1 6-6h7M41 54h7a6 6 0 0 0 6-6v-7" stroke="#41636A" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M24 13h16M25 31h14M24 51h16" stroke="#7F9EAA" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M42 12c0 10-20 10-20 20s20 10 20 20" stroke="#5E9E91" stroke-width="5" stroke-linecap="round"/>
+  <path d="M22 12c0 10 20 10 20 20S22 42 22 52" stroke="#0D1B22" stroke-width="9" stroke-linecap="round"/>
+  <path d="M22 12c0 10 20 10 20 20S22 42 22 52" stroke="#B1DFC8" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="51" cy="13" r="6" fill="#0D1B22"/>
+  <circle cx="51" cy="13" r="4" fill="#F58A72"/>
+</svg>
